@@ -51,6 +51,17 @@ avoids Sync ACLs and keeps the booth from reading other events' data.
 Rate limits are retried with exponential backoff and full jitter: 4 attempts per call, and up to 8
 re-reads on revision conflicts. Every 429 is logged.
 
+### D-09 Dev environment and Twilio resources
+*2026-10-09.*
+- The Twilio account is **DevRel Event Activations** (`AC10f4fc…`). It is shared with other activations, so only
+  new resources named `Portrait Studio …` are created and nothing existing is changed.
+- Created: Sync Service **Portrait Studio Dev** (`IS1e5a46ce…`, ACLs enabled) and API key **Portrait Studio Dev**
+  (`SK6898cf13…`). Their values are only in `.env.local`.
+- WhatsApp test sender: **+13203780782** ("Anime Artwork"), used for testing and setup.
+- In development, `.env.local` wins over inherited shell variables, because shell profiles may export `TWILIO_*` for
+  other accounts. In production nothing is read from disk.
+- `experimental.agentFeedback` is turned off: it told agents to send reports to Vercel.
+
 ## Answers to SPEC §17
 
 | Q | Decision |

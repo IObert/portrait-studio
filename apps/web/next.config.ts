@@ -10,9 +10,6 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Trace from the monorepo root so pnpm's hoisted store is included.
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
-  experimental: {
-    agentFeedback: true,
-  },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {
