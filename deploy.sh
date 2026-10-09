@@ -138,9 +138,14 @@ if ! exists az containerapp env show --name "$AZURE_CONTAINER_ENV_NAME" --resour
 fi
 
 # --- App configuration ------------------------------------------------------
+# Server Actions need one stable key across replicas (Next.js self-hosting guide).
+if [[ -z "${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}" ]]; then
+  die "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY is not set. Generate one with: openssl rand -base64 32"
+fi
 # Every variable in .env.example. Secrets become Container App secrets.
 secret_keys=(
   ADMIN_PASSWORD
+  NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
   TWILIO_AUTH_TOKEN
   TWILIO_API_KEY_SECRET
   OPENAI_API_KEY
