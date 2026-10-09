@@ -154,6 +154,8 @@ instead of using `azure/login`.
    - `OPENAI_*_MODEL`
    - and any `AZURE_*` overrides
 
+7. Set the repo variable `DEPLOY_ENABLED=true`. Until it is set, the deploy job is skipped.
+
 The workflow writes `.env.local` from these values, runs `./deploy.sh`, and deletes the file afterwards.
 
 ## Local container check

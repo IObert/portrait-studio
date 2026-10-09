@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   deploy:
+    # Skipped until Azure is set up: set the repo variable DEPLOY_ENABLED=true.
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: production
     steps:
