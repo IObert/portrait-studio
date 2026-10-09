@@ -12,6 +12,8 @@ const EnvSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
+  /** One image model, never switched at runtime (SPEC §9.4, docs/decisions.md D-01). */
+  OPENAI_IMAGE_MODEL: z.string().min(1).default("gpt-image-2.5-flare"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

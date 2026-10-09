@@ -1,5 +1,6 @@
 /**
- * gpt-image-2 transparency spike (SPEC §8.2). Run:
+ * Image-model transparency spike (SPEC §8.2). gpt-image-2 rejected
+ * background "transparent"; gpt-image-2.5-flare was chosen (docs/decisions.md D-01). Run:
  *   pnpm --filter web spike:transparent [--style cartoon] [--inputs dir] [--out dir]
  *
  * For every selfie in the inputs folder it calls images.edit with
@@ -35,9 +36,11 @@ const { values } = parseArgs({
 
 const style = values.style as StyleId;
 if (!STYLE_IDS.includes(style)) throw new Error(`Unknown style ${style}`);
-const model = values.model ?? process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2";
+const model = values.model ?? process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2.5-flare";
 if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not set (put it in the repo-root .env)");
 
+// Spike-only check (SPEC §8.2). Not enforced in production: tight group shots
+// legitimately fall below it (decision 2026-10-09, docs/decisions.md).
 const THRESHOLD_TRANSPARENT = 0.2;
 
 /** Filenames encode subject count: "1-person*.jpg", "3-people*.jpg". */

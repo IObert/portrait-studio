@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { analyzeTransparency } from "@/lib/image/alpha";
+import { analyzeTransparency, solidifyAlpha } from "@/lib/image/alpha";
 import { CANVAS, compositeOnBackground, solidBackground } from "@/lib/image/composite";
 
 /** Fixture: transparent canvas with an opaque red ellipse in the middle. */
@@ -43,7 +43,24 @@ describe("analyzeTransparency", () => {
   });
 });
 
+describe("solidifyAlpha", () => {
+  it("makes near-opaque pixels opaque and keeps soft edges and transparency", async () => {
+    const px = Buffer.from([255, 0, 0, 253, 255, 0, 0, 120, 0, 0, 0, 0]);
+    const png = await sharp(px, { raw: { width: 3, height: 1, channels: 4 } }).png().toBuffer();
+    const out = await solidifyAlpha(png);
+    const { data } = await sharp(out).raw().toBuffer({ resolveWithObject: true });
+    expect([data[3], data[7], data[11]]).toEqual([255, 120, 0]);
+  });
+});
+
 describe("compositeOnBackground", () => {
+  it("does not let the background bleed through a near-opaque subject", async () => {
+    // Subject at alpha 253, as gpt-image-2.5 produces it.
+    const subject = await sharp({ create: { width: CANVAS.width, height: CANVAS.height, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 253 / 255 } } }).png().toBuffer();
+    const out = await compositeOnBackground(subject, await solidBackground("#0000ff"));
+    expect(await pixel(out, 512, 768)).toEqual([255, 0, 0, 255]);
+  });
+
   it("shows the background through transparent areas and keeps the subject", async () => {
     const bg = await solidBackground("#0000ff");
     const out = await compositeOnBackground(await cutoutFixture(), bg);
