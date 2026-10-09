@@ -16,6 +16,7 @@
     "spike:transparent": "tsx scripts/spike-transparent.ts"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.34.0",
     "@next/env": "16.4.0",
     "next": "16.4.0",
     "openai": "^7.31.0",
@@ -24,6 +25,7 @@
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
     "sharp": "^0.35.5",
+    "twilio": "^6.1.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {
