@@ -12,17 +12,17 @@ loadRootEnv();
 const live = process.env.RUN_LIVE_SYNC_TESTS === "1";
 
 describe.skipIf(!live)("Twilio Sync (live)", () => {
-  const backend = createTwilioSyncBackend({
-    accountSid: process.env.TWILIO_ACCOUNT_SID!,
-    apiKeySid: process.env.TWILIO_API_KEY_SID!,
-    apiKeySecret: process.env.TWILIO_API_KEY_SECRET!,
-    serviceSid: process.env.TWILIO_SYNC_SERVICE_SID!,
-  });
-  const store = new SyncStore(backend, { warn: vi.fn() });
-  const name = `test_${randomUUID().slice(0, 8)}`;
-  const map = store.map(name, z.object({ n: z.number() }));
-
   it("supports If-Match updates, conditional create and the documented error codes", async () => {
+    // Built inside the test: describe bodies run even when the suite is skipped.
+    const backend = createTwilioSyncBackend({
+      accountSid: process.env.TWILIO_ACCOUNT_SID!,
+      apiKeySid: process.env.TWILIO_API_KEY_SID!,
+      apiKeySecret: process.env.TWILIO_API_KEY_SECRET!,
+      serviceSid: process.env.TWILIO_SYNC_SERVICE_SID!,
+    });
+    const store = new SyncStore(backend, { warn: vi.fn() });
+    const name = `test_${randomUUID().slice(0, 8)}`;
+    const map = store.map(name, z.object({ n: z.number() }));
     await store.ensureMap(name);
     await store.ensureMap(name); // idempotent
     try {

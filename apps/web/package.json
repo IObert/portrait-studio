@@ -7,13 +7,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "worker": "tsx worker/main.ts",
+    "worker": "node --conditions=react-server --import tsx worker/main.ts",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "spike:transparent": "tsx scripts/spike-transparent.ts"
+    "spike:transparent": "node --conditions=react-server --import tsx scripts/spike-transparent.ts"
   },
   "dependencies": {
     "@azure/storage-blob": "^12.34.0",
