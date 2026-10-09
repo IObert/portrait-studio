@@ -62,6 +62,23 @@ re-reads on revision conflicts. Every 429 is logged.
   other accounts. In production nothing is read from disk.
 - `experimental.agentFeedback` is turned off: it told agents to send reports to Vercel.
 
+### D-10 Messaging, Verify and Memory resources
+*2026-10-09.*
+- **Messaging Service:** the empty "Anime Artwork" service (`MGeed911…`) was renamed **Portrait Studio**.
+  +13203780782 was moved into it from `MG705b9c…` ("Messaging Service created on September 9, 2026"). The other app
+  sends directly from the number, not through that service, so its outgoing messages are unaffected.
+  `useInboundWebhookOnNumber` is still `true`, and the WhatsApp sender's own webhook still points at the
+  `ai-anime-artwork` app. **The cut-over** (sending inbound traffic to Portrait Studio) is a separate, explicit step
+  and stops that app.
+- **Verify:** a new service **Portrait Studio** (`VAb8e2869f…`) with the same settings as the other activations
+  (6-digit codes, no lookup). Email integrations can only be created and linked in the Console, and one integration
+  can serve several services. **Manual step:** link an existing SendGrid email integration to this service
+  (Console → Verify → Services → Portrait Studio → Email).
+- **Conversation Memory:** the shared store **Cross-Activation-Memory** (`mem_store_01kvcx…`) is reused.
+  Because other activations share its profiles, deletion (§4.4, §5.10) **removes only Portrait Studio's traits
+  and links. It never deletes the whole profile.** This changes the spec's "delete the Memory profile"
+  wording, with the user's approval.
+
 ## Answers to SPEC §17
 
 | Q | Decision |
