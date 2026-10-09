@@ -1,14 +1,15 @@
 # Local development stack (works with `docker compose` and `podman compose`).
-# Copy .env.example to .env first.
+# Copy .env.example to .env.local first (override with ENV_FILE=...).
 services:
   web:
     build: .
     image: localhost/portrait-studio:dev
-    env_file: .env
+    env_file: ${ENV_FILE:-.env.local}
+    restart: unless-stopped
     environment:
       AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}
     ports:
-      - "3000:3000"
+      - "${HOST_PORT:-3000}:3000"
     depends_on:
       - azurite
 
@@ -16,9 +17,9 @@ services:
   worker:
     image: localhost/portrait-studio:dev
     pull_policy: never
-    working_dir: /repo/apps/web
-    command: ["node", "--import", "tsx", "worker/main.ts"]
-    env_file: .env
+    command: ["/repo/apps/web/worker/start.sh"]
+    env_file: ${ENV_FILE:-.env.local}
+    restart: unless-stopped
     environment:
       AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}
     healthcheck:

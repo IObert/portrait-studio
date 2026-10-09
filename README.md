@@ -29,13 +29,24 @@ pnpm dev                       # web app on http://localhost:3000
 pnpm --filter web worker       # worker in a second terminal
 ```
 
+All processes read one file, the repo-root `.env.local` (copy it from `.env.example`).
+
 With containers:
 
 ```sh
-cp .env.example .env
+cp .env.example .env.local
 docker compose up --build      # or: podman compose up --build
 curl localhost:3000/healthz
 ```
+
+## Deployment
+
+Azure Container Apps via `./deploy.sh`. CI deploys automatically on every push to `main`.
+See [docs/deployment.md](docs/deployment.md).
+
+## Decisions
+
+Product decisions made after SPEC.md are recorded in [docs/decisions.md](docs/decisions.md).
 
 ## Tests
 
@@ -57,6 +68,6 @@ node apps/print-agent/dist/agent.mjs --url http://localhost:3000 --token <token>
 
 ## Coming in later milestones
 
-Architecture overview, webhook tunnel setup, Azure Container Apps deployment (both topologies),
+Architecture overview, webhook tunnel setup,
 Twilio resource setup (`pnpm --filter web setup:twilio`), the full environment variable table,
 and the real-life test checklist.

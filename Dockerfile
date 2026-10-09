@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # One image for both processes (SPEC §3.2):
 #   web:    node apps/web/server.js            (default CMD)
-#   worker: node --import tsx worker/main.ts  (workdir /repo/apps/web)
+#   worker: /repo/apps/web/worker/start.sh
 
 ARG NODE_VERSION=24
 

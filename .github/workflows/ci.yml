@@ -1,5 +1,7 @@
 name: CI
 
+# Only GitHub-owned actions (actions/*): the org's Actions policy allows nothing else.
+
 on:
   push:
     branches: [main]
@@ -15,7 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -32,7 +37,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: corepack enable
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -47,7 +55,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: corepack enable
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
@@ -66,10 +77,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - run: docker build --tag portrait-studio:ci .

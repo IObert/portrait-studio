@@ -1,0 +1,107 @@
+name: Deploy
+
+# Deploys to Azure Container Apps on every push to main (docs/decisions.md D-07).
+# Only GitHub-owned actions are allowed, so the Azure OIDC login is done by hand
+# instead of with azure/login. Setup: docs/deployment.md, "CI deployment".
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Azure login (OIDC)
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          token="$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r .value)"
+          echo "::add-mask::$token"
+          az login --service-principal --username "$AZURE_CLIENT_ID" --tenant "$AZURE_TENANT_ID" \
+            --federated-token "$token" --output none
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+
+      # deploy.sh reads .env.local; build it from repo secrets (sensitive) and variables
+      # (non-sensitive). Empty values are skipped by deploy.sh.
+      - name: Write .env.local
+        env:
+          PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL }}
+          ADMIN_USER: ${{ vars.ADMIN_USER }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+          TWILIO_ACCOUNT_SID: ${{ vars.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_API_KEY_SID: ${{ vars.TWILIO_API_KEY_SID }}
+          TWILIO_API_KEY_SECRET: ${{ secrets.TWILIO_API_KEY_SECRET }}
+          TWILIO_MESSAGING_SERVICE_SID: ${{ vars.TWILIO_MESSAGING_SERVICE_SID }}
+          TWILIO_SYNC_SERVICE_SID: ${{ vars.TWILIO_SYNC_SERVICE_SID }}
+          TWILIO_VERIFY_SERVICE_SID: ${{ vars.TWILIO_VERIFY_SERVICE_SID }}
+          TWILIO_MEMORY_STORE_ID: ${{ vars.TWILIO_MEMORY_STORE_ID }}
+          TWILIO_TEMPLATE_DELIVERY_EN: ${{ vars.TWILIO_TEMPLATE_DELIVERY_EN }}
+          TWILIO_TEMPLATE_DELIVERY_PT_BR: ${{ vars.TWILIO_TEMPLATE_DELIVERY_PT_BR }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}
+          OPENAI_VISION_MODEL: ${{ vars.OPENAI_VISION_MODEL }}
+          OPENAI_CHAT_MODEL: ${{ vars.OPENAI_CHAT_MODEL }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          AZURE_STORAGE_CONTAINER: ${{ vars.AZURE_STORAGE_CONTAINER }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_APP_NAME: ${{ vars.AZURE_APP_NAME }}
+          AZURE_ACR_NAME: ${{ vars.AZURE_ACR_NAME }}
+          AZURE_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT }}
+          AZURE_USER: ${{ vars.AZURE_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          : > .env.local
+          for key in PUBLIC_BASE_URL ADMIN_USER ADMIN_PASSWORD LOG_LEVEL \
+            TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_API_KEY_SID TWILIO_API_KEY_SECRET \
+            TWILIO_MESSAGING_SERVICE_SID TWILIO_SYNC_SERVICE_SID TWILIO_VERIFY_SERVICE_SID \
+            TWILIO_MEMORY_STORE_ID TWILIO_TEMPLATE_DELIVERY_EN TWILIO_TEMPLATE_DELIVERY_PT_BR \
+            OPENAI_API_KEY OPENAI_IMAGE_MODEL OPENAI_VISION_MODEL OPENAI_CHAT_MODEL \
+            AZURE_STORAGE_CONNECTION_STRING AZURE_STORAGE_CONTAINER AZURE_LOCATION \
+            AZURE_RESOURCE_GROUP AZURE_APP_NAME AZURE_ACR_NAME AZURE_STORAGE_ACCOUNT AZURE_USER; do
+            value="${!key:-}"
+            [[ -n "$value" ]] && printf '%s=%q\n' "$key" "$value" >> .env.local
+          done
+
+      - name: Deploy
+        run: ./deploy.sh
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          rg="${AZURE_RESOURCE_GROUP:-rg-${AZURE_APP_NAME:-portrait-studio}}"
+          fqdn="$(az containerapp show -g "$rg" -n "${AZURE_APP_NAME:-portrait-studio}-web" \
+            --query properties.configuration.ingress.fqdn -o tsv)"
+          for i in $(seq 1 20); do
+            curl -sSf "https://$fqdn/healthz" && exit 0
+            sleep 6
+          done
+          echo "Health check failed" >&2
+          exit 1
+        env:
+          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          AZURE_APP_NAME: ${{ vars.AZURE_APP_NAME }}
+
+      - name: Remove .env.local
+        if: always()
+        run: rm -f .env.local
