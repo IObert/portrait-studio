@@ -1,5 +1,9 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import { loadRootEnv } from "./lib/load-env";
+
+// One env file for the whole repo: /.env.local (see README).
+loadRootEnv();
 
 const nextConfig: NextConfig = {
   // Self-contained server bundle for the Docker image.

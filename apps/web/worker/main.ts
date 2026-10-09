@@ -2,6 +2,9 @@ export {};
 
 process.env.PORTRAIT_PROCESS ??= "worker";
 
+const { loadRootEnv } = await import("../lib/load-env");
+loadRootEnv();
+
 const { log } = await import("../lib/log");
 const { runLoop } = await import("./loop");
 
