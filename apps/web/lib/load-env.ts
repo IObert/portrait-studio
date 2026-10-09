@@ -1,18 +1,21 @@
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import * as nextEnvModule from "@next/env";
+import { parseEnv } from "node:util";
 
-// @next/env is CommonJS: Next's config loader exposes named exports, tsx's ESM
-// interop only a default export. Accept either shape.
-type NextEnv = typeof nextEnvModule;
-const mod = nextEnvModule as NextEnv & { default?: NextEnv };
-const nextEnv: NextEnv = typeof mod.loadEnvConfig === "function" ? mod : mod.default!;
+const repoRoot = path.join(import.meta.dirname, "../../..");
 
 /**
- * Loads the repo-root `.env.local` / `.env` for processes outside the Next.js
- * runtime (worker, scripts) and for `next dev`. Variables already set in the
- * environment (containers, CI) always win. No-op when no file exists.
+ * Loads the repo-root `.env.local` (or `.env`) for next dev, the worker and
+ * scripts. In development the file wins over inherited shell variables: shell
+ * profiles often export TWILIO_* for other projects, and silently using another
+ * account is worse than an override. In production (containers) nothing is
+ * loaded from disk; the platform's environment is the only source.
  */
 export function loadRootEnv(): void {
-  const repoRoot = path.join(import.meta.dirname, "../../..");
-  nextEnv.loadEnvConfig(repoRoot, process.env.NODE_ENV !== "production", { info: () => {}, error: console.error });
+  if (process.env.NODE_ENV === "production") return;
+  const file = [".env.local", ".env"].map((f) => path.join(repoRoot, f)).find((f) => existsSync(f));
+  if (!file) return;
+  for (const [key, value] of Object.entries(parseEnv(readFileSync(file, "utf8")))) {
+    if (value !== "") process.env[key] = value;
+  }
 }
