@@ -50,6 +50,20 @@ docker compose up --build      # or: podman compose up --build
 curl localhost:3000/healthz
 ```
 
+## Admin
+
+`/admin` (basic auth: `ADMIN_USER` / `ADMIN_PASSWORD`). Here you can:
+- create and edit events, with every SPEC §4.2 field
+- change state: Go live / Break / End / Back to draft
+- upload a frame and a background, with previews
+- generate or rotate the printer token, shown once together with the agent command
+- delete an event, after typing its code
+
+The proxy enforces basic auth on `/admin` and `/booth`, and every Server Action checks it again.
+
+The e2e suite (`pnpm test:e2e`) runs with in-memory Sync and Blob (`PORTRAIT_E2E_FAKE_SYNC=1`), so CI needs no
+credentials. That mode is for tests only: it keeps state in process memory, which the real app never does.
+
 ## Deployment
 
 Azure Container Apps via `./deploy.sh`. CI deploys automatically on every push to `main`.

@@ -11,9 +11,17 @@ export function createAzureBlobStore(connectionString: string, containerName: st
   const container = service.getContainerClient(containerName);
   // Azurite runs over plain HTTP; real storage accounts get HTTPS-only SAS.
   const httpsOnly = new URL(container.url).protocol === "https:";
+  // Create the (private) container on first write; idempotent, retried after a failure.
+  let ensured: Promise<unknown> | undefined;
+  const ensureContainer = () =>
+    (ensured ??= container.createIfNotExists().catch((err) => {
+      ensured = undefined;
+      throw err;
+    }));
 
   return {
     async put(path, data, contentType) {
+      await ensureContainer();
       await container.getBlockBlobClient(path).uploadData(data, { blobHTTPHeaders: { blobContentType: contentType } });
     },
     async get(path) {
@@ -29,6 +37,7 @@ export function createAzureBlobStore(connectionString: string, containerName: st
     },
     async deletePrefix(prefix) {
       if (!prefix.endsWith("/")) throw new Error("deletePrefix needs a folder prefix ending in '/'");
+      if (!(await container.exists())) return 0;
       let n = 0;
       for await (const blob of container.listBlobsFlat({ prefix })) {
         await container.getBlobClient(blob.name).deleteIfExists({ deleteSnapshots: "include" });
