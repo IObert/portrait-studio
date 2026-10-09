@@ -4,8 +4,11 @@
 #   worker: /repo/apps/web/worker/start.sh
 
 ARG NODE_VERSION=24
+# Official Docker Hub image via AWS ECR Public's mirror (same digest): avoids Docker
+# Hub's anonymous pull rate limit (429) on shared CI runners and Azure ACR builds.
+ARG NODE_IMAGE=public.ecr.aws/docker/library/node
 
-FROM node:${NODE_VERSION}-bookworm-slim AS base
+FROM ${NODE_IMAGE}:${NODE_VERSION}-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable
 WORKDIR /repo
