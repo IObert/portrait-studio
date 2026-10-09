@@ -15,6 +15,17 @@ and get back a stylized AI portrait, printed at the booth if the event has a pri
 | `Dockerfile` | One image for web and worker |
 | `compose.yaml` | Local stack: web, worker, Azurite (Blob Storage emulator) |
 
+## Data layer
+
+- **Twilio Sync** holds all application state (SPEC §3.4). `apps/web/lib/sync/` has a typed store that validates every
+  item with zod, rejects payloads over 15 KiB, retries 429/5xx with backoff, and does read-modify-write with
+  `If-Match` revisions. Every Sync rate-limit response logs a `WARN` with `event: "sync_rate_limited"` and the
+  object name. Hot objects (`dedup`, per-event `stats`) are sharded across several maps
+  ([decision D-03](docs/decisions.md)).
+- **Azure Blob Storage** holds images (SPEC §7) in a private container. Outside readers get short-lived, read-only SAS URLs.
+  Locally, compose runs Azurite.
+- `/healthz` is liveness. `/healthz/ready` returns 503 unless Sync and Blob Storage are reachable.
+
 ## Prerequisites
 
 - Node.js 24 (see `.nvmrc`); the print agent supports Node 22+
@@ -57,7 +68,12 @@ pnpm test                      # unit tests (vitest)
 pnpm test:e2e                  # Playwright (builds and starts the web app)
 ```
 
-Live AI tests run only with `RUN_LIVE_AI_TESTS=1`.
+Live tests are opt-in and use real services from `.env.local`:
+
+```sh
+RUN_LIVE_AI_TESTS=1 pnpm test      # OpenAI (costs money)
+RUN_LIVE_SYNC_TESTS=1 pnpm test    # Twilio Sync (throwaway map, deleted afterwards)
+```
 
 ## Print agent
 

@@ -32,7 +32,8 @@ services:
   # well-known development key, not a secret.
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:latest
-    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--loose"]
+    # --skipApiVersionCheck: the SDK often targets a newer API version than Azurite.
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--loose", "--skipApiVersionCheck"]
     ports:
       - "10000:10000"
     volumes:

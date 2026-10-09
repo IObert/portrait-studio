@@ -46,6 +46,11 @@ avoids Sync ACLs and keeps the booth from reading other events' data.
 - `.github/workflows/deploy.yml` runs it on **every push to `main`**.
 - CI uses only GitHub-owned actions, because the org's Actions policy requires it.
 
+### D-08 Sync retry behaviour (implementation note)
+*2026-10-09.* twilio-node drops response headers on errors, so Sync's `retry-after` is not available.
+Rate limits are retried with exponential backoff and full jitter: 4 attempts per call, and up to 8
+re-reads on revision conflicts. Every 429 is logged.
+
 ## Answers to SPEC §17
 
 | Q | Decision |
