@@ -1,0 +1,27 @@
+{
+  "name": "@portrait-studio/print-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portrait Studio print agent for the booth computer (DNP DS620, 4x6)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/agent.mjs --banner:js=\"// Portrait Studio print agent. Run: node agent.mjs --help\"",
+    "start": "node dist/agent.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9",
+    "@types/node": "^22",
+    "esbuild": "^0.28.2",
+    "eslint": "^9",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3",
+    "zod": "^4.6.5"
+  }
+}

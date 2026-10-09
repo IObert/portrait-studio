@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portrait Studio
 
-## Getting Started
+An AI photo booth for events. Attendees scan a QR code, send a selfie over WhatsApp or SMS,
+and get back a stylized AI portrait, printed at the booth if the event has a printer.
 
-First, run the development server:
+> This README grows with each milestone. The sections marked *(coming)* are filled in as those parts are built.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Repository layout
+
+| Path | What it is |
+|---|---|
+| `apps/web` | Next.js app (App Router): admin, booth screen, share page, privacy page, webhooks, agent API |
+| `apps/web/worker` | Background worker (same codebase and image, separate process) |
+| `apps/print-agent` | Standalone Node.js print agent for the booth computer, see [`PROTOCOL.md`](apps/print-agent/PROTOCOL.md) |
+| `Dockerfile` | One image for web and worker |
+| `compose.yaml` | Local stack: web, worker, Azurite (Blob Storage emulator) |
+
+## Prerequisites
+
+- Node.js 24 (see `.nvmrc`); the print agent supports Node 22+
+- pnpm 10 (`corepack enable`)
+- Docker or Podman with a Compose provider (for Podman on macOS: `brew install docker-compose`)
+
+## Local development
+
+```sh
+pnpm install
+pnpm dev                       # web app on http://localhost:3000
+pnpm --filter web worker       # worker in a second terminal
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+With containers:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+cp .env.example .env
+docker compose up --build      # or: podman compose up --build
+curl localhost:3000/healthz
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tests
 
-## Learn More
+```sh
+pnpm lint
+pnpm typecheck
+pnpm test                      # unit tests (vitest)
+pnpm test:e2e                  # Playwright (builds and starts the web app)
+```
 
-To learn more about Next.js, take a look at the following resources:
+Live AI tests run only with `RUN_LIVE_AI_TESTS=1`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Print agent
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```sh
+pnpm --filter print-agent build
+node apps/print-agent/dist/agent.mjs --url http://localhost:3000 --token <token> --simulate --out ./prints
+```
 
-## Deploy on Vercel
+## Coming in later milestones
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Architecture overview, webhook tunnel setup, Azure Container Apps deployment (both topologies),
+Twilio resource setup (`pnpm --filter web setup:twilio`), the full environment variable table,
+and the real-life test checklist.

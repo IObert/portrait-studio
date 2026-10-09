@@ -1,0 +1,41 @@
+# Local development stack (works with `docker compose` and `podman compose`).
+# Copy .env.example to .env first.
+services:
+  web:
+    build: .
+    image: localhost/portrait-studio:dev
+    env_file: .env
+    environment:
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - azurite
+
+  # Same image as web, started with the worker command (SPEC §3.2).
+  worker:
+    image: localhost/portrait-studio:dev
+    pull_policy: never
+    working_dir: /repo/apps/web
+    command: ["node", "--import", "tsx", "worker/main.ts"]
+    env_file: .env
+    environment:
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}
+    healthcheck:
+      disable: true
+    depends_on:
+      - web
+      - azurite
+
+  # Local Azure Blob Storage emulator. Its account key is Microsoft's public,
+  # well-known development key, not a secret.
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    command: ["azurite-blob", "--blobHost", "0.0.0.0", "--loose"]
+    ports:
+      - "10000:10000"
+    volumes:
+      - azurite-data:/data
+
+volumes:
+  azurite-data:
