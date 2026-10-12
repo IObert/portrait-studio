@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import OpenAI from "openai";
 import { getEventRepo } from "../admin/context";
+import { appDir } from "../app-dir";
 import type { PortraitEvent } from "../events/schema";
 import { FIXED_FRAMES } from "../events/schema";
 import { getEnv, requireEnv } from "../env";
@@ -16,12 +17,10 @@ import { deliver, type DeliveryDeps } from "../delivery/deliver";
 import { signMedia } from "../media-token";
 import { addressFromKey, type WorkerDeps } from "./worker";
 
-const FRAMES_DIR = path.join(import.meta.dirname, "../../assets/frames");
-
 /** Fixed frames shipped in apps/web/assets/frames (SPEC §8.3). */
 async function loadFixedFrame(id: string): Promise<Buffer | null> {
   if (id === "none" || !(FIXED_FRAMES as readonly string[]).includes(id)) return null;
-  return readFile(path.join(FRAMES_DIR, `${id}.png`));
+  return readFile(path.join(appDir(), "assets/frames", `${id}.png`));
 }
 
 /** Vision models that do not accept reasoning effort "none" (verified 2026-10-12, docs/decisions.md D-14). */

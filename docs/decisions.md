@@ -107,6 +107,18 @@ reviewed). The effort is chosen per model in `lib/pipeline/context.ts`.
 references are present, and brands are out of scope (§2.2). The review therefore uses the other 5 criteria, as V1 did
 without brand references.
 
+### D-16 Admin removals do not end the job
+*2026-10-12.* SPEC §9.1 lists `delivered → removed_by_admin` for "slideshow/print removal only". Removing an image
+from the slideshow or the print queue changes only that list. The job stays `delivered`, so the attendee keeps their
+portrait and share link. `removed_by_admin` is not used. Discarding a flagged image ends it as `rejected` with
+`error: discarded_by_admin`.
+
+### D-17 Booth screen updates
+*2026-10-12.* `/booth/[slug]/stream` (SSE, behind basic auth) polls Sync every 2 s per connection and pushes the full
+state only when the event state, its config or the slideshow list changes. It sends a heartbeat every 15 s and
+`X-Accel-Buffering: no` so proxies don't buffer the stream. A screen costs about 0.5 Sync reads per second. The client
+keeps the last state on screen and reconnects with exponential back-off (up to 30 s).
+
 ## Open TODOs after the last milestone
 
 - **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.

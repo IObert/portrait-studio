@@ -1,8 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { parseEnv } from "node:util";
-
-const repoRoot = path.join(import.meta.dirname, "../../..");
+import { repoRoot } from "./app-dir";
 
 /**
  * Loads the repo-root `.env.local` (or `.env`) for next dev, the worker and
@@ -13,7 +12,7 @@ const repoRoot = path.join(import.meta.dirname, "../../..");
  */
 export function loadRootEnv(): void {
   if (process.env.NODE_ENV === "production") return;
-  const file = [".env.local", ".env"].map((f) => path.join(repoRoot, f)).find((f) => existsSync(f));
+  const file = [".env.local", ".env"].map((f) => path.join(repoRoot(), f)).find((f) => existsSync(f));
   if (!file) return;
   for (const [key, value] of Object.entries(parseEnv(readFileSync(file, "utf8")))) {
     if (value !== "") process.env[key] = value;
