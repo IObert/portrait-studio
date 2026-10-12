@@ -6,14 +6,15 @@ import { getEventRepo } from "../admin/context";
 import type { PortraitEvent } from "../events/schema";
 import { FIXED_FRAMES } from "../events/schema";
 import { getEnv, requireEnv } from "../env";
-import { type Job, JobSchema } from "../jobs/schema";
+import type { Job } from "../jobs/schema";
 import { log } from "../log";
 import { Messenger } from "../messaging/outbound";
 import { getServices } from "../services";
-import { eventObjects } from "../sync/names";
-import { SKIP } from "../sync/store";
+import type { SyncStore } from "../sync/store";
 import { createTwilioMessagingApi } from "../twilio/messaging-api";
-import { releaseInFlight, type WorkerDeps } from "./worker";
+import { deliver, type DeliveryDeps } from "../delivery/deliver";
+import { signMedia } from "../media-token";
+import { addressFromKey, type WorkerDeps } from "./worker";
 
 const FRAMES_DIR = path.join(import.meta.dirname, "../../assets/frames");
 
@@ -36,6 +37,7 @@ export async function buildWorkerDeps(workerId: string): Promise<WorkerDeps> {
     log,
   );
   await messenger.init();
+  const delivery = deliveryDeps(sync, messenger);
   return {
     sync,
     events: await getEventRepo(),
@@ -50,14 +52,24 @@ export async function buildWorkerDeps(workerId: string): Promise<WorkerDeps> {
     },
     log,
     workerId,
-    // TODO(milestone g): deliver the portrait (SPEC §6), count quota, enqueue print, ask slideshow consent.
-    // Until then a passed job is marked delivered without sending, so the lease does not re-run it.
+    // Passed review: deliver (SPEC §6).
     onReady: async (event: PortraitEvent, job: Job) => {
-      await sync.map(eventObjects(event.slug).jobs, JobSchema).update(job.jobId, (cur) =>
-        cur?.state === "processing" ? { ...cur, state: "delivered", timestamps: { ...cur.timestamps, delivered: new Date().toISOString() } } : SKIP,
-      );
-      await releaseInFlight({ sync }, event, job.address);
-      log.warn({ event: "delivery_not_implemented", slug: event.slug, jobId: job.jobId }, "portrait ready; delivery arrives in milestone g");
+      const address = addressFromKey(job.address);
+      if (!address) throw new Error("Job has an invalid address");
+      await deliver(delivery, event, job, address);
     },
+  };
+}
+
+/** Delivery wiring shared by the worker and admin approval (SPEC §6, §5.7). */
+export function deliveryDeps(sync: SyncStore, messenger: Messenger): DeliveryDeps {
+  const env = requireEnv(getEnv(), ["PUBLIC_BASE_URL", "MEDIA_SIGNING_SECRET"]);
+  return {
+    sync,
+    messenger,
+    publicBaseUrl: env.PUBLIC_BASE_URL,
+    mediaUrl: (blobPath, ttl) => new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET, blobPath, ttl)}`, env.PUBLIC_BASE_URL).toString(),
+    templates: { en: env.TWILIO_TEMPLATE_DELIVERY_EN, pt_BR: env.TWILIO_TEMPLATE_DELIVERY_PT_BR },
+    log,
   };
 }

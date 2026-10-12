@@ -20,6 +20,8 @@ const EnvSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().trim().regex(/^[0-9a-f]{32}$/, "32 hex chars").optional(),
   TWILIO_MESSAGING_SERVICE_SID: sid("MG"),
   TWILIO_VERIFY_SERVICE_SID: sid("VA"),
+  TWILIO_TEMPLATE_DELIVERY_EN: z.string().regex(/^HX[0-9a-f]{32}$/).optional(),
+  TWILIO_TEMPLATE_DELIVERY_PT_BR: z.string().regex(/^HX[0-9a-f]{32}$/).optional(),
   TWILIO_MEMORY_STORE_ID: z.string().trim().regex(/^mem_store_[0-9a-z]{26}$/).optional(),
   PUBLIC_BASE_URL: z.url({ protocol: /^https?$/ }).transform((u) => u.replace(/\/+$/, "")).optional(),
 
@@ -29,6 +31,8 @@ const EnvSchema = z.object({
     .regex(/^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/, "Azure container name rules")
     .default("portrait-studio"),
 
+  /** HMAC key for /m/<token> media links (≥ 32 chars, same on every replica). */
+  MEDIA_SIGNING_SECRET: z.string().min(32).optional(),
   OPENAI_API_KEY: optional,
   OPENAI_VISION_MODEL: z.string().min(1).default("gpt-6.1-sol"),
   OPENAI_CHAT_MODEL: z.string().min(1).default("gpt-6-luna"),

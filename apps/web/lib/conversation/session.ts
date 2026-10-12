@@ -42,6 +42,8 @@ export const SessionSchema = z.object({
   /** Case A: the returning Memory profile and its first name. */
   memoryProfileId: z.string().nullable().default(null),
   pendingDeletionConfirm: z.boolean().default(false),
+  /** The last delivery's slideshow question, if still unanswered (SPEC §5.8). */
+  pendingSlideshow: z.object({ jobId: z.string(), group: z.boolean() }).nullable().default(null),
   /** For the WhatsApp 24h window (SPEC §5.11). */
   lastInboundAt: z.iso.datetime().nullable().default(null),
   counters: z

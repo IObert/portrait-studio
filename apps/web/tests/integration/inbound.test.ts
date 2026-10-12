@@ -256,6 +256,45 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect((await w.fake.getItem(map, "whatsapp:+447700900123"))!.data).toMatchObject({ optedIn: true });
   });
 
+  it("slideshow consent: only Yes for one's own delivered job adds it (SPEC §5.8)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const job = JobSchema.parse({
+      jobId: "job_slide_01", address: "whatsapp:+447700900123", channel: "whatsapp", style: "anime", background: "gradient",
+      selfieBlob: "events/ev/selfies/s.jpg", outputBlobs: { printPng: "events/ev/generated/job_slide_01.print.png", deliveryJpeg: "events/ev/generated/job_slide_01.jpg" },
+      shareId: "Q".repeat(24), state: "delivered", timestamps: {},
+    });
+    await w.fake.createItem(ev.jobs, job.jobId, job);
+    // Someone else's job cannot be added.
+    await w.fake.createItem(ev.jobs, "job_other_01", { ...job, jobId: "job_other_01", address: "whatsapp:+447700900999" });
+
+    expect(await w.say(WA, "", { selection: "ps:slide:no:job_slide_01" })).toEqual([catalogs.en.delivery.slideshowThanksNo]);
+    expect(await w.fake.getItem(ev.slideshow, "job_slide_01").catch(() => null)).toBeNull();
+    await w.say(WA, "", { selection: "ps:slide:yes:job_other_01" });
+    expect(await w.fake.getItem(ev.slideshow, "job_other_01").catch(() => null)).toBeNull();
+    expect(await w.say(WA, "", { selection: "ps:slide:yes:job_slide_01" })).toEqual([catalogs.en.delivery.slideshowThanksYes]);
+    expect((await w.fake.getItem(ev.slideshow, "job_slide_01"))!.data).toMatchObject({ blobPath: "events/ev/generated/job_slide_01.jpg" });
+  });
+
+  it("slideshow consent on SMS uses exact keywords for the pending question", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(SMS, "#ev");
+    await w.say(SMS, "AGREE");
+    const ev = eventObjects("ev");
+    const key = "sms:+447700900456";
+    await w.fake.createItem(ev.jobs, "job_slide_02", JobSchema.parse({
+      jobId: "job_slide_02", address: key, channel: "sms", style: "anime", background: "gradient", selfieBlob: "s",
+      outputBlobs: { printPng: "events/ev/generated/job_slide_02.print.png", deliveryJpeg: "events/ev/generated/job_slide_02.jpg" }, shareId: "R".repeat(24), state: "delivered", timestamps: {},
+    }));
+    const cur = (await w.fake.getItem(ev.sessions, key))!;
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_slide_02", group: false } });
+    expect(await w.say(SMS, "yes please")).not.toContain(catalogs.en.delivery.slideshowThanksYes); // not an exact keyword
+    expect(await w.say(SMS, "YES")).toEqual([catalogs.en.delivery.slideshowThanksYes]);
+    expect(await w.fake.getItem(ev.slideshow, "job_slide_02")).not.toBeNull();
+  });
+
   it("logs addresses masked, never in full", async () => {
     await liveEvent(w, "ev", { leadCollection: false });
     await w.say(WA, "#ev");

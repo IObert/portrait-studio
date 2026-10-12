@@ -146,7 +146,7 @@ instead of using `azure/login`.
 4. Create a GitHub environment named `production`. Optionally add required reviewers there.
 5. Add **secrets**:
    - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
-   - `ADMIN_PASSWORD`, `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` (`openssl rand -base64 32`), `TWILIO_AUTH_TOKEN`, `TWILIO_API_KEY_SECRET`, `OPENAI_API_KEY`
+   - `ADMIN_PASSWORD`, `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` (`openssl rand -base64 32`), `MEDIA_SIGNING_SECRET` (`openssl rand -base64 48`), `TWILIO_AUTH_TOKEN`, `TWILIO_API_KEY_SECRET`, `OPENAI_API_KEY`
    - optionally `AZURE_STORAGE_CONNECTION_STRING`
 6. Add **variables** for the non-sensitive values:
    - `PUBLIC_BASE_URL`, `ADMIN_USER`

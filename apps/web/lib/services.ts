@@ -52,6 +52,12 @@ function testServices(): Services {
   if (process.env.NODE_ENV === "production" && process.env.PORTRAIT_E2E !== "1") {
     throw new Error("PORTRAIT_E2E_FAKE_SYNC is for tests only; set PORTRAIT_E2E=1 to run the e2e suite");
   }
-  log.warn({ event: "e2e_fake_backends" }, "USING IN-MEMORY SYNC AND BLOB (TEST ONLY)");
-  return { sync: new SyncStore(new FakeSync(), log), blob: new FakeBlob() };
+  // Next.js loads instrumentation and routes as separate module graphs; keep one
+  // shared in-memory store per process so the e2e seed is visible to pages.
+  const g = globalThis as { __portraitE2eServices?: Services };
+  if (!g.__portraitE2eServices) {
+    log.warn({ event: "e2e_fake_backends" }, "USING IN-MEMORY SYNC AND BLOB (TEST ONLY)");
+    g.__portraitE2eServices = { sync: new SyncStore(new FakeSync(), log), blob: new FakeBlob() };
+  }
+  return g.__portraitE2eServices;
 }

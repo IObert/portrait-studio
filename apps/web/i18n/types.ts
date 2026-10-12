@@ -92,6 +92,33 @@ export interface Catalog {
     failed: string;
   };
 
+  /** Delivery (SPEC §6.1) and slideshow consent (§5.8). */
+  delivery: {
+    caption: (p: { styleName: string; shareUrl: string }) => string;
+    /** SMS without MMS: link only. */
+    linkOnly: (p: { styleName: string; shareUrl: string }) => string;
+    slideshowQuestion: string;
+    /** Group photos (2–4 people): everyone should agree. */
+    slideshowQuestionGroup: string;
+    slideshowYes: string;
+    slideshowNo: string;
+    /** Exact SMS keywords for yes / no. */
+    yesKeywords: readonly string[];
+    noKeywords: readonly string[];
+    slideshowThanksYes: string;
+    slideshowThanksNo: string;
+  };
+
+  /** Share page (SPEC §6.2). */
+  share: {
+    title: (p: { eventName: string }) => string;
+    share: string;
+    copyText: string;
+    copied: string;
+    download: string;
+    gone: string;
+  };
+
   errors: {
     /** Something failed on our side while handling a message. */
     generic: string;
