@@ -96,7 +96,22 @@ this one. A delete of an already-deleted profile succeeds, and a lookup that fin
 a message with no code can no longer be linked to the ended event, so it gets the standard reply (or goes to another
 live event). Only messages that carry the event code get "This event has ended". **Open for review.**
 
+### D-14 Vision model reasoning effort
+*2026-10-12.* The early research said `gpt-6.1-sol` supports reasoning effort `none`. **It does not.** The API returns
+`400 unsupported_value`, while `gpt-6-luna` does accept `none`. The vision model (Sol) therefore runs at `low`, its
+lowest accepted value. Face check ≈ 1.4 s; the full live pipeline took 26 s (cartoon, uploaded background, framed,
+reviewed). The effort is chosen per model in `lib/pipeline/context.ts`.
+
+### D-15 AI review criteria
+*2026-10-12.* SPEC §9.2 says "all six criteria on", but PROMPTS.md §B1 criterion 4 (Branding) only applies when brand
+references are present, and brands are out of scope (§2.2). The review therefore uses the other 5 criteria, as V1 did
+without brand references.
+
 ## Open TODOs after the last milestone
+
+- **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.
+  The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
+  with `git grep -n "TODO(profile-deletion)"`. The deletion-request tool (milestone j) will add more tags.
 
 - **Email templates for all activations** (requested 2026-10-10): update the SendGrid verification templates used by
   every activation's Verify email integration (Portrait Studio, Mixologist, Wheel of Twilio, …). For Portrait Studio,

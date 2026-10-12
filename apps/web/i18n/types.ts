@@ -80,8 +80,16 @@ export interface Catalog {
     invalidChoice: string;
   };
 
+  /** Result messages (SPEC §5.6). */
   job: {
     started: string;
+    moderationRejected: string;
+    noFace: string;
+    tooManyPeople: string;
+    /** AI review flagged the image; it goes to the admin review list. */
+    reviewFlagged: string;
+    /** Technical failure after retries. */
+    failed: string;
   };
 
   errors: {

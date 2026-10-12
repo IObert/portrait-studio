@@ -85,7 +85,7 @@ pnpm test:e2e                  # Playwright (builds and starts the web app)
 Live tests are opt-in and use real services from `.env.local`:
 
 ```sh
-RUN_LIVE_AI_TESTS=1 pnpm test      # OpenAI (costs money)
+RUN_LIVE_AI_TESTS=1 pnpm test      # OpenAI: full pipeline incl. uploaded background (~$0.20)
 RUN_LIVE_SYNC_TESTS=1 pnpm test    # Twilio Sync (throwaway map, deleted afterwards)
 RUN_LIVE_INBOUND_TESTS=1 pnpm --filter web exec vitest run tests/live/inbound.live.test.ts
                                    # needs `pnpm dev` on :3200 and LIVE_TEST_PHONE in .env.local

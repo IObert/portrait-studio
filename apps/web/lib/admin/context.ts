@@ -21,6 +21,7 @@ export async function getEventRepo(): Promise<EventRepo> {
 }
 
 /** Bindings and Conversation Memory clean-up for delete and End (SPEC §4.1, §4.4). */
+// TODO(profile-deletion): event delete and End clean-up entry point (D-12).
 export function getDeleteHooks(): DeleteHooks {
   // e2e mode: no Memory credentials; the in-memory Memory client stands in (test only).
   if (process.env.PORTRAIT_E2E_FAKE_SYNC === "1") {

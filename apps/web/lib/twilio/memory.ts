@@ -29,6 +29,7 @@ export interface MemoryClient {
    * Deletes the whole profile: traits, identifiers, observations (SPEC §4.4,
    * §5.10; D-12). Irreversible. A profile that is already gone is not an error.
    */
+  // TODO(profile-deletion): whole-profile delete in a store shared with other activations. Revisit after the app is done (docs/decisions.md D-12).
   deleteProfile(profileId: string): Promise<void>;
 }
 
@@ -98,6 +99,7 @@ export function createMemoryClient(cfg: { storeId: string; username: string; pas
       const traits = Object.fromEntries(Object.entries(contact).filter(([, v]) => v));
       return UpsertSchema.parse(await call("POST", `/v1/Stores/${store}/Profiles`, { traits: { Contact: traits } })).id;
     },
+    // TODO(profile-deletion): irreversible, affects every activation using this store (D-12).
     async deleteProfile(profileId) {
       try {
         await call("DELETE", `/v1/Stores/${store}/Profiles/${encodeURIComponent(profileId)}`);
