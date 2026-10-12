@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { updateEventAction } from "@/lib/admin/actions";
 import { getEventRepo } from "@/lib/admin/context";
 import { requireAdmin } from "@/lib/admin/guard";
-import { formOptions } from "@/lib/admin/options";
+import { formOptions, senderOptions } from "@/lib/admin/options";
 import { SAS_TTL_SECONDS } from "@/lib/blob/store";
 import { getServices } from "@/lib/services";
 import { SlugSchema } from "@/lib/sync/names";
@@ -22,9 +22,10 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
 
   const { blob } = getServices();
   const preview = (path: string | undefined) => (path ? blob.readUrl(path, SAS_TTL_SECONDS) : Promise.resolve(null));
-  const [framePreview, backgroundPreview] = await Promise.all([
+  const [framePreview, backgroundPreview, senders] = await Promise.all([
     preview(event.uploads.frame?.blobPath),
     preview(event.uploads.background?.blobPath),
+    senderOptions(),
   ]);
   const appUrl = process.env.PUBLIC_BASE_URL ?? "https://<your-app>";
 
@@ -51,7 +52,7 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Settings</h2>
-        <EventForm action={updateEventAction} config={event.config} slug={slug} {...formOptions(event.uploads)} submitLabel="Save" />
+        <EventForm action={updateEventAction} config={event.config} slug={slug} {...formOptions(event.uploads)} senders={senders} submitLabel="Save" />
       </section>
 
       <section className="space-y-3">

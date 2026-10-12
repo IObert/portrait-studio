@@ -1,0 +1,362 @@
+import { randomBytes } from "node:crypto";
+import { z } from "zod";
+import { catalogs } from "../../i18n";
+import type { Catalog } from "../../i18n/types";
+import type { BlobStore } from "../blob/store";
+import { BlobPaths } from "../blob/paths";
+import type { EventRepo } from "../events/repo";
+import type { PortraitEvent } from "../events/schema";
+import { JobSchema, type Job } from "../jobs/schema";
+import { type Address, keyOf, mask } from "../messaging/address";
+import type { Messenger, OutboundMessage } from "../messaging/outbound";
+import { eventObjects, Global } from "../sync/names";
+import { ConcurrentModification, SKIP, type SyncStore } from "../sync/store";
+import type { InboundMedia } from "../twilio/inbound";
+import type { MemoryClient } from "../twilio/memory";
+import type { EmailVerifier } from "../twilio/verify";
+import { advanceConsent, beginConsent, type ConsentEffect } from "./consent";
+import { downloadSelfie, isImage, type MediaFetch } from "./media";
+import { resolvePick, route } from "./routing";
+import { afterOptIn, handleSelfieFlow, type SelfieEffect } from "./selfie";
+import { newSession, type Session, SessionSchema } from "./session";
+
+/** Sync TTLs (docs/decisions.md D-05): 7 days for attendee data, 24h for dedup (SPEC §3.4). */
+const SEVEN_DAYS = 7 * 24 * 60 * 60;
+const DEDUP_TTL = 24 * 60 * 60;
+
+const BindingSchema = z.object({ eventSlug: z.string(), boundAt: z.iso.datetime() });
+const DedupSchema = z.object({ receivedAt: z.iso.datetime() });
+const LeadSchema = z.object({
+  memoryProfileId: z.string().nullable(),
+  optedInAt: z.iso.datetime(),
+  method: z.enum(["verified_email", "returning", "agree_only"]),
+});
+const ProfileLinksSchema = z.object({ events: z.array(z.string()) });
+/** Pending event choice when several events are live (SPEC §5.2), keyed by address. */
+const PickSchema = z.object({ slugs: z.array(z.string()), askedAt: z.iso.datetime() });
+
+export interface InboundMessage {
+  messageSid: string;
+  from: Address;
+  /** The booth number the attendee wrote to (E.164); replies come from it. */
+  to?: string;
+  text: string;
+  selection?: string;
+  media: InboundMedia[];
+}
+
+export interface Deps {
+  sync: SyncStore;
+  blob: BlobStore;
+  events: EventRepo;
+  messenger: Messenger;
+  memory: MemoryClient;
+  verifier: EmailVerifier;
+  fetchMedia: MediaFetch;
+  publicBaseUrl: string;
+  log: { info(o: object, m: string): void; warn(o: object, m: string): void; error(o: object, m: string): void };
+  now?: () => Date;
+}
+
+/** Ensures the global maps exist. Idempotent; call once per process. */
+export async function initInbound(sync: SyncStore) {
+  await Promise.all(
+    [Global.bindings, Global.profileLinks, Global.contentCache, Global.shares, ...Global.allDedup(), "picks"].map((m) => sync.ensureMap(m)),
+  );
+}
+
+/** Per-event maps are created when an event first receives traffic. */
+async function ensureEventMaps(sync: SyncStore, slug: string) {
+  const ev = eventObjects(slug);
+  await Promise.all([ev.sessions, ev.jobs, ev.leads].map((m) => sync.ensureMap(m)));
+}
+
+/**
+ * Handles one inbound message end to end (SPEC §5.1–§5.5). Runs inside the
+ * webhook request: only short state transitions, generation is queued for the
+ * worker. Returns after replies are sent.
+ */
+export async function handleInbound(deps: Deps, msg: InboundMessage): Promise<void> {
+  // Two messages from one person can race on their session. Twilio does not
+  // reliably retry messaging webhooks, so re-run the whole message here.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await handleOnce(deps, msg);
+    } catch (err) {
+      if (!(err instanceof ConcurrentModification) || attempt >= 3) throw err;
+      deps.log.warn({ event: "inbound_session_conflict", messageSid: msg.messageSid, attempt }, "session changed concurrently; re-running message");
+    }
+  }
+}
+
+async function handleOnce(deps: Deps, msg: InboundMessage): Promise<void> {
+  const now = deps.now?.() ?? new Date();
+  const { sync } = deps;
+
+  // 1. Dedup: Twilio retries webhooks; process each MessageSid once (SPEC §5.1).
+  // The claim is released if processing fails, so a retry can complete it.
+  const dedup = sync.map(Global.dedup(msg.messageSid), DedupSchema, { ttlSeconds: DEDUP_TTL });
+  if (!(await dedup.create(msg.messageSid, { receivedAt: now.toISOString() }))) {
+    deps.log.info({ event: "inbound_duplicate", messageSid: msg.messageSid }, "duplicate message ignored");
+    return;
+  }
+  try {
+    await process(deps, msg, now);
+  } catch (err) {
+    await dedup.delete(msg.messageSid).catch(() => {});
+    throw err;
+  }
+}
+
+async function process(deps: Deps, msg: InboundMessage, now: Date): Promise<void> {
+  const { sync } = deps;
+
+  // 2. Route to an event (SPEC §5.2).
+  const key = keyOf(msg.from);
+  const bindings = sync.map(Global.bindings, BindingSchema);
+  const picks = sync.map("picks", PickSchema, { ttlSeconds: 60 * 60 });
+  const [events, binding, pendingPick] = await Promise.all([deps.events.list(), bindings.get(key), picks.get(key)]);
+
+  let event: PortraitEvent | undefined;
+  let bind = false;
+  if (pendingPick && !binding) {
+    // Same order as shown in the picker, so "2" means the second item the person saw.
+    const live = pendingPick.slugs
+      .map((slug) => events.find((e) => e.slug === slug && e.state === "live"))
+      .filter((e): e is PortraitEvent => !!e);
+    const picked = resolvePick({ selection: msg.selection, text: msg.text }, live);
+    if (picked) {
+      event = picked;
+      bind = true;
+      await picks.delete(key);
+    }
+  }
+  if (!event) {
+    const r = route(msg.text, events, binding);
+    if (r.kind === "none") return reply(deps, msg.from, msg.to, [{ kind: "text", body: defaultCatalog(events).routing.noActiveEvent }], now);
+    if (r.kind === "not-live") {
+      const c = catalogs[r.event.config.language];
+      return reply(deps, msg.from, msg.to, [{ kind: "text", body: r.event.state === "break" ? c.routing.onBreak : c.routing.ended }], now, r.event.config.language);
+    }
+    if (r.kind === "pick") {
+      // Language is per event; with several candidates, use the first live event's language.
+      const c = catalogs[r.live[0]!.config.language];
+      await picks.put(key, { slugs: r.live.map((e) => e.slug), askedAt: now.toISOString() });
+      if (pendingPick) await reply(deps, msg.from, msg.to, [{ kind: "text", body: c.routing.pickEventInvalid }], now, r.live[0]!.config.language);
+      return reply(deps, msg.from, msg.to, [eventPicker(c, r.live)], now, r.live[0]!.config.language);
+    }
+    event = r.event;
+    bind = r.bind;
+  }
+
+  if (bind) {
+    await bindings.put(key, { eventSlug: event.slug, boundAt: now.toISOString() });
+    deps.log.info({ event: "address_bound", slug: event.slug, to: mask(msg.from) }, "address bound to event");
+  }
+
+  await ensureEventMaps(sync, event.slug);
+  await handleForEvent(deps, msg, event, now);
+}
+
+function defaultCatalog(events: PortraitEvent[]): Catalog {
+  // No event: use the language of the most recent visible event, else English.
+  const recent = events.find((e) => e.state !== "draft");
+  return catalogs[recent?.config.language ?? "en"];
+}
+
+function eventPicker(c: Catalog, live: PortraitEvent[]): OutboundMessage {
+  const items = live.slice(0, 10).map((e) => ({ id: `event:${e.slug}`, title: e.config.name }));
+  const smsBody = `${c.routing.pickEvent}\n\n${live.map((e, i) => `${i + 1}. ${e.config.name}`).join("\n")}\n\n${c.routing.pickEventReplyHint}`;
+  if (live.length <= 3) return { kind: "buttons", body: c.routing.pickEvent, buttons: items, smsBody };
+  // More than 10 live events: numbered text list everywhere (docs/decisions.md).
+  if (live.length > 10) return { kind: "text", body: smsBody };
+  return { kind: "list", body: c.routing.pickEvent, button: c.routing.pickEventButton, items, smsBody };
+}
+
+/** Everything after routing: consent gate, then selfie and menus. */
+async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEvent, now: Date) {
+  const { sync } = deps;
+  const ev = eventObjects(event.slug);
+  const key = keyOf(msg.from);
+  const c = catalogs[event.config.language];
+  const locale = event.config.language;
+  const privacyUrl = new URL(`/privacy/${event.slug}`, deps.publicBaseUrl).toString();
+  const sessions = sync.map(ev.sessions, SessionSchema, { ttlSeconds: SEVEN_DAYS });
+
+  // Store a selfie before touching state, so the session only references blobs that exist.
+  // (On a re-run after a conflict the selfie is stored again under a new path; the
+  // unreferenced copy expires with the 7-day lifecycle rule.)
+  const images = msg.media.filter(isImage);
+  let selfieBlob: string | undefined;
+  if (images.length === 1) {
+    const jpeg = await downloadSelfie(images[0]!, deps.fetchMedia);
+    if (jpeg) {
+      selfieBlob = BlobPaths.selfie(event.slug);
+      await deps.blob.put(selfieBlob, jpeg, "image/jpeg");
+    }
+  }
+  const unusableMedia = msg.media.length > 0 && images.length === 0;
+
+  const read = await sessions.getVersioned(key);
+  const current: Session = { ...(read?.data ?? newSession(locale, now)), locale, lastInboundAt: now.toISOString(), updatedAt: now.toISOString() };
+
+  // Side effects (Verify, Memory) need answers before the state can be decided, so
+  // they run first and their results feed the pure step functions.
+  const consentInput = { channel: msg.from.channel, text: msg.text, selection: msg.selection, hasSelfie: !!selfieBlob };
+  const outcome = await decide(deps, current, event, c, consentInput, privacyUrl, msg, selfieBlob, unusableMedia, images.length);
+
+  // Write with If-Match against the revision we read. If another message for this
+  // person changed the session meanwhile, this throws, the dedup claim is
+  // released and handleInbound re-runs the message on the fresh state.
+  await sessions.writeIfUnchanged(key, outcome.session, read?.revision ?? null);
+
+  for (const effect of outcome.effects) await runEffect(deps, effect, { event, key, address: msg.from, now, session: outcome.session });
+  await reply(deps, msg.from, msg.to, outcome.messages, now, locale, outcome.session.lastInboundAt);
+}
+
+interface Outcome {
+  session: Session;
+  messages: OutboundMessage[];
+  effects: (ConsentEffect | SelfieEffect)[];
+}
+
+async function decide(
+  deps: Deps,
+  session: Session,
+  event: PortraitEvent,
+  c: Catalog,
+  input: { channel: Address["channel"]; text: string; selection?: string; hasSelfie: boolean },
+  privacyUrl: string,
+  msg: InboundMessage,
+  selfieBlob: string | undefined,
+  unusableMedia: boolean,
+  imageCount: number,
+): Promise<Outcome> {
+  if (!session.optedIn) {
+    // Keep a selfie sent before opt-in as the pending selfie (SPEC §5.4).
+    if (selfieBlob) {
+      if (session.pendingSelfie) await deps.blob.delete(session.pendingSelfie);
+      session = { ...session, pendingSelfie: selfieBlob };
+    }
+
+    let r;
+    if (session.step === "new") {
+      const profile = await lookupProfile(deps, msg.from);
+      r = beginConsent(session, event, c, profile, privacyUrl, input.channel);
+    } else {
+      r = advanceConsent(session, event, c, input, privacyUrl);
+      // Effects that need an answer before the next state is known.
+      const pre = r.effects.find((e) => e.type === "send-code" || e.type === "resend-code" || e.type === "check-code");
+      if (pre?.type === "check-code") {
+        r = advanceConsent(session, event, c, input, privacyUrl, await deps.verifier.check({ email: pre.email, code: pre.code }));
+      } else if (pre) {
+        const sent = await deps.verifier.send({
+          email: pre.email,
+          locale: event.config.language,
+          substitutions: { consent_text: c.consent.emailConsentText({ eventName: event.config.name, privacyUrl }), event_name: event.config.name },
+        });
+        r = advanceConsent(session, event, c, input, privacyUrl, undefined, sent);
+      }
+    }
+
+    if (r.effects.some((e) => e.type === "proceed")) {
+      const next = afterOptIn(r.session, event, c);
+      return { session: next.session, messages: [...r.messages, ...next.messages], effects: [...r.effects.filter((e) => e.type === "opt-in"), ...next.effects] };
+    }
+    return { session: r.session, messages: r.messages, effects: [] };
+  }
+
+  if (unusableMedia) return { session, messages: [{ kind: "text", body: c.selfie.notAnImage }], effects: [] };
+  const r = handleSelfieFlow(session, event, c, { text: input.text, selection: input.selection, images: imageCount, selfieBlob });
+  // Free text with no active step: chat reply arrives in milestone j (SPEC §5.10).
+  if (!r.handled) return { session, messages: [{ kind: "text", body: c.selfie.ask }], effects: [] };
+  return { session: r.session, messages: r.messages, effects: r.effects };
+}
+
+async function lookupProfile(deps: Deps, from: Address) {
+  try {
+    const p = await deps.memory.lookup(from.channel === "whatsapp" ? "whatsapp" : "phone", from.e164);
+    return p ? { id: p.id, firstName: p.contact.firstName } : null;
+  } catch (err) {
+    // Recognition is a convenience, not a safety check: fall back to the full consent flow.
+    deps.log.warn({ event: "memory_lookup_failed", err: (err as Error).message }, "memory lookup failed");
+    return null;
+  }
+}
+
+async function runEffect(
+  deps: Deps,
+  effect: ConsentEffect | SelfieEffect,
+  ctx: { event: PortraitEvent; key: string; address: Address; now: Date; session: Session },
+) {
+  const { sync } = deps;
+  const ev = eventObjects(ctx.event.slug);
+  switch (effect.type) {
+    case "opt-in": {
+      let profileId = effect.memoryProfileId;
+      if (effect.method === "verified_email") {
+        // Create or update the profile with name, verified email and channel address (SPEC §5.4).
+        profileId = await deps.memory.upsert({
+          firstName: effect.firstName,
+          lastName: effect.lastName,
+          email: effect.email,
+          [ctx.address.channel === "whatsapp" ? "whatsapp" : "phone"]: ctx.address.e164,
+        });
+      }
+      await sync.map(ev.leads, LeadSchema).put(ctx.key, { memoryProfileId: profileId, optedInAt: ctx.now.toISOString(), method: effect.method });
+      if (profileId) {
+        const pid = profileId;
+        await sync.map(Global.profileLinks, ProfileLinksSchema).update(pid, (cur) => {
+          const events = new Set(cur?.events ?? []);
+          if (events.has(ctx.event.slug)) return SKIP;
+          events.add(ctx.event.slug);
+          return { events: [...events] };
+        });
+      }
+      deps.log.info({ event: "opted_in", slug: ctx.event.slug, method: effect.method }, "attendee opted in");
+      return;
+    }
+    case "create-job": {
+      const jobId = randomBytes(12).toString("base64url");
+      const job: Job = JobSchema.parse({
+        jobId,
+        address: ctx.key,
+        channel: ctx.address.channel,
+        style: effect.style,
+        background: effect.background,
+        selfieBlob: effect.selfieBlob,
+        shareId: randomBytes(18).toString("base64url"),
+        state: "queued",
+        timestamps: { queued: ctx.now.toISOString() },
+      });
+      // TODO(scalability): the jobs map is an expected hot spot (SPEC §3.4).
+      await sync.map(ev.jobs, JobSchema, { ttlSeconds: SEVEN_DAYS }).create(jobId, job);
+      deps.log.info({ event: "job_queued", slug: ctx.event.slug, jobId, style: effect.style, background: effect.background }, "job queued");
+      return;
+    }
+    case "discard-blob":
+      await deps.blob.delete(effect.blobPath);
+      return;
+    default:
+      return;
+  }
+}
+
+async function reply(deps: Deps, to: Address, booth: string | undefined, messages: OutboundMessage[], now: Date, locale = "en", lastInboundAt?: string | null) {
+  for (const m of messages) {
+    await deps.messenger.send(to, m, { lastInboundAt: lastInboundAt ?? now.toISOString(), locale, from: booth });
+  }
+}
+
+/** Best-effort localized apology after a failure (SPEC §5.6). Never throws. */
+export async function apologize(deps: Deps, to: Address, booth?: string): Promise<void> {
+  try {
+    const key = keyOf(to);
+    const binding = await deps.sync.map(Global.bindings, BindingSchema).get(key);
+    const event = binding ? await deps.events.get(binding.eventSlug) : null;
+    const locale = event?.config.language ?? "en";
+    await deps.messenger.send(to, { kind: "text", body: catalogs[locale].errors.generic }, { lastInboundAt: new Date().toISOString(), locale, from: booth });
+  } catch (err) {
+    deps.log.warn({ event: "apology_failed", err: (err as Error).message }, "could not send failure reply");
+  }
+}

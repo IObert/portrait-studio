@@ -79,6 +79,31 @@ re-reads on revision conflicts. Every 429 is logged.
   and links. It never deletes the whole profile.** This changes the spec's "delete the Memory profile"
   wording, with the user's approval.
 
+### D-11 WhatsApp replies name the booth number as `From`
+*2026-10-12.* A Messaging Service does not select a WhatsApp sender on its own: sending with only
+`MessagingServiceSid` fails with 21703. WhatsApp replies are therefore sent with `MessagingServiceSid` **and**
+`From: whatsapp:<the number the attendee wrote to>`, which also keeps each attendee on the number they used.
+SMS still lets the service choose the sender. Confirmed live: replies were delivered and read.
+
+### D-12 Erasing Memory data in the shared store
+*2026-10-12.* Removing a trait (`email: null`) leaves the email **identifier** on the profile, and lookup still finds
+it. Erasing therefore also deletes our identifiers (`DELETE …/Identifiers/{type}?removeAll=true`), which was
+verified to remove the email completely. In a shared store that value may also have been written by another
+activation, but it is the attendee's own email, so erasing it is what a deletion request requires. **Open for
+review.**
+
+### D-13 Ending an event removes its bindings
+*2026-10-12.* SPEC §4.1 says ending removes bindings and that "any message" gets the ended reply. Without a binding,
+a message with no code can no longer be linked to the ended event, so it gets the standard reply (or goes to another
+live event). Only messages that carry the event code get "This event has ended". **Open for review.**
+
+## Open TODOs after the last milestone
+
+- **Email templates for all activations** (requested 2026-10-10): update the SendGrid verification templates used by
+  every activation's Verify email integration (Portrait Studio, Mixologist, Wheel of Twilio, …). For Portrait Studio,
+  the template must render the `{{consent_text}}` substitution (privacy notice and consent, SPEC §5.4) in EN and PT.
+  First live test, 2026-10-10: the email arrived; whether the consent text showed still needs checking.
+
 ## Answers to SPEC §17
 
 | Q | Decision |

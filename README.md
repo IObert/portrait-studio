@@ -87,7 +87,12 @@ Live tests are opt-in and use real services from `.env.local`:
 ```sh
 RUN_LIVE_AI_TESTS=1 pnpm test      # OpenAI (costs money)
 RUN_LIVE_SYNC_TESTS=1 pnpm test    # Twilio Sync (throwaway map, deleted afterwards)
+RUN_LIVE_INBOUND_TESTS=1 pnpm --filter web exec vitest run tests/live/inbound.live.test.ts
+                                   # needs `pnpm dev` on :3200 and LIVE_TEST_PHONE in .env.local
 ```
+
+`RUN_LIVE_INBOUND_TESTS` sends **real** WhatsApp or SMS messages to `LIVE_TEST_PHONE`, so it is local only and never runs
+in CI. On WhatsApp, message the booth number first to open the 24-hour window.
 
 ## Print agent
 
