@@ -21,7 +21,7 @@ import { getServices } from "../services";
 import { SlugSchema } from "../sync/names";
 import { STYLE_IDS } from "../prompts/styles";
 import { requireAdmin } from "./guard";
-import { deleteHooks, getEventRepo } from "./context";
+import { getDeleteHooks, getEventRepo } from "./context";
 
 export interface ActionState {
   ok?: boolean;
@@ -158,7 +158,8 @@ export async function setStateAction(_prev: ActionState, form: FormData): Promis
     const to = z.enum(["draft", "live", "break", "ended"]).parse(form.get("state"));
     const events = await getEventRepo();
     const updated = await events.setState(slug, to);
-    // TODO(milestone e): ending an event must also remove its bindings (SPEC §4.1).
+    // Ending removes the event's bindings (SPEC §4.1); attendees then get the ended reply by code only.
+    if (updated.state === "ended") await getDeleteHooks().removeBindings(slug);
     log.info({ event: "event_state_changed", slug, state: updated.state, actor: actorOf(form) }, "event state changed");
     revalidatePath(`/admin/events/${slug}`);
     revalidatePath("/admin/events");
@@ -259,7 +260,7 @@ export async function deleteEventAction(_prev: ActionState, form: FormData): Pro
     const events = await getEventRepo();
     const { sync, blob } = getServices();
     // The audit line carries slug and timestamp only, no admin name (SPEC §4.4).
-    await deleteEvent({ sync, blob, events, hooks: deleteHooks, audit: log }, slug);
+    await deleteEvent({ sync, blob, events, hooks: getDeleteHooks(), audit: log }, slug);
   } catch (err) {
     return fail(err, "Could not delete the event");
   }

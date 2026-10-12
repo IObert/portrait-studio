@@ -17,6 +17,11 @@ const EnvSchema = z.object({
   TWILIO_API_KEY_SID: sid("SK"),
   TWILIO_API_KEY_SECRET: optional,
   TWILIO_SYNC_SERVICE_SID: sid("IS"),
+  TWILIO_AUTH_TOKEN: z.string().trim().regex(/^[0-9a-f]{32}$/, "32 hex chars").optional(),
+  TWILIO_MESSAGING_SERVICE_SID: sid("MG"),
+  TWILIO_VERIFY_SERVICE_SID: sid("VA"),
+  TWILIO_MEMORY_STORE_ID: z.string().trim().regex(/^mem_store_[0-9a-z]{26}$/).optional(),
+  PUBLIC_BASE_URL: z.url({ protocol: /^https?$/ }).transform((u) => u.replace(/\/+$/, "")).optional(),
 
   AZURE_STORAGE_CONNECTION_STRING: optional,
   AZURE_STORAGE_CONTAINER: z

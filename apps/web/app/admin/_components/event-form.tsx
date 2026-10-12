@@ -19,6 +19,8 @@ interface Props {
   styles: Option[];
   backgrounds: Option[];
   frames: Option[];
+  /** Messaging Service senders; empty if the lookup failed (falls back to free entry). */
+  senders: { e164: string; sms: boolean; whatsapp: boolean }[];
   submitLabel: string;
 }
 
@@ -34,7 +36,7 @@ function FieldError({ state, name }: { state: ActionState; name: string }) {
 const input = "mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none";
 const label = "block text-sm font-medium text-zinc-800";
 
-export function EventForm({ action, config: initial, slug, styles, backgrounds, frames, submitLabel }: Props) {
+export function EventForm({ action, config: initial, slug, styles, backgrounds, frames, senders, submitLabel }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   // React resets uncontrolled fields after an action; re-render from the echoed values
   // (a new key remounts the form so defaultValue applies again).
@@ -82,8 +84,20 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
         </div>
         <div>
           <label className={label} htmlFor="qrSender">QR sender number</label>
-          {/* TODO(milestone e): pick from the Messaging Service's senders (SPEC §4.2). */}
-          <input id="qrSender" name="qrSender" defaultValue={config.qrSender} required placeholder="+13203780782" className={`${input} font-mono`} />
+          {senders.length > 0 ? (
+            <select id="qrSender" name="qrSender" defaultValue={config.qrSender || senders[0]!.e164} className={`${input} font-mono`}>
+              {senders.map((s) => (
+                <option key={s.e164} value={s.e164}>
+                  {s.e164} ({[s.whatsapp && "WhatsApp", s.sms && "SMS"].filter(Boolean).join(" + ") || "no messaging"})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <>
+              <input id="qrSender" name="qrSender" defaultValue={config.qrSender} required placeholder="+13203780782" className={`${input} font-mono`} />
+              <p className="mt-1 text-xs text-amber-700">Could not load the Messaging Service senders; enter the number by hand.</p>
+            </>
+          )}
           <FieldError state={state} name="qrSender" />
         </div>
       </section>

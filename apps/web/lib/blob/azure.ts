@@ -54,6 +54,8 @@ export function createAzureBlobStore(connectionString: string, containerName: st
       });
     },
     async ping() {
+      // Creates the container on a fresh account, so readiness does not depend on a first upload.
+      await ensureContainer();
       await container.getProperties();
     },
   };

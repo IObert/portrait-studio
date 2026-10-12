@@ -26,6 +26,14 @@ export class PayloadTooLarge extends Error {
   }
 }
 
+/** A conditional write found that the item changed since it was read. */
+export class ConcurrentModification extends Error {
+  constructor(readonly object: string, readonly key: string) {
+    super(`${object} changed concurrently`);
+    this.name = "ConcurrentModification";
+  }
+}
+
 export class InvalidSyncData extends Error {
   constructor(readonly object: string, readonly issues: string) {
     super(`Invalid data in ${object}: ${issues}`);
@@ -221,19 +229,55 @@ export class TypedMap<T> {
     throw new ConflictRetriesExhausted(this.name, key, this.store.maxConflictAttempts);
   }
 
+  /**
+   * One conditional write against a revision read earlier: If-Match when
+   * `revision` is set, create-if-absent when it is null. Throws
+   * ConcurrentModification if someone else wrote in between (no retry: the
+   * caller decided based on the old value and must start over).
+   */
+  async writeIfUnchanged(key: string, value: T, revision: string | null, opts: WriteOptions = {}): Promise<void> {
+    const data = this.validate(value);
+    const o = { ...this.defaults, ...opts };
+    try {
+      if (revision === null) await this.store.run(this.name, () => this.store.raw.createItem(this.name, key, data, o));
+      else await this.store.run(this.name, () => this.store.raw.updateItem(this.name, key, data, { ...o, ifMatch: revision }));
+    } catch (err) {
+      if (err instanceof SyncError && (err.isConflict || (revision !== null && err.isNotFound))) throw new ConcurrentModification(this.name, key);
+      throw err;
+    }
+  }
+
   async delete(key: string, ifMatch?: string): Promise<void> {
     await this.store.run(this.name, () => this.store.raw.deleteItem(this.name, key, ifMatch ? { ifMatch } : undefined));
   }
 
-  /** All valid entries. Invalid items are reported through `onInvalid` and skipped. */
+  /**
+   * All valid entries. Invalid items are reported through `onInvalid` and
+   * skipped. A map that does not exist yet is simply empty.
+   */
   async *entries(onInvalid?: (key: string, err: InvalidSyncData) => void): AsyncIterable<[string, T]> {
-    for await (const it of this.store.raw.listItems(this.name)) {
+    const items = this.store.raw.listItems(this.name)[Symbol.asyncIterator]();
+    for (;;) {
+      let next: IteratorResult<{ key: string; data: unknown; revision: string }>;
       try {
-        yield [it.key, parseWith(this.schema, this.name, it.data)];
+        next = await items.next();
       } catch (err) {
-        if (err instanceof InvalidSyncData && onInvalid) onInvalid(it.key, err);
-        else throw err;
+        if (err instanceof SyncError && err.isNotFound) return;
+        throw err;
       }
+      if (next.done) return;
+      const it = next.value;
+      let parsed: T;
+      try {
+        parsed = parseWith(this.schema, this.name, it.data);
+      } catch (err) {
+        if (err instanceof InvalidSyncData && onInvalid) {
+          onInvalid(it.key, err);
+          continue;
+        }
+        throw err;
+      }
+      yield [it.key, parsed];
     }
   }
 }
