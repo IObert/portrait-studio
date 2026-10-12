@@ -8,6 +8,7 @@ import type { Messenger } from "../messaging/outbound";
 import { backoffDelay } from "../retry";
 import { eventObjects } from "../sync/names";
 import { ConcurrentModification, SKIP, type SyncStore } from "../sync/store";
+import { bump } from "../stats";
 import { type PipelineDeps, type PipelineOutcome, runPipeline } from "./run";
 
 export const LEASE_MS = 3 * 60 * 1000;
@@ -159,6 +160,7 @@ async function finish(deps: WorkerDeps, event: PortraitEvent, job: Job, outcome:
 
   // Not delivered: this attempt does not count toward quota (SPEC §4.3).
   await releaseInFlight(deps, event, job.address);
+  await bump(deps.sync, event.slug, outcome === null ? "failed" : outcome.kind === "flagged" ? "flagged" : "rejected");
   const address = addressFromKey(job.address);
   if (!address) return;
   const c = catalogs[event.config.language];

@@ -80,6 +80,28 @@ export const pt_BR = {
     failed: "Desculpe, algo deu errado ao criar seu retrato. Envie sua selfie de novo.",
   },
 
+  delivery: {
+    caption: ({ styleName, shareUrl }) => `Aqui está o seu retrato ${styleName}! Compartilhe: ${shareUrl}`,
+    linkOnly: ({ styleName, shareUrl }) => `Seu retrato ${styleName} está pronto! Veja e compartilhe aqui: ${shareUrl}`,
+    slideshowQuestion: "Podemos mostrar seu retrato na tela da cabine?",
+    slideshowQuestionGroup: "Podemos mostrar seu retrato na tela da cabine? Só responda sim se todos na foto concordarem.",
+    slideshowYes: "Sim",
+    slideshowNo: "Não",
+    yesKeywords: ["sim", "s", "claro", "ok"],
+    noKeywords: ["nao", "não", "n"],
+    slideshowThanksYes: "Obrigado! Fique de olho na tela.",
+    slideshowThanksNo: "Tudo bem, ele não será mostrado.",
+  },
+
+  share: {
+    title: ({ eventName }) => `Meu retrato com IA do ${eventName}`,
+    share: "Compartilhar",
+    copyText: "Copiar texto",
+    copied: "Copiado!",
+    download: "Baixar",
+    gone: "Este retrato não está mais disponível.",
+  },
+
   errors: {
     generic: "Desculpe, algo deu errado do nosso lado. Tente de novo em instantes.",
   },

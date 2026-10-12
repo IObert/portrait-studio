@@ -64,6 +64,14 @@ The proxy enforces basic auth on `/admin` and `/booth`, and every Server Action 
 The e2e suite (`pnpm test:e2e`) runs with in-memory Sync and Blob (`PORTRAIT_E2E_FAKE_SYNC=1`), so CI needs no
 credentials. That mode is for tests only: it keeps state in process memory, which the real app never does.
 
+## Delivery and share page
+
+Portraits are delivered over WhatsApp (image, caption and share link), MMS for US/CA/AU numbers, or SMS with only the link
+(SPEC §6.1). Twilio fetches images from signed, expiring `/m/<token>` links (`MEDIA_SIGNING_SECRET`). The public
+share page `/s/<shareId>` has Share (with the image file), Copy text and Download, plus OpenGraph tags; it expires
+after 7 days. Outside the WhatsApp 24-hour window, delivery uses the approved `delivery` template (created by
+`setup:twilio`). Until that template exists, those deliveries are skipped and logged.
+
 ## Deployment
 
 Azure Container Apps via `./deploy.sh`. CI deploys automatically on every push to `main`.
@@ -90,6 +98,9 @@ RUN_LIVE_SYNC_TESTS=1 pnpm test    # Twilio Sync (throwaway map, deleted afterwa
 RUN_LIVE_INBOUND_TESTS=1 pnpm --filter web exec vitest run tests/live/inbound.live.test.ts
                                    # needs `pnpm dev` on :3200 and LIVE_TEST_PHONE in .env.local
 ```
+
+RUN_LIVE_DELIVERY_TESTS=1 LIVE_SELFIE_MESSAGE_SID=MM… pnpm --filter web exec vitest run tests/live/delivery.live.test.ts
+                                   # full pipeline + delivery; needs ngrok on PUBLIC_BASE_URL, `pnpm dev` and `pnpm worker`
 
 `RUN_LIVE_INBOUND_TESTS` sends **real** WhatsApp or SMS messages to `LIVE_TEST_PHONE`, so it is local only and never runs
 in CI. On WhatsApp, message the booth number first to open the 24-hour window.

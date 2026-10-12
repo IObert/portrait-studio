@@ -14,6 +14,8 @@ import { ConcurrentModification, SKIP, type SyncStore } from "../sync/store";
 import type { InboundMedia } from "../twilio/inbound";
 import type { MemoryClient } from "../twilio/memory";
 import type { EmailVerifier } from "../twilio/verify";
+import { readSlideshowAnswer, SlideshowItemSchema } from "../delivery/slideshow";
+import { bump } from "../stats";
 import { advanceConsent, beginConsent, type ConsentEffect } from "./consent";
 import { downloadSelfie, isImage, type MediaFetch } from "./media";
 import { resolvePick, route } from "./routing";
@@ -155,6 +157,7 @@ async function process(deps: Deps, msg: InboundMessage, now: Date): Promise<void
   }
 
   await ensureEventMaps(sync, event.slug);
+  await bump(sync, event.slug, "interactions");
   await handleForEvent(deps, msg, event, now);
 }
 
@@ -214,10 +217,12 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
   await reply(deps, msg.from, msg.to, outcome.messages, now, locale, outcome.session.lastInboundAt);
 }
 
+type SlideshowEffect = { type: "slideshow"; jobId: string; answer: "yes" | "no" };
+
 interface Outcome {
   session: Session;
   messages: OutboundMessage[];
-  effects: (ConsentEffect | SelfieEffect)[];
+  effects: (ConsentEffect | SelfieEffect | SlideshowEffect)[];
 }
 
 async function decide(
@@ -266,6 +271,18 @@ async function decide(
     return { session: r.session, messages: r.messages, effects: [] };
   }
 
+  // Slideshow answer to the last delivery (SPEC §5.8), before anything else.
+  if (imageCount === 0) {
+    const answer = readSlideshowAnswer(session, c, input);
+    if (answer) {
+      return {
+        session: session.pendingSlideshow?.jobId === answer.jobId ? { ...session, pendingSlideshow: null } : session,
+        messages: [{ kind: "text", body: answer.answer === "yes" ? c.delivery.slideshowThanksYes : c.delivery.slideshowThanksNo }],
+        effects: [{ type: "slideshow", jobId: answer.jobId, answer: answer.answer }],
+      };
+    }
+  }
+
   if (unusableMedia) return { session, messages: [{ kind: "text", body: c.selfie.notAnImage }], effects: [] };
   const r = handleSelfieFlow(session, event, c, { text: input.text, selection: input.selection, images: imageCount, selfieBlob });
   // Free text with no active step: chat reply arrives in milestone j (SPEC §5.10).
@@ -287,7 +304,7 @@ async function lookupProfile(deps: Deps, from: Address) {
 
 async function runEffect(
   deps: Deps,
-  effect: ConsentEffect | SelfieEffect,
+  effect: ConsentEffect | SelfieEffect | SlideshowEffect,
   ctx: { event: PortraitEvent; key: string; address: Address; now: Date; session: Session },
 ) {
   const { sync } = deps;
@@ -315,6 +332,8 @@ async function runEffect(
           return { events: [...events] };
         });
       }
+      await bump(sync, ctx.event.slug, "uniqueOptIns");
+      await bump(sync, ctx.event.slug, effect.method === "verified_email" ? "leadsVerifiedEmail" : effect.method === "returning" ? "leadsReturning" : "leadsAgreeOnly");
       deps.log.info({ event: "opted_in", slug: ctx.event.slug, method: effect.method }, "attendee opted in");
       return;
     }
@@ -333,12 +352,26 @@ async function runEffect(
       });
       // TODO(scalability): the jobs map is an expected hot spot (SPEC §3.4).
       await sync.map(ev.jobs, JobSchema, { ttlSeconds: SEVEN_DAYS }).create(jobId, job);
+      await bump(sync, ctx.event.slug, "imagesRequested");
+      await bump(sync, ctx.event.slug, `style:${effect.style}`);
+      await bump(sync, ctx.event.slug, `background:${effect.background}`);
       deps.log.info({ event: "job_queued", slug: ctx.event.slug, jobId, style: effect.style, background: effect.background }, "job queued");
       return;
     }
     case "discard-blob":
       await deps.blob.delete(effect.blobPath);
       return;
+    case "slideshow": {
+      if (effect.answer !== "yes") return; // "No" or no answer: never shown (SPEC §5.8)
+      // Only the attendee's own delivered job can be added.
+      const job = await sync.map(ev.jobs, JobSchema).get(effect.jobId);
+      if (!job || job.address !== ctx.key || job.state !== "delivered" || !job.outputBlobs) return;
+      await sync.ensureMap(ev.slideshow);
+      if (await sync.map(ev.slideshow, SlideshowItemSchema, { ttlSeconds: SEVEN_DAYS }).create(effect.jobId, { blobPath: job.outputBlobs.deliveryJpeg, addedAt: ctx.now.toISOString() })) {
+        await bump(sync, ctx.event.slug, "slideshowYes");
+      }
+      return;
+    }
     default:
       return;
   }

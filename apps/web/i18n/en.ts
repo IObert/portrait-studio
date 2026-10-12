@@ -80,6 +80,28 @@ export const en = {
     failed: "Sorry, something went wrong while creating your portrait. Please send your selfie again.",
   },
 
+  delivery: {
+    caption: ({ styleName, shareUrl }) => `Here's your ${styleName} portrait! Share it: ${shareUrl}`,
+    linkOnly: ({ styleName, shareUrl }) => `Your ${styleName} portrait is ready! See and share it here: ${shareUrl}`,
+    slideshowQuestion: "Can we show your portrait on the booth screen?",
+    slideshowQuestionGroup: "Can we show your portrait on the booth screen? Please only say yes if everyone in the photo agrees.",
+    slideshowYes: "Yes",
+    slideshowNo: "No",
+    yesKeywords: ["yes", "y", "sure", "ok"],
+    noKeywords: ["no", "n", "nope"],
+    slideshowThanksYes: "Thanks! Look out for it on the screen.",
+    slideshowThanksNo: "No problem, it won't be shown.",
+  },
+
+  share: {
+    title: ({ eventName }) => `My AI portrait from ${eventName}`,
+    share: "Share",
+    copyText: "Copy text",
+    copied: "Copied!",
+    download: "Download",
+    gone: "This portrait is no longer available.",
+  },
+
   errors: {
     generic: "Sorry, something went wrong on our side. Please try again in a moment.",
   },

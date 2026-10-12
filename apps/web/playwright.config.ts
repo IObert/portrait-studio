@@ -30,6 +30,7 @@ export default defineConfig({
       ADMIN_PASSWORD: E2E_ADMIN.password,
       PUBLIC_BASE_URL: `http://localhost:${PORT}`,
       LOG_LEVEL: "warn",
+      MEDIA_SIGNING_SECRET: "e2e-media-signing-secret-not-a-real-secret-000",
     },
     timeout: 240_000,
   },

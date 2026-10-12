@@ -136,7 +136,9 @@ describe("printer token", () => {
     expect(hash).not.toContain(token.slice(-43));
     expect(slugFromToken(token)).toBe("sp-london");
     expect(verifyPrinterToken(token, hash)).toBe(true);
-    expect(verifyPrinterToken(token.slice(0, -1) + "A", hash)).toBe(false);
+    // Always change the last character (it may already be "A").
+    const tampered = token.slice(0, -1) + (token.endsWith("A") ? "B" : "A");
+    expect(verifyPrinterToken(tampered, hash)).toBe(false);
     expect(verifyPrinterToken(token, null)).toBe(false);
     expect(slugFromToken("pst_../etc_" + "a".repeat(43))).toBeNull();
   });

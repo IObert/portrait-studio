@@ -20,7 +20,7 @@ export interface SendResult {
 
 /** The narrow slice of the Twilio client the sender needs (mockable in tests). */
 export interface TwilioMessagingApi {
-  createMessage(p: { to: string; from?: string; messagingServiceSid: string; body?: string; contentSid?: string; mediaUrl?: string[] }): Promise<{ sid: string }>;
+  createMessage(p: { to: string; from?: string; messagingServiceSid: string; body?: string; contentSid?: string; contentVariables?: string; mediaUrl?: string[] }): Promise<{ sid: string }>;
   createContent(p: { friendly_name: string; language: string; types: Record<string, unknown> }): Promise<{ sid: string }>;
 }
 
@@ -100,6 +100,22 @@ export class Messenger {
     }
     const contentSid = await this.contentSidFor(msg, ctx.locale);
     const r = await this.api.createMessage({ ...base, contentSid });
+    return { status: "sent", sid: r.sid };
+  }
+
+  /**
+   * Sends an approved Content template; the only thing allowed outside the
+   * WhatsApp 24h window (SPEC §5.11, §6.3).
+   */
+  async sendTemplate(to: Address, contentSid: string, variables: Record<string, string>, ctx: { from?: string }): Promise<SendResult> {
+    const from = to.channel === "whatsapp" && ctx.from ? `whatsapp:${ctx.from.replace(/^whatsapp:/, "")}` : undefined;
+    const r = await this.api.createMessage({
+      to: twilioAddress(to),
+      messagingServiceSid: this.messagingServiceSid,
+      ...(from ? { from } : {}),
+      contentSid,
+      contentVariables: JSON.stringify(variables),
+    });
     return { status: "sent", sid: r.sid };
   }
 

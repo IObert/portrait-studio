@@ -139,6 +139,9 @@ fi
 
 # --- App configuration ------------------------------------------------------
 # Server Actions need one stable key across replicas (Next.js self-hosting guide).
+if [[ -z "${MEDIA_SIGNING_SECRET:-}" ]]; then
+  die "MEDIA_SIGNING_SECRET is not set. Generate one with: openssl rand -base64 48"
+fi
 if [[ -z "${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:-}" ]]; then
   die "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY is not set. Generate one with: openssl rand -base64 32"
 fi
@@ -146,6 +149,7 @@ fi
 secret_keys=(
   ADMIN_PASSWORD
   NEXT_SERVER_ACTIONS_ENCRYPTION_KEY
+  MEDIA_SIGNING_SECRET
   TWILIO_AUTH_TOKEN
   TWILIO_API_KEY_SECRET
   OPENAI_API_KEY
