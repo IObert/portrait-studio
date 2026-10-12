@@ -1,0 +1,521 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`prompt builder (SPEC §9.3) > anime × gradient 1`] = `
+"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+
+Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Clean soft gradient, light and uncluttered, suitable for printing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > anime × original 1`] = `
+"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+
+Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Recreate the background environment from the original photo in the same art style.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > anime × solid-black 1`] = `
+"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+
+Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid black background, dramatic and clean.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > anime × solid-white 1`] = `
+"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+
+Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid white background, clean and minimal.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > anime × uploaded 1`] = `
+"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+
+Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > cartoon × gradient 1`] = `
+"Transform this photo into a 3D animated character portrait in the style of Pixar and Disney Animation Studios (The Incredibles, Coco, Up, Brave). Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.
+
+Body proportions: Keep the body realistically proportioned — normal adult height, limbs, and torso like The Incredibles characters. Do NOT make the body short, stocky, or compressed. The face and head can be slightly stylized but the body should look natural and well-proportioned.
+
+Lighting: Warm cinematic Pixar-style lighting — soft key light with golden tones, gentle fill light, and a subtle cool rim light. Soft ambient occlusion in creases and under the chin.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Clean soft gradient, light and uncluttered, suitable for printing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > cartoon × original 1`] = `
+"Transform this photo into a 3D animated character portrait in the style of Pixar and Disney Animation Studios (The Incredibles, Coco, Up, Brave). Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.
+
+Body proportions: Keep the body realistically proportioned — normal adult height, limbs, and torso like The Incredibles characters. Do NOT make the body short, stocky, or compressed. The face and head can be slightly stylized but the body should look natural and well-proportioned.
+
+Lighting: Warm cinematic Pixar-style lighting — soft key light with golden tones, gentle fill light, and a subtle cool rim light. Soft ambient occlusion in creases and under the chin.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Recreate the background environment from the original photo in the same art style.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > cartoon × solid-black 1`] = `
+"Transform this photo into a 3D animated character portrait in the style of Pixar and Disney Animation Studios (The Incredibles, Coco, Up, Brave). Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.
+
+Body proportions: Keep the body realistically proportioned — normal adult height, limbs, and torso like The Incredibles characters. Do NOT make the body short, stocky, or compressed. The face and head can be slightly stylized but the body should look natural and well-proportioned.
+
+Lighting: Warm cinematic Pixar-style lighting — soft key light with golden tones, gentle fill light, and a subtle cool rim light. Soft ambient occlusion in creases and under the chin.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid black background, dramatic and clean.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > cartoon × solid-white 1`] = `
+"Transform this photo into a 3D animated character portrait in the style of Pixar and Disney Animation Studios (The Incredibles, Coco, Up, Brave). Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.
+
+Body proportions: Keep the body realistically proportioned — normal adult height, limbs, and torso like The Incredibles characters. Do NOT make the body short, stocky, or compressed. The face and head can be slightly stylized but the body should look natural and well-proportioned.
+
+Lighting: Warm cinematic Pixar-style lighting — soft key light with golden tones, gentle fill light, and a subtle cool rim light. Soft ambient occlusion in creases and under the chin.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid white background, clean and minimal.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > cartoon × uploaded 1`] = `
+"Transform this photo into a 3D animated character portrait in the style of Pixar and Disney Animation Studios (The Incredibles, Coco, Up, Brave). Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.
+
+Body proportions: Keep the body realistically proportioned — normal adult height, limbs, and torso like The Incredibles characters. Do NOT make the body short, stocky, or compressed. The face and head can be slightly stylized but the body should look natural and well-proportioned.
+
+Lighting: Warm cinematic Pixar-style lighting — soft key light with golden tones, gentle fill light, and a subtle cool rim light. Soft ambient occlusion in creases and under the chin.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pixel-art × gradient 1`] = `
+"Transform this photo into a pixel art portrait in a retro 16-bit video game style. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Crisp pixel art with a visible pixel grid, limited but vibrant color palette, and clean dithering for shading. The style should evoke classic 16-bit era video game character portraits -- detailed enough to capture the person's likeness while maintaining the charming pixelated aesthetic.
+
+Lighting: Simple, clean lighting appropriate for pixel art with defined highlight and shadow areas using distinct color steps.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Clean soft gradient, light and uncluttered, suitable for printing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pixel-art × original 1`] = `
+"Transform this photo into a pixel art portrait in a retro 16-bit video game style. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Crisp pixel art with a visible pixel grid, limited but vibrant color palette, and clean dithering for shading. The style should evoke classic 16-bit era video game character portraits -- detailed enough to capture the person's likeness while maintaining the charming pixelated aesthetic.
+
+Lighting: Simple, clean lighting appropriate for pixel art with defined highlight and shadow areas using distinct color steps.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Recreate the background environment from the original photo in the same art style.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pixel-art × solid-black 1`] = `
+"Transform this photo into a pixel art portrait in a retro 16-bit video game style. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Crisp pixel art with a visible pixel grid, limited but vibrant color palette, and clean dithering for shading. The style should evoke classic 16-bit era video game character portraits -- detailed enough to capture the person's likeness while maintaining the charming pixelated aesthetic.
+
+Lighting: Simple, clean lighting appropriate for pixel art with defined highlight and shadow areas using distinct color steps.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid black background, dramatic and clean.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pixel-art × solid-white 1`] = `
+"Transform this photo into a pixel art portrait in a retro 16-bit video game style. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Crisp pixel art with a visible pixel grid, limited but vibrant color palette, and clean dithering for shading. The style should evoke classic 16-bit era video game character portraits -- detailed enough to capture the person's likeness while maintaining the charming pixelated aesthetic.
+
+Lighting: Simple, clean lighting appropriate for pixel art with defined highlight and shadow areas using distinct color steps.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid white background, clean and minimal.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pixel-art × uploaded 1`] = `
+"Transform this photo into a pixel art portrait in a retro 16-bit video game style. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Crisp pixel art with a visible pixel grid, limited but vibrant color palette, and clean dithering for shading. The style should evoke classic 16-bit era video game character portraits -- detailed enough to capture the person's likeness while maintaining the charming pixelated aesthetic.
+
+Lighting: Simple, clean lighting appropriate for pixel art with defined highlight and shadow areas using distinct color steps.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pop-art × gradient 1`] = `
+"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Bold black outlines, flat vibrant colors with high saturation, and Ben-Day dots or halftone patterns for shading. Use a limited but striking color palette with strong contrast. The overall look should feel like a hand-pulled screen print or comic-book panel.
+
+Lighting: Flat, graphic lighting with strong shadows rendered as solid color blocks.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Clean soft gradient, light and uncluttered, suitable for printing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pop-art × original 1`] = `
+"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Bold black outlines, flat vibrant colors with high saturation, and Ben-Day dots or halftone patterns for shading. Use a limited but striking color palette with strong contrast. The overall look should feel like a hand-pulled screen print or comic-book panel.
+
+Lighting: Flat, graphic lighting with strong shadows rendered as solid color blocks.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Recreate the background environment from the original photo in the same art style.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pop-art × solid-black 1`] = `
+"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Bold black outlines, flat vibrant colors with high saturation, and Ben-Day dots or halftone patterns for shading. Use a limited but striking color palette with strong contrast. The overall look should feel like a hand-pulled screen print or comic-book panel.
+
+Lighting: Flat, graphic lighting with strong shadows rendered as solid color blocks.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid black background, dramatic and clean.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pop-art × solid-white 1`] = `
+"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Bold black outlines, flat vibrant colors with high saturation, and Ben-Day dots or halftone patterns for shading. Use a limited but striking color palette with strong contrast. The overall look should feel like a hand-pulled screen print or comic-book panel.
+
+Lighting: Flat, graphic lighting with strong shadows rendered as solid color blocks.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid white background, clean and minimal.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > pop-art × uploaded 1`] = `
+"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Bold black outlines, flat vibrant colors with high saturation, and Ben-Day dots or halftone patterns for shading. Use a limited but striking color palette with strong contrast. The overall look should feel like a hand-pulled screen print or comic-book panel.
+
+Lighting: Flat, graphic lighting with strong shadows rendered as solid color blocks.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > sketch × gradient 1`] = `
+"Transform this photo into a detailed pencil sketch portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features. Capture their likeness through precise linework and shading.
+
+Style: Realistic graphite pencil drawing on white paper with fine cross-hatching and careful tonal shading. Use a full range of values from light to dark for depth and dimension. Show visible pencil strokes and paper texture. The drawing should look like a professional hand-drawn portrait by a skilled artist.
+
+Lighting: Strong directional lighting that creates clear highlights and shadows to define the face and features.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Clean soft gradient, light and uncluttered, suitable for printing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > sketch × original 1`] = `
+"Transform this photo into a detailed pencil sketch portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features. Capture their likeness through precise linework and shading.
+
+Style: Realistic graphite pencil drawing on white paper with fine cross-hatching and careful tonal shading. Use a full range of values from light to dark for depth and dimension. Show visible pencil strokes and paper texture. The drawing should look like a professional hand-drawn portrait by a skilled artist.
+
+Lighting: Strong directional lighting that creates clear highlights and shadows to define the face and features.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Recreate the background environment from the original photo in the same art style.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > sketch × solid-black 1`] = `
+"Transform this photo into a detailed pencil sketch portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features. Capture their likeness through precise linework and shading.
+
+Style: Realistic graphite pencil drawing on white paper with fine cross-hatching and careful tonal shading. Use a full range of values from light to dark for depth and dimension. Show visible pencil strokes and paper texture. The drawing should look like a professional hand-drawn portrait by a skilled artist.
+
+Lighting: Strong directional lighting that creates clear highlights and shadows to define the face and features.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid black background, dramatic and clean.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > sketch × solid-white 1`] = `
+"Transform this photo into a detailed pencil sketch portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features. Capture their likeness through precise linework and shading.
+
+Style: Realistic graphite pencil drawing on white paper with fine cross-hatching and careful tonal shading. Use a full range of values from light to dark for depth and dimension. Show visible pencil strokes and paper texture. The drawing should look like a professional hand-drawn portrait by a skilled artist.
+
+Lighting: Strong directional lighting that creates clear highlights and shadows to define the face and features.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid white background, clean and minimal.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > sketch × uploaded 1`] = `
+"Transform this photo into a detailed pencil sketch portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features. Capture their likeness through precise linework and shading.
+
+Style: Realistic graphite pencil drawing on white paper with fine cross-hatching and careful tonal shading. Use a full range of values from light to dark for depth and dimension. Show visible pencil strokes and paper texture. The drawing should look like a professional hand-drawn portrait by a skilled artist.
+
+Lighting: Strong directional lighting that creates clear highlights and shadows to define the face and features.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > watercolor × gradient 1`] = `
+"Transform this photo into a beautiful watercolor painting portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Soft, flowing watercolor washes with visible brush strokes and natural paint bleeding at edges. Use a luminous, translucent color palette with gentle gradients. Allow some areas of white paper to show through for a natural watercolor feel. The painting should look like a professional watercolor portrait by a skilled artist.
+
+Lighting: Soft, diffused natural lighting with gentle shadows built through layered washes.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Clean soft gradient, light and uncluttered, suitable for printing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > watercolor × original 1`] = `
+"Transform this photo into a beautiful watercolor painting portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Soft, flowing watercolor washes with visible brush strokes and natural paint bleeding at edges. Use a luminous, translucent color palette with gentle gradients. Allow some areas of white paper to show through for a natural watercolor feel. The painting should look like a professional watercolor portrait by a skilled artist.
+
+Lighting: Soft, diffused natural lighting with gentle shadows built through layered washes.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Recreate the background environment from the original photo in the same art style.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > watercolor × solid-black 1`] = `
+"Transform this photo into a beautiful watercolor painting portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Soft, flowing watercolor washes with visible brush strokes and natural paint bleeding at edges. Use a luminous, translucent color palette with gentle gradients. Allow some areas of white paper to show through for a natural watercolor feel. The painting should look like a professional watercolor portrait by a skilled artist.
+
+Lighting: Soft, diffused natural lighting with gentle shadows built through layered washes.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid black background, dramatic and clean.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > watercolor × solid-white 1`] = `
+"Transform this photo into a beautiful watercolor painting portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Soft, flowing watercolor washes with visible brush strokes and natural paint bleeding at edges. Use a luminous, translucent color palette with gentle gradients. Allow some areas of white paper to show through for a natural watercolor feel. The painting should look like a professional watercolor portrait by a skilled artist.
+
+Lighting: Soft, diffused natural lighting with gentle shadows built through layered washes.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: Pure solid white background, clean and minimal.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;
+
+exports[`prompt builder (SPEC §9.3) > watercolor × uploaded 1`] = `
+"Transform this photo into a beautiful watercolor painting portrait. Do not add anyone not in the original photo.
+
+Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
+
+Style: Soft, flowing watercolor washes with visible brush strokes and natural paint bleeding at edges. Use a luminous, translucent color palette with gentle gradients. Allow some areas of white paper to show through for a natural watercolor feel. The painting should look like a professional watercolor portrait by a skilled artist.
+
+Lighting: Soft, diffused natural lighting with gentle shadows built through layered washes.
+
+Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
+This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
+Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+
+
+FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
+`;

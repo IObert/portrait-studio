@@ -273,6 +273,7 @@ async function decide(
   return { session: r.session, messages: r.messages, effects: r.effects };
 }
 
+// TODO(profile-deletion): a profile deleted by us or another app looks like a new person here, so consent starts again (D-12).
 async function lookupProfile(deps: Deps, from: Address) {
   try {
     const p = await deps.memory.lookup(from.channel === "whatsapp" ? "whatsapp" : "phone", from.e164);
@@ -296,6 +297,7 @@ async function runEffect(
       let profileId = effect.memoryProfileId;
       if (effect.method === "verified_email") {
         // Create or update the profile with name, verified email and channel address (SPEC §5.4).
+        // TODO(profile-deletion): we write name/email into a shared profile; who owns it and who may delete it is open (D-12).
         profileId = await deps.memory.upsert({
           firstName: effect.firstName,
           lastName: effect.lastName,

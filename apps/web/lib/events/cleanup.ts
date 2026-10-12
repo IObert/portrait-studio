@@ -45,6 +45,7 @@ export async function unlinkProfiles(sync: SyncStore, memory: MemoryClient, slug
       return { events };
     });
     if (orphaned) {
+      // TODO(profile-deletion): event delete removes profiles no other Portrait Studio event links to. Other activations' links are not visible here (D-12).
       await memory.deleteProfile(profileId);
       await links.delete(profileId);
       deleted++;

@@ -5,8 +5,11 @@ process.env.PORTRAIT_PROCESS ??= "worker";
 const { loadRootEnv } = await import("../lib/load-env");
 loadRootEnv();
 
+const { randomUUID } = await import("node:crypto");
 const { log } = await import("../lib/log");
-const { runLoop } = await import("./loop");
+const { getEnv } = await import("../lib/env");
+const { buildWorkerDeps } = await import("../lib/pipeline/context");
+const { workOnce } = await import("../lib/pipeline/worker");
 
 const controller = new AbortController();
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
@@ -16,13 +19,24 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
-log.info("worker started");
+const workerId = randomUUID().slice(0, 8);
+const deps = await buildWorkerDeps(workerId);
+const concurrency = getEnv().WORKER_CONCURRENCY;
+log.info({ workerId, concurrency }, "worker started");
 
-// Job claiming and timed follow-ups are added in milestone f (§3.2, §9.1).
-await runLoop(async () => {}, {
-  intervalMs: 2_000,
-  signal: controller.signal,
-  onError: (err) => log.error({ err }, "worker tick failed"),
-});
+/** One lane: claim and run jobs back to back; idle-poll when there is nothing to do. */
+async function lane(n: number) {
+  while (!controller.signal.aborted) {
+    let done = 0;
+    try {
+      done = await workOnce(deps, 1);
+    } catch (err) {
+      log.error({ lane: n, err: (err as Error).message }, "worker pass failed");
+    }
+    // No state lives here between passes (SPEC §1.2): everything is re-read from Sync.
+    if (done === 0) await new Promise((r) => setTimeout(r, 2_000));
+  }
+}
 
+await Promise.all(Array.from({ length: concurrency }, (_, i) => lane(i)));
 log.info("worker stopped");

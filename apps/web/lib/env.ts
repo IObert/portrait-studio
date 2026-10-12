@@ -29,6 +29,11 @@ const EnvSchema = z.object({
     .regex(/^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/, "Azure container name rules")
     .default("portrait-studio"),
 
+  OPENAI_API_KEY: optional,
+  OPENAI_VISION_MODEL: z.string().min(1).default("gpt-6.1-sol"),
+  OPENAI_CHAT_MODEL: z.string().min(1).default("gpt-6-luna"),
+  /** Concurrent jobs per worker process. */
+  WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(2),
   /** One image model, never switched at runtime (SPEC §9.4, docs/decisions.md D-01). */
   OPENAI_IMAGE_MODEL: z.string().min(1).default("gpt-image-2.5-flare"),
 });
