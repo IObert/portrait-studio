@@ -24,7 +24,7 @@ export async function getEventRepo(): Promise<EventRepo> {
 export function getDeleteHooks(): DeleteHooks {
   // e2e mode: no Memory credentials; the in-memory Memory client stands in (test only).
   if (process.env.PORTRAIT_E2E_FAKE_SYNC === "1") {
-    return cleanupHooks(getServices().sync, { lookup: async () => null, upsert: async () => "mem_profile_e2e", erase: async () => {} });
+    return cleanupHooks(getServices().sync, { lookup: async () => null, upsert: async () => "mem_profile_e2e", deleteProfile: async () => {} });
   }
   const env = requireEnv(getEnv(), ["TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "TWILIO_MEMORY_STORE_ID"]);
   const memory = createMemoryClient({ storeId: env.TWILIO_MEMORY_STORE_ID, username: env.TWILIO_API_KEY_SID, password: env.TWILIO_API_KEY_SECRET });

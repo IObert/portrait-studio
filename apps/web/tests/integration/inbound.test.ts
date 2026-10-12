@@ -32,7 +32,7 @@ interface World {
   events: EventRepo;
   sent: { to: string; body?: string; contentSid?: string }[];
   content: Map<string, Record<string, unknown>>;
-  memory: { lookup: ReturnType<typeof vi.fn>; upsert: ReturnType<typeof vi.fn>; erase: ReturnType<typeof vi.fn> };
+  memory: { lookup: ReturnType<typeof vi.fn>; upsert: ReturnType<typeof vi.fn>; deleteProfile: ReturnType<typeof vi.fn> };
   verifier: { send: ReturnType<typeof vi.fn>; check: ReturnType<typeof vi.fn> };
   log: { info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   /** Sends a message and returns the reply texts (interactive messages resolve to their body). */
@@ -62,7 +62,7 @@ async function world(): Promise<World> {
   const messenger = new Messenger(api, sync, `MG${"0".repeat(32)}`, log);
   await messenger.init();
   await initInbound(sync);
-  const memory = { lookup: vi.fn(async () => null), upsert: vi.fn(async () => "mem_profile_new"), erase: vi.fn(async () => {}) };
+  const memory = { lookup: vi.fn(async () => null), upsert: vi.fn(async () => "mem_profile_new"), deleteProfile: vi.fn(async () => {}) };
   const verifier = { send: vi.fn(async () => "sent" as const), check: vi.fn(async () => "wrong" as const) };
   const image = await jpeg();
   const deps: Deps = {

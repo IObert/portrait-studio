@@ -74,10 +74,8 @@ re-reads on revision conflicts. Every 429 is logged.
   (6-digit codes, no lookup). Email integrations can only be created and linked in the Console, and one integration
   can serve several services. **Manual step:** link an existing SendGrid email integration to this service
   (Console → Verify → Services → Portrait Studio → Email).
-- **Conversation Memory:** the shared store **Cross-Activation-Memory** (`mem_store_01kvcx…`) is reused.
-  Because other activations share its profiles, deletion (§4.4, §5.10) **removes only Portrait Studio's traits
-  and links. It never deletes the whole profile.** This changes the spec's "delete the Memory profile"
-  wording, with the user's approval.
+- **Conversation Memory:** the shared store **Cross-Activation-Memory** (`mem_store_01kvcx…`) is reused. For how
+  deletion works, see D-12. (An earlier "remove only our traits" rule was replaced by D-12.)
 
 ### D-11 WhatsApp replies name the booth number as `From`
 *2026-10-12.* A Messaging Service does not select a WhatsApp sender on its own: sending with only
@@ -85,12 +83,13 @@ re-reads on revision conflicts. Every 429 is logged.
 `From: whatsapp:<the number the attendee wrote to>`, which also keeps each attendee on the number they used.
 SMS still lets the service choose the sender. Confirmed live: replies were delivered and read.
 
-### D-12 Erasing Memory data in the shared store
-*2026-10-12.* Removing a trait (`email: null`) leaves the email **identifier** on the profile, and lookup still finds
-it. Erasing therefore also deletes our identifiers (`DELETE …/Identifiers/{type}?removeAll=true`), which was
-verified to remove the email completely. In a shared store that value may also have been written by another
-activation, but it is the attendee's own email, so erasing it is what a deletion request requires. **Open for
-review.**
+### D-12 Deletion wipes the whole Memory profile
+*2026-10-12, user decision.* The Memory store is shared with other activations. Even so, a deletion **deletes the
+entire profile**: traits, identifiers and observations. Other apps must cope with a missing profile, and so does
+this one. A delete of an already-deleted profile succeeds, and a lookup that finds nothing restarts consent.
+- **Deletion request (§5.10):** the person's profile is deleted outright.
+- **Event deletion (§4.4):** the event is unlinked from each profile; a profile linked to no other Portrait Studio
+  event is then deleted.
 
 ### D-13 Ending an event removes its bindings
 *2026-10-12.* SPEC §4.1 says ending removes bindings and that "any message" gets the ended reply. Without a binding,
@@ -101,8 +100,8 @@ live event). Only messages that carry the event code get "This event has ended".
 
 - **Email templates for all activations** (requested 2026-10-10): update the SendGrid verification templates used by
   every activation's Verify email integration (Portrait Studio, Mixologist, Wheel of Twilio, …). For Portrait Studio,
-  the template must render the `{{consent_text}}` substitution (privacy notice and consent, SPEC §5.4) in EN and PT.
-  First live test, 2026-10-10: the email arrived; whether the consent text showed still needs checking.
+  the template renders the `{{consent_text}}` substitution (privacy notice and consent, SPEC §5.4); confirmed by the
+  user, 2026-10-12. The other activations' templates still need the same update.
 
 ## Answers to SPEC §17
 

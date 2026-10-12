@@ -3,8 +3,9 @@ import { backoffDelay, sleep } from "../retry";
 
 /**
  * Conversation Memory (SPEC §3.3, §5.4), raw REST (no SDK exists).
- * The store is shared with other activations (docs/decisions.md D-10): we
- * write only the Contact traits we own and never delete whole profiles.
+ * The store is shared with other activations (docs/decisions.md D-10, D-12).
+ * Deleting a profile removes it for every app; all apps (this one included)
+ * must treat a missing profile as normal.
  */
 export interface ContactTraits {
   firstName?: string;
@@ -25,10 +26,10 @@ export interface MemoryClient {
   /** Identity-resolving upsert: creates or merges into the matching profile. Returns its id. */
   upsert(contact: ContactTraits): Promise<string>;
   /**
-   * Removes our data from a shared profile: the given Contact traits and the
-   * identifiers we added. The profile itself stays (D-10).
+   * Deletes the whole profile: traits, identifiers, observations (SPEC §4.4,
+   * §5.10; D-12). Irreversible. A profile that is already gone is not an error.
    */
-  erase(profileId: string, opts: { traits: (keyof ContactTraits)[]; identifiers: ("email" | "phone" | "whatsapp")[] }): Promise<void>;
+  deleteProfile(profileId: string): Promise<void>;
 }
 
 export class MemoryError extends Error {
@@ -97,20 +98,11 @@ export function createMemoryClient(cfg: { storeId: string; username: string; pas
       const traits = Object.fromEntries(Object.entries(contact).filter(([, v]) => v));
       return UpsertSchema.parse(await call("POST", `/v1/Stores/${store}/Profiles`, { traits: { Contact: traits } })).id;
     },
-    async erase(profileId, { traits, identifiers }) {
-      const id = encodeURIComponent(profileId);
-      // Identifiers first: removing a trait alone leaves the identifier (and lookup) in place.
-      for (const t of identifiers) {
-        try {
-          await call("DELETE", `/v1/Stores/${store}/Profiles/${id}/Identifiers/${t}?removeAll=true`);
-        } catch (err) {
-          if (!(err instanceof MemoryError && err.status === 404)) throw err;
-        }
-      }
-      if (traits.length) {
-        await call("PATCH", `/v1/Stores/${store}/Profiles/${id}`, {
-          traits: { Contact: Object.fromEntries(traits.map((t) => [t, null])) },
-        });
+    async deleteProfile(profileId) {
+      try {
+        await call("DELETE", `/v1/Stores/${store}/Profiles/${encodeURIComponent(profileId)}`);
+      } catch (err) {
+        if (!(err instanceof MemoryError && err.status === 404)) throw err;
       }
     },
   };
