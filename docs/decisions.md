@@ -36,9 +36,8 @@ its job.
 *2026-10-09.* Sessions, jobs, print items and slideshow entries have a 7-day TTL, matching the blobs.
 Leads and stats are kept until the event is deleted.
 
-### D-06 Booth screen updates over server-sent events (picks an option in §10.4)
-*2026-10-09.* The booth uses server-sent events from the web app instead of a browser Sync token. This
-avoids Sync ACLs and keeps the booth from reading other events' data.
+### D-06 Booth screen updates (superseded)
+*2026-10-09.* Originally server-sent events. Replaced by the Sync client SDK with scoped read-only tokens (D-17).
 
 ### D-07 Deployment
 *2026-10-09.*
@@ -118,11 +117,20 @@ delivered tab. It:
 The share link then shows "This portrait was removed by the event organizer." Discarding a flagged image ends it as
 `rejected` with `error: discarded_by_admin`.
 
-### D-17 Booth screen updates
-*2026-10-12.* `/booth/[slug]/stream` (SSE, behind basic auth) polls Sync every 2 s per connection and pushes the full
-state only when the event state, its config or the slideshow list changes. It sends a heartbeat every 15 s and
-`X-Accel-Buffering: no` so proxies don't buffer the stream. A screen costs about 0.5 Sync reads per second. The client
-keeps the last state on screen and reconnects with exponential back-off (up to 30 s).
+### D-17 Booth screen updates are pushed by Twilio Sync
+*2026-10-13, user decision (replaces the SSE/polling version and D-06).* The booth screen uses the **Twilio Sync
+client SDK** (`twilio-sync`): Sync pushes changes, with no polling.
+- The server keeps a public document, `ev_<slug>_booth`, in sync with the event: name, state, CTA, QR code SVG,
+  number, and the localized break and ended texts. There is no personal data in it. `EventRepo.onChange` republishes
+  it on every event write.
+- Slideshow items carry their signed image URL, so a push contains everything the screen needs.
+- `/booth/<slug>/token` (basic auth) mints a 1-hour read-only token for the identity `booth:<slug>`, granted read on
+  `ev_<slug>_booth` and `ev_<slug>_slideshow` only. The service has ACLs on, so everything else is denied with 54007.
+  This was verified live against `events`, `sessions`, `jobs` and `leads`. The browser opens objects with
+  `open_existing`, since creating them would need write access, and refreshes the token before it expires.
+- On a network drop the SDK reconnects by itself and the screen keeps its last state.
+- In CI (in-memory Sync) the screen uses its server render. The real push is tested in
+  `tests/live/booth-sync.live.test.ts` (`RUN_LIVE_SYNC_TESTS=1`).
 
 ### D-18 Photo checks run before the menus
 *2026-10-13, user decision.* A photo now creates its job immediately in a new `screening` state. The worker runs

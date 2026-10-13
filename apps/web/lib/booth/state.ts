@@ -1,26 +1,34 @@
 import "server-only";
 import QRCode from "qrcode";
+import { z } from "zod";
 import { catalogs } from "@/i18n";
 import { SlideshowItemSchema } from "../delivery/slideshow";
 import { getEnv, requireEnv } from "../env";
-import type { EventState, PortraitEvent } from "../events/schema";
+import type { PortraitEvent } from "../events/schema";
 import { signMedia } from "../media-token";
-import { getServices } from "../services";
 import { eventObjects } from "../sync/names";
+import type { SyncStore } from "../sync/store";
 
-/** Everything the booth screen shows (SPEC §10.4). No personal data. */
-export interface BoothState {
-  state: Exclude<EventState, "draft">;
-  name: string;
-  locale: "en" | "pt_BR";
-  cta: { headline: string; steps: string[] };
-  /** QR code SVG for the event's lead channel (SPEC §4.2, §5.2). */
-  qrSvg: string;
-  /** Number shown under the QR code. */
-  number: string;
-  /** Consented images, newest first; signed links valid for 24 h. */
-  slides: { id: string; url: string }[];
-  messages: { onBreak: string; ended: string };
+/**
+ * Public booth-screen state in `ev_<slug>_booth` (SPEC §10.4, D-17). Pushed to
+ * the booth over the Sync SDK; no personal data.
+ */
+export const BoothDocSchema = z.object({
+  state: z.enum(["live", "break", "ended"]),
+  name: z.string(),
+  locale: z.enum(["en", "pt_BR"]),
+  cta: z.object({ headline: z.string(), steps: z.array(z.string()) }),
+  qrSvg: z.string(),
+  number: z.string(),
+  messages: z.object({ onBreak: z.string(), ended: z.string() }),
+});
+export type BoothDoc = z.infer<typeof BoothDocSchema>;
+
+/** A slideshow image as the booth screen receives it. */
+export interface BoothSlide {
+  id: string;
+  url: string;
+  addedAt: string;
 }
 
 /** Link the QR code opens (SPEC §5.2): WhatsApp or SMS, prefilled with the event code. */
@@ -32,28 +40,9 @@ export function qrTarget(event: PortraitEvent): string {
   return `sms:+${number}?&body=${encodeURIComponent(text)}`;
 }
 
-/** Ids of slideshow images, oldest first. A cheap read for change detection. */
-export async function slideIds(slug: string): Promise<string[]> {
-  const { sync } = getServices();
-  const items: { id: string; addedAt: string }[] = [];
-  for await (const [id, it] of sync.map(eventObjects(slug).slideshow, SlideshowItemSchema).entries()) items.push({ id, addedAt: it.addedAt });
-  return items.sort((a, b) => a.addedAt.localeCompare(b.addedAt)).map((i) => i.id);
-}
-
-export async function buildBoothState(event: PortraitEvent): Promise<BoothState | null> {
+export async function boothDoc(event: PortraitEvent): Promise<BoothDoc | null> {
   if (event.state === "draft") return null;
-  const { sync } = getServices();
-  const env = requireEnv(getEnv(), ["MEDIA_SIGNING_SECRET", "PUBLIC_BASE_URL"]);
   const c = catalogs[event.config.language];
-  const slides: BoothState["slides"] = [];
-  if (event.state === "live") {
-    const items: { id: string; blobPath: string; addedAt: string }[] = [];
-    for await (const [id, it] of sync.map(eventObjects(event.slug).slideshow, SlideshowItemSchema).entries()) items.push({ id, ...it });
-    items.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
-    for (const it of items.slice(0, 50)) {
-      slides.push({ id: it.id, url: new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET, it.blobPath, 24 * 60 * 60)}`, env.PUBLIC_BASE_URL).toString() });
-    }
-  }
   return {
     state: event.state,
     name: event.config.name,
@@ -61,7 +50,37 @@ export async function buildBoothState(event: PortraitEvent): Promise<BoothState 
     cta: { headline: event.config.ctaText.headline, steps: event.config.ctaText.steps },
     qrSvg: await QRCode.toString(qrTarget(event), { type: "svg", margin: 1, errorCorrectionLevel: "M" }),
     number: event.config.qrSender,
-    slides,
     messages: { onBreak: c.routing.onBreak, ended: c.routing.ended },
   };
+}
+
+/**
+ * Writes the booth document and makes sure the slideshow map exists, so a
+ * read-only booth token can open both (`open_existing`). Call after every
+ * change to the event. A draft event has no booth document.
+ */
+export async function publishBooth(sync: SyncStore, event: PortraitEvent): Promise<void> {
+  const ev = eventObjects(event.slug);
+  const doc = await boothDoc(event);
+  if (!doc) {
+    await sync.deleteDocument(ev.booth);
+    return;
+  }
+  await sync.ensureMap(ev.slideshow);
+  await sync.document(ev.booth, BoothDocSchema).put(doc);
+}
+
+/** Signed image link for a slideshow item; valid as long as the image itself (7 days). */
+export function slideUrl(blobPath: string): string {
+  const env = requireEnv(getEnv(), ["MEDIA_SIGNING_SECRET", "PUBLIC_BASE_URL"]);
+  return new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET, blobPath, 7 * 24 * 60 * 60)}`, env.PUBLIC_BASE_URL).toString();
+}
+
+/** Current slides, newest first (server render; the SDK keeps them live after that). */
+export async function boothSlides(sync: SyncStore, slug: string): Promise<BoothSlide[]> {
+  const items: BoothSlide[] = [];
+  for await (const [id, it] of sync.map(eventObjects(slug).slideshow, SlideshowItemSchema).entries()) {
+    items.push({ id, url: it.url ?? slideUrl(it.blobPath), addedAt: it.addedAt });
+  }
+  return items.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
 }

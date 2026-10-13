@@ -1,5 +1,7 @@
 import "server-only";
+import { publishBooth } from "../booth/state";
 import { cleanupHooks } from "../events/cleanup";
+import { log } from "../log";
 import type { DeleteHooks } from "../events/delete";
 import { EventRepo } from "../events/repo";
 import { getEnv, requireEnv } from "../env";
@@ -11,7 +13,18 @@ let ready: Promise<void> | undefined;
 
 /** Event repository bound to the shared Sync store; the `events` map is created on first use. */
 export async function getEventRepo(): Promise<EventRepo> {
-  events ??= new EventRepo(getServices().sync);
+  if (!events) {
+    const sync = getServices().sync;
+    events = new EventRepo(sync);
+    // Keep the booth screen's Sync document current on every event change (D-17).
+    events.onChange = async (event) => {
+      try {
+        await publishBooth(sync, event);
+      } catch (err) {
+        log.warn({ event: "booth_publish_failed", slug: event.slug, err: (err as Error).message }, "could not publish booth state");
+      }
+    };
+  }
   ready ??= events.init().catch((err) => {
     ready = undefined;
     throw err;

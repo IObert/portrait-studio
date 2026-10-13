@@ -48,7 +48,7 @@ importers:
         version: 16.4.0(@babel/core@7.29.7)(@playwright/test@1.64.0)(@types/node@24.19.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       openai:
         specifier: ^7.31.0
-        version: 7.31.0(zod@4.6.5)
+        version: 7.31.0(ws@8.22.0)(zod@4.6.5)
       pino:
         specifier: ^10
         version: 10.4.0
@@ -70,6 +70,9 @@ importers:
       twilio:
         specifier: ^6.1.2
         version: 6.1.2
+      twilio-sync:
+        specifier: ^4.0.1
+        version: 4.0.1
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -229,6 +232,10 @@ packages:
     resolution: {integrity: sha512-CjXrNHTnvqBVqHgdBysY3vk2T8tpJHb5/RMeHJBTyVa9xgugCB0CJTx/3oO8RV2QRQP391RWpB7D6hLjm8V9uA==}
     engines: {node: '>=6.0.0'}
     hasBin: true
+
+  '@babel/runtime@7.29.10':
+    resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
+    engines: {node: '>=6.9.0'}
 
   '@babel/template@7.29.7':
     resolution: {integrity: sha512-puq+Gf35oI24FeN11LkoUQFqv9uwNeWpxXZi/Ji3rRIoKAzKnxRaZ+Gkj0vKS9ZCiTESfng1N9LyOyXvo+m+Gg==}
@@ -914,6 +921,18 @@ packages:
   '@tailwindcss/turbopack@4.3.3':
     resolution: {integrity: sha512-FgL4wRgItNdXcDjcgYUSd59gNsWqNVK4GotjZimZMmt7OOIkRNqH2QEUcRXLdBDXvwTsi5rkYxDxzfrFUkmObQ==}
 
+  '@twilio/declarative-type-validator@1.0.0':
+    resolution: {integrity: sha512-fb/ovMBM8T1dpcSgbf5y6qhfE+x2CwMvtjcJVm+e+lpLvL1c+QjSdpG9mp1jfsH/1+xO73ElFkwzasjuqFIHag==}
+    engines: {node: '>=20'}
+
+  '@twilio/operation-retrier@5.0.0':
+    resolution: {integrity: sha512-24b0hJ09rvUhK6/ft+QyjyY0qqL7MJHiwyo3Io64sCXVgfpR/1XOQchYVgNx6hR5d59yT5/hwdYojMdLbNBFtA==}
+    engines: {node: '>=20'}
+
+  '@twilio/replay-event-emitter@1.0.0':
+    resolution: {integrity: sha512-KmQL8UWqpIjQA9euY4FnKjy6v1obKjAWD/n2aHXDfUR4j+dLBC9xVuCFaZBF3gyVbcew3BeuO+l9wW1dQrHj1w==}
+    engines: {node: '>=20'}
+
   '@tybys/wasm-util@0.10.4':
     resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
 
@@ -1331,6 +1350,9 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  core-js@3.50.0:
+    resolution: {integrity: sha512-BRWgOLKkFeCgRudR6zrs8p9XJZcE14grzKMMssoYrk6krtuEZ7MTKPIY5RzOnqsEKIR9kst7wNzphttraT+Yqw==}
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -1937,9 +1959,15 @@ packages:
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
 
+  iso8601-duration@1.2.0:
+    resolution: {integrity: sha512-ErTBd++b17E8nmWII1K1uZtBgD1E8RjyvwmxlCjPHNqHMD7gmcMHOw0E8Ro/6+QT4PhHRSnnMo7bxa1vFPkwhg==}
+
   iterator.prototype@1.1.5:
     resolution: {integrity: sha512-H0dkQoCa3b2VEeKQBOxFph+JAbcrQdE7KC0UkqwpLmv2EC4P41QXP+rqo9wYodACiG5/WM5s9oDApTU8utwj9g==}
     engines: {node: '>= 0.4'}
+
+  javascript-state-machine@3.1.0:
+    resolution: {integrity: sha512-BwhYxQ1OPenBPXC735RgfB+ZUG8H3kjsx8hrYTgWnoy6TPipEy4fiicyhT2lxRKAXq9pG7CfFT8a2HLr6Hmwxg==}
 
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
@@ -2184,6 +2212,10 @@ packages:
   lodash.once@4.1.1:
     resolution: {integrity: sha512-Sb487aTOCr9drQVL8pIxOzVhafOjZN9UU54hiN8PU3uAiSV7lx1yYNpbNmex2PK6dSJoNTSJUUswT651yww3Mg==}
 
+  loglevel@1.9.2:
+    resolution: {integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg==}
+    engines: {node: '>= 0.6.0'}
+
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
@@ -2403,6 +2435,9 @@ packages:
   pino@10.4.0:
     resolution: {integrity: sha512-bk1ZMTwG/Vymx+zPoa28MhNzucFvXJWp3csrSuxuHPSMeUettaCoQ5Jvg07mtC4JGNpcfTwz41oVCnNgBK9+vA==}
     hasBin: true
+
+  platform@1.3.6:
+    resolution: {integrity: sha512-fnWVljUchTro6RiCFvCXBbNhJc2NijN7oIQxbwsyL0buWJPG85v81ehlHI9fXrJsMNgTofEoWIQeClKpgxFLrg==}
 
   playwright-core@1.64.0:
     resolution: {integrity: sha512-T9r+MZkTECl2+oUcZ26YgZzTrYidTsIhYYkJix+6iDOymOb1FB2RLLSOxRGnZGv5DStt+aduIVbt+E8WygXYpg==}
@@ -2731,9 +2766,17 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
+  twilio-sync@4.0.1:
+    resolution: {integrity: sha512-y4kEqT+EH+zuj7XdwkO0rzDFKbYRYRXYQ7ZzMrckdtjYsskA+UvDiP9UrI8qmFO1heZR+7KaOFx2Hj2fzx0DaQ==}
+    engines: {node: '>=20'}
+
   twilio@6.1.2:
     resolution: {integrity: sha512-jlZTCIo0sUhX9qoap2SDtHgVvYtz5VI+G0bzxb/BoqJxE7awxNoDsQJYaAToedZ3F3dD4ZS2+kT8Bj4RKyImvQ==}
     engines: {node: '>=20.0.0'}
+
+  twilsock@1.0.2:
+    resolution: {integrity: sha512-y0xYHaKREAlKg7lUE5fM66vj59aEQ9IIDgDd1QJzkZFWO6q0PX3OVrOZUMKBMY/iabU/5TAtau0YmAIE35G7Gg==}
+    engines: {node: '>=20'}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -2909,6 +2952,18 @@ packages:
   wrap-ansi@6.2.0:
     resolution: {integrity: sha512-r6lPcBGxZXlIcymEu7InxDMhdW0KDxpLgoFLcguasxCaJ/SOIZwINatK9KY/tf+ZrlywOKU0UDj3ATXUBfxJXA==}
     engines: {node: '>=8'}
+
+  ws@8.22.0:
+    resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
 
   xml-naming@0.3.0:
     resolution: {integrity: sha512-ghig2TBE/H11aOVgmahA3MhimvkBr6JIYknH/Dhdk10nXwdbIqBJsbfMxpvFPG8bAw77gN29aQWvKpmVoPlvPQ==}
@@ -3139,6 +3194,8 @@ snapshots:
   '@babel/parser@7.29.9':
     dependencies:
       '@babel/types': 7.29.8
+
+  '@babel/runtime@7.29.10': {}
 
   '@babel/template@7.29.7':
     dependencies:
@@ -3639,6 +3696,21 @@ snapshots:
       '@tailwindcss/oxide': 4.3.3
       tailwindcss: 4.3.3
 
+  '@twilio/declarative-type-validator@1.0.0':
+    dependencies:
+      '@babel/runtime': 7.29.10
+      core-js: 3.50.0
+
+  '@twilio/operation-retrier@5.0.0':
+    dependencies:
+      '@babel/runtime': 7.29.10
+      core-js: 3.50.0
+
+  '@twilio/replay-event-emitter@1.0.0':
+    dependencies:
+      '@babel/runtime': 7.29.10
+      core-js: 3.50.0
+
   '@tybys/wasm-util@0.10.4':
     dependencies:
       tslib: 2.8.1
@@ -4085,6 +4157,8 @@ snapshots:
   concat-map@0.0.1: {}
 
   convert-source-map@2.0.0: {}
+
+  core-js@3.50.0: {}
 
   cross-spawn@7.0.6:
     dependencies:
@@ -4868,6 +4942,8 @@ snapshots:
 
   isexe@2.0.0: {}
 
+  iso8601-duration@1.2.0: {}
+
   iterator.prototype@1.1.5:
     dependencies:
       define-data-property: 1.1.4
@@ -4876,6 +4952,8 @@ snapshots:
       get-proto: 1.0.1
       has-symbols: 1.1.0
       set-function-name: 2.0.2
+
+  javascript-state-machine@3.1.0: {}
 
   jiti@2.7.0: {}
 
@@ -5073,6 +5151,8 @@ snapshots:
 
   lodash.once@4.1.1: {}
 
+  loglevel@1.9.2: {}
+
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
@@ -5203,8 +5283,9 @@ snapshots:
 
   on-exit-leak-free@2.1.2: {}
 
-  openai@7.31.0(zod@4.6.5):
+  openai@7.31.0(ws@8.22.0)(zod@4.6.5):
     optionalDependencies:
+      ws: 8.22.0
       zod: 4.6.5
 
   optionator@0.9.4:
@@ -5278,6 +5359,8 @@ snapshots:
       safe-stable-stringify: 2.5.0
       sonic-boom: 4.2.1
       thread-stream: 4.2.0
+
+  platform@1.3.6: {}
 
   playwright-core@1.64.0: {}
 
@@ -5668,6 +5751,21 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
+  twilio-sync@4.0.1:
+    dependencies:
+      '@babel/runtime': 7.29.10
+      '@twilio/declarative-type-validator': 1.0.0
+      '@twilio/operation-retrier': 5.0.0
+      '@twilio/replay-event-emitter': 1.0.0
+      core-js: 3.50.0
+      iso8601-duration: 1.2.0
+      loglevel: 1.9.2
+      platform: 1.3.6
+      twilsock: 1.0.2
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   twilio@6.1.2:
     dependencies:
       axios: 1.20.0
@@ -5680,6 +5778,21 @@ snapshots:
     transitivePeerDependencies:
       - debug
       - supports-color
+
+  twilsock@1.0.2:
+    dependencies:
+      '@babel/runtime': 7.29.10
+      '@twilio/declarative-type-validator': 1.0.0
+      '@twilio/operation-retrier': 5.0.0
+      core-js: 3.50.0
+      iso8601-duration: 1.2.0
+      javascript-state-machine: 3.1.0
+      loglevel: 1.9.2
+      platform: 1.3.6
+      ws: 8.22.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   type-check@0.4.0:
     dependencies:
@@ -5904,6 +6017,8 @@ snapshots:
       ansi-styles: 4.3.0
       string-width: 4.2.3
       strip-ansi: 6.0.1
+
+  ws@8.22.0: {}
 
   xml-naming@0.3.0: {}
 

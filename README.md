@@ -81,7 +81,8 @@ after 7 days. Outside the WhatsApp 24-hour window, delivery uses the approved `d
 - `/booth/<code>` (basic auth): a full-screen kiosk page.
   - **live**: the CTA, the QR code for the event's lead channel (prefilled with the event code) and the consented slideshow.
   - **break** and **ended** get their own screens.
-  - Updates arrive live over server-sent events. On a network drop the screen keeps showing the last state.
+  - Updates are pushed by the Twilio Sync client SDK, using a read-only token scoped to that event. On a network drop
+    the screen keeps showing the last state.
 
 ## Deployment
 

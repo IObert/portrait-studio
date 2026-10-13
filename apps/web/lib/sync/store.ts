@@ -90,6 +90,9 @@ export class SyncStore {
   ping() {
     return this.backend.ping();
   }
+  grantRead(kind: "map" | "document", name: string, identity: string) {
+    return this.run(name, () => this.backend.grantRead(kind, name, identity));
+  }
 
   /** @internal Raw access for TypedMap / TypedDocument. */
   get raw() {

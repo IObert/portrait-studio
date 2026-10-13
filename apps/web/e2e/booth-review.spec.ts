@@ -71,8 +71,9 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
     await expect(admin.getByRole("status").filter({ hasText: "Removed. The share link no longer works" })).toBeVisible();
     await expect(admin.getByTestId("delivered-item")).toHaveCount(0);
 
-    // No reload on the booth: the live update removes the slide.
-    await expect(booth.getByTestId("slide")).toHaveCount(0, { timeout: 10_000 });
+    // The live push is covered against real Sync (tests/live, D-17); here the server state.
+    await booth.reload();
+    await expect(booth.getByTestId("slide")).toHaveCount(0);
 
     // The share link now says the organizer removed it.
     const share = await (await browser.newContext({ httpCredentials: undefined })).newPage();
@@ -81,21 +82,27 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
     await expect(share.getByRole("img")).toHaveCount(0);
   });
 
-  test("state changes switch the booth screen without a reload", async ({ browser }) => {
+  test("state changes switch the booth screen (server render; live push in tests/live)", async ({ browser }) => {
     const booth = await (await browser.newContext({ httpCredentials: { username: "e2e-admin", password: "e2e-password-not-secret" } })).newPage();
     await booth.goto(BOOTH);
     const admin = await (await browser.newContext({ httpCredentials: { username: "e2e-admin", password: "e2e-password-not-secret" } })).newPage();
     await admin.goto("/admin/events/e2e-booth");
 
     await admin.getByRole("button", { name: "Break" }).click();
-    await expect(booth.locator("main[data-state]")).toHaveAttribute("data-state", "break", { timeout: 10_000 });
+    await expect(admin.getByTestId("state")).toHaveText("break");
+    await booth.reload();
+    await expect(booth.locator("main[data-state]")).toHaveAttribute("data-state", "break");
     await expect(booth.getByTestId("status-message")).toHaveText("We'll be right back! Portrait Studio is taking a short break.");
 
     await admin.getByRole("button", { name: "Go live" }).click();
-    await expect(booth.locator("main[data-state]")).toHaveAttribute("data-state", "live", { timeout: 10_000 });
+    await expect(admin.getByTestId("state")).toHaveText("live");
+    await booth.reload();
+    await expect(booth.locator("main[data-state]")).toHaveAttribute("data-state", "live");
 
     await admin.getByRole("button", { name: "End" }).click();
-    await expect(booth.locator("main[data-state]")).toHaveAttribute("data-state", "ended", { timeout: 10_000 });
+    await expect(admin.getByTestId("state")).toHaveText("ended");
+    await booth.reload();
+    await expect(booth.locator("main[data-state]")).toHaveAttribute("data-state", "ended");
     await expect(booth.getByTestId("status-message")).toHaveText("This event has ended. Thanks for stopping by!");
   });
 

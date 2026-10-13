@@ -74,6 +74,7 @@ async function world(): Promise<World> {
     verifier: verifier as unknown as EmailVerifier,
     fetchMedia: async () => new Response(image, { headers: { "content-type": "image/jpeg" } }),
     publicBaseUrl: "https://booth.test",
+    slideUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
     log,
   };
   const w: World = {

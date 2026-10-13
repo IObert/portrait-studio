@@ -125,5 +125,10 @@ export function createTwilioSyncBackend(cfg: TwilioSyncConfig): SyncBackend {
     async ping() {
       await call(() => svc.fetch());
     },
+    async grantRead(kind, name, identity) {
+      const flags = { read: true, write: false, manage: false };
+      if (kind === "map") await call(() => svc.syncMaps(name).syncMapPermissions(identity).update(flags));
+      else await call(() => svc.documents(name).documentPermissions(identity).update(flags));
+    },
   };
 }

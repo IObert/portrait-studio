@@ -35,4 +35,10 @@ export interface SyncBackend {
 
   /** Cheap reachability check for /healthz/ready. */
   ping(): Promise<void>;
+
+  /**
+   * Grants an SDK identity read-only access to one object (Sync ACLs, which
+   * this service enforces). Idempotent. Used for the booth screen (D-17).
+   */
+  grantRead(kind: "map" | "document", name: string, identity: string): Promise<void>;
 }

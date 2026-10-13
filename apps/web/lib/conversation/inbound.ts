@@ -58,6 +58,8 @@ export interface Deps {
   verifier: EmailVerifier;
   fetchMedia: MediaFetch;
   publicBaseUrl: string;
+  /** Signed, long-lived link for a slideshow image (D-17). */
+  slideUrl: (blobPath: string) => string;
   log: { info(o: object, m: string): void; warn(o: object, m: string): void; error(o: object, m: string): void };
   now?: () => Date;
 }
@@ -395,7 +397,9 @@ async function runEffect(
       const job = await sync.map(ev.jobs, JobSchema).get(effect.jobId);
       if (!job || job.address !== ctx.key || job.state !== "delivered" || !job.outputBlobs) return;
       await sync.ensureMap(ev.slideshow);
-      if (await sync.map(ev.slideshow, SlideshowItemSchema, { ttlSeconds: SEVEN_DAYS }).create(effect.jobId, { blobPath: job.outputBlobs.deliveryJpeg, addedAt: ctx.now.toISOString() })) {
+      // The signed link travels with the item, so the booth gets a ready URL in the push (D-17).
+      const url = deps.slideUrl(job.outputBlobs.deliveryJpeg);
+      if (await sync.map(ev.slideshow, SlideshowItemSchema, { ttlSeconds: SEVEN_DAYS }).create(effect.jobId, { blobPath: job.outputBlobs.deliveryJpeg, addedAt: ctx.now.toISOString(), url })) {
         await bump(sync, ctx.event.slug, "slideshowYes");
       }
       return;

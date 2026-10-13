@@ -5,7 +5,11 @@ import type { Session } from "../conversation/session";
 import { matchesKeyword } from "../conversation/text";
 import type { Channel } from "../messaging/address";
 
-export const SlideshowItemSchema = z.object({ blobPath: z.string(), addedAt: z.iso.datetime() });
+/**
+ * `url` is the signed image link, stored so the booth gets it with the push (D-17).
+ * Items written before it existed fall back to signing on read.
+ */
+export const SlideshowItemSchema = z.object({ blobPath: z.string(), addedAt: z.iso.datetime(), url: z.string().url().optional() });
 
 export type SlideshowAnswer = { jobId: string; answer: "yes" | "no" } | null;
 

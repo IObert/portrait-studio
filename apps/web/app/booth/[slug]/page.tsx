@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getEventRepo } from "@/lib/admin/context";
 import { requireAdmin } from "@/lib/admin/guard";
-import { buildBoothState } from "@/lib/booth/state";
+import { boothDoc, boothSlides } from "@/lib/booth/state";
+import { getServices } from "@/lib/services";
 import { SlugSchema } from "@/lib/sync/names";
 import { BoothScreen } from "./booth-screen";
 
@@ -13,10 +14,11 @@ async function Booth({ params }: { params: Promise<{ slug: string }> }) {
   const slug = SlugSchema.safeParse((await params).slug);
   if (!slug.success) notFound();
   const event = await (await getEventRepo()).get(slug.data);
-  const initial = event ? await buildBoothState(event) : null;
   // Drafts are not shown (SPEC §4.1).
-  if (!initial) notFound();
-  return <BoothScreen slug={slug.data} initial={initial} />;
+  const doc = event ? await boothDoc(event) : null;
+  if (!doc) notFound();
+  // First paint from the server; the Sync SDK keeps it live after that (D-17).
+  return <BoothScreen slug={slug.data} initialDoc={doc} initialSlides={await boothSlides(getServices().sync, slug.data)} />;
 }
 
 export default function BoothPage(props: PageProps<"/booth/[slug]">) {

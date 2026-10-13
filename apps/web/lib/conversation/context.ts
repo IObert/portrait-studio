@@ -1,5 +1,6 @@
 import "server-only";
 import { getEventRepo } from "../admin/context";
+import { slideUrl } from "../booth/state";
 import { getEnv, requireEnv } from "../env";
 import { log } from "../log";
 import { Messenger } from "../messaging/outbound";
@@ -44,6 +45,7 @@ async function build(): Promise<Deps> {
     verifier: createEmailVerifier({ ...creds, serviceSid: env.TWILIO_VERIFY_SERVICE_SID }),
     fetchMedia: twilioMediaFetch(creds.apiKeySid, creds.apiKeySecret),
     publicBaseUrl: env.PUBLIC_BASE_URL,
+    slideUrl,
     log,
   };
 }

@@ -41,6 +41,8 @@ export function eventObjects(slug: Slug) {
     jobs: `${p}jobs`,
     print: `${p}print`,
     printer: `${p}printer`,
+    /** Public booth-screen state, pushed to the booth over the Sync SDK (D-17). */
+    booth: `${p}booth`,
     leads: `${p}leads`,
     slideshow: `${p}slideshow`,
     // TODO(scalability): counters are the hottest per-event objects; sharded by metric name.
