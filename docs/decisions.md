@@ -142,17 +142,27 @@ during screening or the menus replaces the old job. Checks still run in the work
 
 ### D-19 Twilio Privacy Notice; no hashtag; one product name
 *2026-10-13, user decisions.*
-- Every consent message and the verification email link the **Twilio Privacy Notice**
-  (`https://www.twilio.com/en-us/legal/privacy`). The email uses Twilio's own privacy wording, adapted to Portrait
-  Studio. The app-specific `/privacy/[slug]` page (SPEC §10.6) is removed.
-- The QR prefill names the event ("Hi! I want my Portrait Studio portrait at SIGNAL London 🎨"). Routing matches the
+- Every consent message and the verification email **only link** the Twilio Privacy Notice
+  (`https://www.twilio.com/en-us/legal/privacy`). The app has no privacy text of its own, copied or adapted. The
+  app-specific `/privacy/[slug]` page (SPEC §10.6) is removed.
+- The QR prefill names the event ("Hi! I'm at SIGNAL London and want to try Portrait Studio 🎨"). Routing matches the
   event's full name or its code as whole words, with no `#` needed. A name match beats a code match, and the longest
   name wins.
 - The product is called **Portrait Studio** everywhere: messages, templates, README and docs. "AI photo booth" and
-  similar phrasings are gone (SPEC.md and PROMPTS.md are left unchanged as source documents).
-- The SendGrid verification template is kept in `apps/web/assets/email/verification-email.html`. Every text comes
-  from the en and pt_BR catalogs as substitutions. **Manual step:** load it into SendGrid as a dynamic template
-  (subject `{{subject}}`) and link it to the Verify email integration.
+  similar phrasings are gone (SPEC.md and PROMPTS.md are left unchanged as source documents). A sentence that names
+  the product does not also say "portrait" or "retrato".
+
+### D-20 Verification email: the user's template, with per-event extras
+*2026-10-13, user decisions.* `apps/web/assets/email/verification-email.html` is the user's template, renamed to
+Portrait Studio and with its "ordering" lines adapted. It holds its own wording, and **English is used for every
+event**, including pt_BR events (a deviation from SPEC §12, accepted by the user). The Verify call sends only:
+- `event_name`
+- `promo_code`: the event's **promo code** setting; when empty, the gift block is hidden
+- `show_snippet`: the event's **show code snippet** setting; when off, the snippet and the Verify CTA are hidden
+
+Both settings only work with lead collection on, and validation enforces that. Variables use underscores:
+SendGrid's Handlebars does not accept `{{event-name}}`. **Manual step:** paste the file into a SendGrid dynamic
+template (subject "Your Portrait Studio verification code") and set it on the Verify email integration.
 
 ## Open TODOs after the last milestone
 

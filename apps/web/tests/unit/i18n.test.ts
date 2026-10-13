@@ -48,7 +48,6 @@ describe.each(LOCALES)("catalog %s", (locale) => {
     expect(c.consent.welcomeBack({ firstName: "Ana", privacyUrl: url })).toContain(url);
     expect(c.consent.agreeOnly({ eventName: "Ev", privacyUrl: url })).toContain(url);
     expect(c.consent.askCode({ email: "a@b.co", privacyUrl: url, resendKeyword: "X" })).toContain(url);
-    expect(c.consent.emailConsentText).toMatch(/Portrait Studio/);
   });
 
   it("offers at least one agree and one resend keyword", () => {

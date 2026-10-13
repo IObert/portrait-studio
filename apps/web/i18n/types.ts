@@ -56,12 +56,6 @@ export interface Catalog {
     codeLocked: (p: { resendKeyword: string }) => string;
     /** Localized keyword that sends a new code (SPEC §5.4). */
     resendKeywords: readonly string[];
-    /**
-     * Privacy paragraph in the verification email, before and after the link
-     * to the Twilio Privacy Notice (SPEC §5.4, D-19).
-     */
-    emailConsentText: string;
-    emailConsentAfterLink: string;
     optedIn: string;
   };
 
@@ -100,26 +94,6 @@ export interface Catalog {
     failed: string;
   };
 
-  /**
-   * Verification email (SPEC §5.4), filled into the SendGrid template
-   * apps/web/assets/email/verification-email.html as substitutions.
-   */
-  email: {
-    subject: (p: { eventName: string }) => string;
-    /** Inbox preview; the template appends the code. */
-    preheader: string;
-    eyebrow: string;
-    headline: string;
-    intro: (p: { eventName: string }) => string;
-    /** Link text for the Twilio Privacy Notice. */
-    privacyLink: string;
-    snippetTitle: string;
-    ctaLabel: string;
-    signOff: string;
-    team: string;
-    tagline: string;
-    ignore: string;
-  };
 
   /** Delivery (SPEC §6.1) and slideshow consent (§5.8). */
   delivery: {

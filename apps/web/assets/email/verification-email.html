@@ -1,11 +1,11 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <!--
-  Portrait Studio: Twilio Verify email template (SendGrid dynamic template).
-  Adapted from the Twilio activations' Verify template. Every visible text is a
-  substitution sent by the app from the en / pt_BR catalogs (SPEC §5.4, §12),
-  so one template serves both languages. Verify supplies {{twilio_code}}.
-  Substitutions: lib/conversation/email-substitutions.ts
-  Subject line in SendGrid: {{subject}}
+  Portrait Studio: Twilio Verify email template (SendGrid dynamic template, Handlebars).
+  English for all events (docs/decisions.md D-20). Variables sent by the app per verification:
+    {{event_name}}   event name
+    {{promo_code}}   per-event promo code; the gift block shows only when set
+    {{show_snippet}} per-event flag; shows the code snippet and the Verify CTA
+  {{twilio_code}} is filled in by Verify. Subject in SendGrid: Your Portrait Studio verification code
 -->
 <html
   xmlns="http://www.w3.org/1999/xhtml"
@@ -24,7 +24,7 @@
     <meta content="date=no" name="format-detection" />
     <meta content="address=no" name="format-detection" />
     <meta content="email=no" name="format-detection" />
-    <title>{{subject}}</title>
+    <title>Your Portrait Studio verification code</title>
     <style type="text/css">
       @font-face {
         font-family: "TwilioSansText";
@@ -135,7 +135,7 @@
         mso-hide: all;
       "
     >
-      {{preheader}} {{twilio_code}} &middot; {{event_name}}
+      Your code is {{twilio_code}}. Enter it in the chat at {{event_name}}.
       &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
     </div>
 
@@ -204,7 +204,7 @@
                           color: #f22f46;
                         "
                       >
-                        {{eyebrow}} &middot; {{event_name}}
+                        Portrait Studio &middot; {{event_name}}
                       </p>
                       <h1
                         class="headline"
@@ -217,7 +217,7 @@
                           color: #121c2d;
                         "
                       >
-                        {{headline}}
+                        Confirm your email to get your artwork
                       </h1>
                       <p
                         style="
@@ -228,7 +228,8 @@
                           color: #4b5671;
                         "
                       >
-                        {{intro}}
+                        Welcome to {{event_name}}! Enter this code in the chat
+                        to verify your email address:
                       </p>
                     </td>
                   </tr>
@@ -273,7 +274,7 @@
                     </td>
                   </tr>
 
-                  <!-- Privacy notice (SPEC §5.4): entering the code confirms consent, incl. marketing (D-19) -->
+                  <!-- Privacy notice -->
                   <tr>
                     <td class="px" style="padding: 24px 40px 0 40px">
                       <p
@@ -284,18 +285,117 @@
                           color: #606b85;
                         "
                       >
-                        {{consent_text}}
+                        By confirming your email address, you will be granted
+                        access to Portrait Studio and your name and email
+                        address will be collected to send you marketing
+                        communications. Your personal data collected as part of
+                        the activation is processed in accordance with the
                         <a
-                          href="{{privacy_url}}"
+                          href="https://www.twilio.com/en-us/legal/privacy"
                           target="_blank"
                           style="color: #0263e0; text-decoration: underline"
-                          >{{privacy_link}}</a
-                        >{{consent_after_link}}
+                          >Twilio Privacy Notice</a
+                        >.
                       </p>
                     </td>
                   </tr>
 
-                  <!-- SNIPPET:START (optional; delete this block to drop the developer pitch) -->
+                  {{#if promo_code}}
+                  <!-- Promo code -->
+                  <tr>
+                    <td class="px" style="padding: 32px 40px 0 40px">
+                      <table
+                        role="presentation"
+                        width="100%"
+                        border="0"
+                        cellpadding="0"
+                        cellspacing="0"
+                      >
+                        <tr>
+                          <td
+                            style="
+                              background-color: #121c2d;
+                              border-radius: 10px;
+                              padding: 24px;
+                            "
+                          >
+                            <p
+                              style="
+                                font-family: 'TwilioSansText', Arial, sans-serif;
+                                font-size: 13px;
+                                line-height: 20px;
+                                font-weight: 700;
+                                letter-spacing: 1.5px;
+                                text-transform: uppercase;
+                                color: #f5b8bf;
+                              "
+                            >
+                              A thank-you gift
+                            </p>
+                            <p
+                              style="
+                                margin-top: 4px;
+                                font-family: 'TwilioSansText', Arial, sans-serif;
+                                font-size: 22px;
+                                line-height: 30px;
+                                font-weight: 700;
+                                color: #ffffff;
+                              "
+                            >
+                              $25 in Twilio credit
+                            </p>
+                            <p
+                              style="
+                                margin-top: 8px;
+                                font-family: 'TwilioSansText', Arial, sans-serif;
+                                font-size: 14px;
+                                line-height: 22px;
+                                color: #e1e3ea;
+                              "
+                            >
+                              Create a
+                              <a
+                                href="https://www.twilio.com/try-twilio"
+                                target="_blank"
+                                style="color: #51a9e3; text-decoration: underline"
+                                >free developer account</a
+                              >
+                              today and redeem this code, or add it to your
+                              existing account.
+                            </p>
+                            <table
+                              role="presentation"
+                              border="0"
+                              cellpadding="0"
+                              cellspacing="0"
+                              style="margin-top: 16px"
+                            >
+                              <tr>
+                                <td
+                                  style="
+                                    border: 1px dashed #f5b8bf;
+                                    border-radius: 6px;
+                                    padding: 10px 16px;
+                                    font-family: 'Courier New', Courier, monospace;
+                                    font-size: 18px;
+                                    line-height: 24px;
+                                    font-weight: 700;
+                                    letter-spacing: 2px;
+                                    color: #ffffff;
+                                  "
+                                >
+                                  {{promo_code}}
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  {{/if}}
+
+                  {{#if show_snippet}}
                   <!-- Divider -->
                   <tr>
                     <td class="px" style="padding: 32px 40px 0 40px">
@@ -333,7 +433,8 @@
                           color: #121c2d;
                         "
                       >
-                        {{snippet_title}}
+                        Did you know this email was sent with a single line of
+                        code?
                       </p>
                     </td>
                   </tr>
@@ -380,7 +481,7 @@
                           <td
                             style="border-radius: 6px; background-color: #0263e0"
                           >
-                            <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://www.twilio.com/docs/verify/email" style="height:44px;v-text-anchor:middle;width:220px;" arcsize="14%" stroke="f" fillcolor="#0263e0"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;">{{cta_label}}</center></v:roundrect><![endif]-->
+                            <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="https://www.twilio.com/docs/verify/email" style="height:44px;v-text-anchor:middle;width:220px;" arcsize="14%" stroke="f" fillcolor="#0263e0"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;">Explore Twilio Verify</center></v:roundrect><![endif]-->
                             <!--[if !mso]><!-->
                             <a
                               href="https://www.twilio.com/docs/verify/email"
@@ -396,7 +497,7 @@
                                 text-decoration: none;
                                 border-radius: 6px;
                               "
-                              >{{cta_label}} &rarr;</a
+                              >Explore Twilio Verify &rarr;</a
                             >
                             <!--<![endif]-->
                           </td>
@@ -404,7 +505,7 @@
                       </table>
                     </td>
                   </tr>
-                  <!-- SNIPPET:END -->
+                  {{/if}}
 
                   <!-- Sign-off -->
                   <tr>
@@ -417,8 +518,8 @@
                           color: #121c2d;
                         "
                       >
-                        {{sign_off}}<br />
-                        <strong>{{team}}</strong>
+                        Have a fantastic day,<br />
+                        <strong>Team Twilio</strong>
                       </p>
                     </td>
                   </tr>
@@ -440,7 +541,7 @@
                     text-align: center;
                   "
                 >
-                  {{tagline}}
+                  We can&rsquo;t wait to see what you build.
                 </p>
                 <p
                   style="
@@ -452,7 +553,8 @@
                     text-align: center;
                   "
                 >
-                  {{ignore}}
+                  Didn&rsquo;t request this code? You can safely ignore this
+                  email.
                 </p>
               </td>
             </tr>

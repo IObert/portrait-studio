@@ -163,7 +163,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect((await w.say(SMS, "Ana Souza"))[0]).toContain("Thanks, Ana!");
     const askCode = await w.say(SMS, "ana@example.com");
     expect(askCode[0]).toContain("6-digit code to ana@example.com");
-    expect(w.verifier.send).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@example.com", locale: "en", substitutions: expect.objectContaining({ consent_text: expect.stringContaining("Portrait Studio"), privacy_url: "https://www.twilio.com/en-us/legal/privacy" }) }));
+    expect(w.verifier.send).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@example.com", locale: "en", substitutions: { event_name: "Event ev" } }));
 
     expect((await w.say(SMS, "111111"))[0]).toContain("didn't work");
     w.verifier.check.mockResolvedValueOnce("approved");

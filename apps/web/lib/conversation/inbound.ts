@@ -262,7 +262,7 @@ async function decide(
         const sent = await deps.verifier.send({
           email: pre.email,
           locale: event.config.language,
-          substitutions: verificationEmailSubstitutions(c, event.config.name, privacyUrl),
+          substitutions: verificationEmailSubstitutions(event),
         });
         r = advanceConsent(session, event, c, input, privacyUrl, undefined, sent);
       }

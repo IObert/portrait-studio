@@ -48,6 +48,12 @@ export const EventConfigInputSchema = z
     uploadedBackgroundName: text(40).default(""),
     frame: z.enum(FRAME_IDS),
     leadCollection: z.boolean(),
+    /**
+     * Verification email extras (D-20), only used with lead collection on:
+     * a promo code shown in the email, and whether to show the Verify code snippet.
+     */
+    emailPromoCode: text(40).default(""),
+    emailShowSnippet: z.boolean().default(false),
     maxImagesPerPerson: z.number().int().min(1).max(20),
     printingEnabled: z.boolean(),
     maxPrintsPerPerson: z.number().int().min(0).max(20),
@@ -60,6 +66,8 @@ export const EventConfigInputSchema = z
       ctx.addIssue({ code: "custom", path: ["promo", "enabled"], message: "Promo needs printing to be on (SPEC §5.9)" });
     if (e.promo.enabled && !e.promo.text)
       ctx.addIssue({ code: "custom", path: ["promo", "text"], message: "Promo text is required when promo is on" });
+    if (!e.leadCollection && (e.emailPromoCode || e.emailShowSnippet))
+      ctx.addIssue({ code: "custom", path: ["emailPromoCode"], message: "Email extras need lead collection to be on" });
     if (e.backgrounds.includes("uploaded") && !e.uploadedBackgroundName)
       ctx.addIssue({ code: "custom", path: ["uploadedBackgroundName"], message: "Name the uploaded background" });
   });
@@ -106,6 +114,8 @@ export function defaultConfig(name: string, qrSender: string): EventConfigInput 
     uploadedBackgroundName: "",
     frame: "none",
     leadCollection: true,
+    emailPromoCode: "",
+    emailShowSnippet: false,
     maxImagesPerPerson: 3,
     printingEnabled: false,
     maxPrintsPerPerson: 1,

@@ -17,7 +17,7 @@ export const pt_BR = {
     original: { name: "Original", aliases: ["manter", "mesmo"] },
   },
 
-  qrPrefill: ({ eventName }) => `Oi! Quero meu retrato do Portrait Studio no ${eventName} 🎨`,
+  qrPrefill: ({ eventName }) => `Oi! Estou no ${eventName} e quero experimentar o Portrait Studio 🎨`,
 
   routing: {
     noActiveEvent: "Oi! O Portrait Studio não está funcionando agora. Volte durante o evento!",
@@ -35,7 +35,7 @@ export const pt_BR = {
     welcomeBack: ({ firstName, privacyUrl }) =>
       `Que bom te ver de novo, ${firstName}! Toque em *Eu concordo* para começar. Usamos sua foto para criar seu retrato. Aviso de privacidade: ${privacyUrl}`,
     agreeOnly: ({ eventName, privacyUrl }) =>
-      `Bem-vindo ao Portrait Studio no ${eventName}! Usamos sua selfie para criar seu retrato e a guardamos por 7 dias. Aviso de privacidade: ${privacyUrl}\n\nToque em *Eu concordo* para começar.`,
+      `Bem-vindo ao Portrait Studio no ${eventName}! Usamos sua selfie para criar sua arte e a guardamos por 7 dias. Aviso de privacidade: ${privacyUrl}\n\nToque em *Eu concordo* para começar.`,
     smsAgreeHint: ({ keyword }) => `Responda ${keyword} para começar.`,
     agreeReminder: "Primeiro aceite o aviso de privacidade e depois envie sua selfie.",
     askName: ({ eventName }) => `Bem-vindo ao Portrait Studio no ${eventName}! Qual é o seu nome completo?`,
@@ -48,9 +48,6 @@ export const pt_BR = {
     codeResent: ({ email }) => `Enviamos um novo código para ${email}.`,
     codeLocked: ({ resendKeyword }) => `Muitas tentativas. Aguarde 10 minutos e responda ${resendKeyword} para receber um novo código.`,
     resendKeywords: ["reenviar", "novo código", "novo codigo"],
-    emailConsentText:
-      "Ao confirmar seu e-mail, você terá acesso ao Portrait Studio e seu nome e e-mail serão coletados para o envio de comunicações de marketing. Seus dados pessoais coletados nesta ativação são tratados de acordo com o",
-    emailConsentAfterLink: ".",
     optedIn: "Tudo pronto!",
   },
 
@@ -83,20 +80,6 @@ export const pt_BR = {
     failed: "Desculpe, algo deu errado ao criar seu retrato. Envie sua selfie de novo.",
   },
 
-  email: {
-    subject: ({ eventName }) => `Seu código de verificação para ${eventName}`,
-    preheader: "Seu código:",
-    eyebrow: "Portrait Studio",
-    headline: "Confirme seu e-mail para receber seu retrato",
-    intro: ({ eventName }) => `Bem-vindo ao Portrait Studio no ${eventName}! Envie este código no chat para confirmar seu e-mail:`,
-    privacyLink: "Aviso de Privacidade da Twilio",
-    snippetTitle: "Sabia que este e-mail foi enviado com uma única linha de código?",
-    ctaLabel: "Conheça o Twilio Verify",
-    signOff: "Tenha um ótimo dia,",
-    team: "Equipe Twilio",
-    tagline: "Mal podemos esperar para ver o que você vai criar.",
-    ignore: "Não pediu este código? Pode ignorar este e-mail com segurança.",
-  },
 
   delivery: {
     caption: ({ styleName, shareUrl }) => `Aqui está o seu retrato ${styleName}! Compartilhe: ${shareUrl}`,
@@ -112,7 +95,7 @@ export const pt_BR = {
   },
 
   share: {
-    title: ({ eventName }) => `Meu retrato do Portrait Studio no ${eventName}`,
+    title: ({ eventName }) => `Feito com o Portrait Studio no ${eventName}`,
     share: "Compartilhar",
     copyText: "Copiar texto",
     copied: "Copiado!",

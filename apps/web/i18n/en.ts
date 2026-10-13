@@ -17,7 +17,7 @@ export const en = {
     original: { name: "Original", aliases: ["keep", "same"] },
   },
 
-  qrPrefill: ({ eventName }) => `Hi! I want my Portrait Studio portrait at ${eventName} 🎨`,
+  qrPrefill: ({ eventName }) => `Hi! I'm at ${eventName} and want to try Portrait Studio 🎨`,
 
   routing: {
     noActiveEvent: "Hi! Portrait Studio isn't running right now. Check back during the event!",
@@ -35,7 +35,7 @@ export const en = {
     welcomeBack: ({ firstName, privacyUrl }) =>
       `Welcome back, ${firstName}! Tap *I agree* to start. We process your photo to create your portrait. Privacy notice: ${privacyUrl}`,
     agreeOnly: ({ eventName, privacyUrl }) =>
-      `Welcome to Portrait Studio at ${eventName}! We process your selfie to create your portrait and keep it for 7 days. Privacy notice: ${privacyUrl}\n\nTap *I agree* to start.`,
+      `Welcome to Portrait Studio at ${eventName}! We use your selfie to create your artwork and keep it for 7 days. Privacy notice: ${privacyUrl}\n\nTap *I agree* to start.`,
     smsAgreeHint: ({ keyword }) => `Reply ${keyword} to start.`,
     agreeReminder: "Please agree to the privacy notice first, then send your selfie.",
     askName: ({ eventName }) => `Welcome to Portrait Studio at ${eventName}! What's your full name?`,
@@ -48,9 +48,6 @@ export const en = {
     codeResent: ({ email }) => `We've sent a new code to ${email}.`,
     codeLocked: ({ resendKeyword }) => `Too many attempts. Please wait 10 minutes, then reply ${resendKeyword} for a new code.`,
     resendKeywords: ["resend", "new code"],
-    emailConsentText:
-      "By confirming your email address, you will be granted access to Portrait Studio and your name and email address will be collected to send you marketing communications. Your personal data collected as part of the activation is processed in accordance with the",
-    emailConsentAfterLink: ".",
     optedIn: "You're all set!",
   },
 
@@ -83,20 +80,6 @@ export const en = {
     failed: "Sorry, something went wrong while creating your portrait. Please send your selfie again.",
   },
 
-  email: {
-    subject: ({ eventName }) => `Your verification code for ${eventName}`,
-    preheader: "Your code:",
-    eyebrow: "Portrait Studio",
-    headline: "Confirm your email to get your portrait",
-    intro: ({ eventName }) => `Welcome to Portrait Studio at ${eventName}! Send this code in the chat to verify your email address:`,
-    privacyLink: "Twilio Privacy Notice",
-    snippetTitle: "Did you know this email was sent with a single line of code?",
-    ctaLabel: "Explore Twilio Verify",
-    signOff: "Have a fantastic day,",
-    team: "Team Twilio",
-    tagline: "We can't wait to see what you build.",
-    ignore: "Didn't request this code? You can safely ignore this email.",
-  },
 
   delivery: {
     caption: ({ styleName, shareUrl }) => `Here's your ${styleName} portrait! Share it: ${shareUrl}`,
@@ -112,7 +95,7 @@ export const en = {
   },
 
   share: {
-    title: ({ eventName }) => `My Portrait Studio portrait from ${eventName}`,
+    title: ({ eventName }) => `Made with Portrait Studio at ${eventName}`,
     share: "Share",
     copyText: "Copy text",
     copied: "Copied!",
