@@ -30,7 +30,7 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
     const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     const code = jsQR(new Uint8ClampedArray(data), info.width, info.height);
     expect(code, "QR must decode").not.toBeNull();
-    expect(decodeURIComponent(code!.data)).toBe("https://wa.me/13203780782?text=Hi! I want my Portrait Studio portrait at E2E Booth 🎨");
+    expect(decodeURIComponent(code!.data)).toBe("https://wa.me/13203780782?text=Hi! I'm at E2E Booth and want to try Portrait Studio 🎨");
   });
 
   test("CTA, QR and slide stay visible on landscape and portrait screens", async ({ page }) => {

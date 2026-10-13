@@ -1,5 +1,5 @@
 import "server-only";
-import twilio from "twilio";
+import { twilioClient } from "./client";
 
 /** Result of checking an email code with Verify (SPEC §5.4). */
 export type CodeCheck = "approved" | "wrong" | "locked" | "expired";
@@ -12,7 +12,7 @@ export interface EmailVerifier {
 
 /** Verify email via the SendGrid integration linked to the service (docs/decisions.md D-10). */
 export function createEmailVerifier(cfg: { accountSid: string; apiKeySid: string; apiKeySecret: string; serviceSid: string }): EmailVerifier {
-  const client = twilio(cfg.apiKeySid, cfg.apiKeySecret, { accountSid: cfg.accountSid, autoRetry: true, maxRetries: 2 });
+  const client = twilioClient(cfg, { autoRetry: true, maxRetries: 2 });
   const svc = client.verify.v2.services(cfg.serviceSid);
   const code = (err: unknown) => (err as { code?: number }).code;
 

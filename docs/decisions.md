@@ -164,6 +164,14 @@ Both settings only work with lead collection on, and validation enforces that. V
 SendGrid's Handlebars does not accept `{{event-name}}`. **Manual step:** paste the file into a SendGrid dynamic
 template (subject "Your Portrait Studio verification code") and set it on the Verify email integration.
 
+### D-21 Shorter Twilio request timeout
+*2026-10-13.* The worker logged "timeout of 30000ms exceeded" about every 10 minutes while idle: both lanes failed
+on the same shared Sync call. That is the Twilio SDK's default 30 s timeout on a keep-alive socket the network had
+silently dropped. Every Twilio client now comes from `lib/twilio/client.ts`, which sets an **8 s timeout**, plus
+keep-alive with a 5 s idle recycle. The callers' own retries (SyncStore, worker) then open a fresh connection, so a
+stale socket costs seconds instead of 30 s. Covered by a unit test against a server that never answers, and by the
+live Sync tests.
+
 ## Open TODOs after the last milestone
 
 - **Fewer settings per page in the admin** (user, 2026-10-13): the event form shows every §4.2 field at once. Split it

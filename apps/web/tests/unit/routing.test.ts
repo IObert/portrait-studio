@@ -63,9 +63,9 @@ describe("route (SPEC §5.2)", () => {
   it("matches the event by its full name, no hashtag (QR prefill)", () => {
     const london = ev("splondon", "live", "SIGNAL London");
     const paris = ev("paris", "live", "Paris Summit");
-    expect(findCode("Hi! I want my Portrait Studio portrait at SIGNAL London 🎨", [london, paris])).toBe(london);
+    expect(findCode("Hi! I'm at SIGNAL London and want to try Portrait Studio 🎨", [london, paris])).toBe(london);
     expect(findCode("hey signal london!", [london, paris])).toBe(london);
-    expect(route("Hi! I want my Portrait Studio portrait at Paris Summit", [london, paris], null)).toEqual({ kind: "event", event: paris, bind: true });
+    expect(route("Hi! I'm at Paris Summit and want to try Portrait Studio 🎨", [london, paris], null)).toEqual({ kind: "event", event: paris, bind: true });
   });
 
   it("prefers the longest matching name", () => {

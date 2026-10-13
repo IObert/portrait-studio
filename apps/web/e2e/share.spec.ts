@@ -8,7 +8,7 @@ test.describe("share page (SPEC §6.2)", () => {
     const anon = await browser.newContext({ httpCredentials: undefined });
     const page = await anon.newPage();
     await page.goto(`${baseURL}${SHARE}`);
-    await expect(page.getByRole("heading", { name: "My Portrait Studio portrait from E2E Summit" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Made with Portrait Studio at E2E Summit" })).toBeVisible();
     const img = page.getByRole("img", { name: /E2E Summit/ });
     await expect(img).toBeVisible();
     expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(1200);

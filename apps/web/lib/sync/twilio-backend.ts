@@ -1,9 +1,9 @@
 import "server-only";
-import twilio from "twilio";
+import { twilioClient } from "../twilio/client";
 import type { SyncBackend, Versioned, WriteOptions } from "./backend";
 import { SyncError } from "./errors";
 
-type ServiceContext = ReturnType<ReturnType<typeof twilio>["sync"]["v1"]["services"]>;
+type ServiceContext = ReturnType<ReturnType<typeof twilioClient>["sync"]["v1"]["services"]>;
 
 export interface TwilioSyncConfig {
   accountSid: string;
@@ -37,7 +37,8 @@ const ttl = (o?: WriteOptions) => (o?.ttlSeconds ? { itemTtl: o.ttlSeconds } : {
 
 /** Sync over the REST API (twilio-node). Objects are addressed by unique name. */
 export function createTwilioSyncBackend(cfg: TwilioSyncConfig): SyncBackend {
-  const client = twilio(cfg.apiKeySid, cfg.apiKeySecret, { accountSid: cfg.accountSid, autoRetry: false });
+  // Our own retry handles 429/5xx/timeouts (SyncStore.run), so the SDK must not retry.
+  const client = twilioClient(cfg);
   const svc: ServiceContext = client.sync.v1.services(cfg.serviceSid);
 
   return {
