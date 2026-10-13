@@ -1,7 +1,7 @@
 # Portrait Studio
 
-An AI photo booth for events. Attendees scan a QR code, send a selfie over WhatsApp or SMS,
-and get back a stylized AI portrait, printed at the booth if the event has a printer.
+Portrait Studio for events. Attendees scan a QR code, send a selfie over WhatsApp or SMS,
+and get back a stylized portrait, printed at the booth if the event has a printer.
 
 > This README grows with each milestone. The sections marked *(coming)* are filled in as those parts are built.
 

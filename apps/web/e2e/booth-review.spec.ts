@@ -16,7 +16,7 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
   test("live: CTA, QR code and the consented slideshow", async ({ page }) => {
     await page.goto(BOOTH);
     await expect(page.locator("main[data-state]")).toHaveAttribute("data-state", "live");
-    await expect(page.getByRole("heading", { name: "Get your AI portrait" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Get your portrait" })).toBeVisible();
     await expect(page.getByText("Send a selfie")).toBeVisible();
     await expect(page.getByTestId("qr").locator("svg")).toBeVisible();
     await expect(page.getByTestId("slide")).toBeVisible();
@@ -30,7 +30,7 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
     const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     const code = jsQR(new Uint8ClampedArray(data), info.width, info.height);
     expect(code, "QR must decode").not.toBeNull();
-    expect(decodeURIComponent(code!.data)).toBe("https://wa.me/13203780782?text=Hi! I want my AI portrait 🎨 #E2E-BOOTH");
+    expect(decodeURIComponent(code!.data)).toBe("https://wa.me/13203780782?text=Hi! I want my Portrait Studio portrait at E2E Booth 🎨");
   });
 
   test("CTA, QR and slide stay visible on landscape and portrait screens", async ({ page }) => {
@@ -45,7 +45,7 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
         expect(box.x + box.width, `${t} fits horizontally`).toBeLessThanOrEqual(width);
         expect(box.y + box.height, `${t} fits vertically`).toBeLessThanOrEqual(height);
       }
-      await expect(page.getByRole("heading", { name: "Get your AI portrait" })).toBeInViewport();
+      await expect(page.getByRole("heading", { name: "Get your portrait" })).toBeInViewport();
     }
   });
 
@@ -59,18 +59,26 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
     await expect(item.getByText(/whatsapp \+10…01/)).toBeVisible();
   });
 
-  test("removing an image from the slideshow takes it off the booth screen live", async ({ browser }) => {
+  test("removing a portrait takes it off the booth screen live and turns its share link off (D-16)", async ({ browser }) => {
     const booth = await (await browser.newContext({ httpCredentials: { username: "e2e-admin", password: "e2e-password-not-secret" } })).newPage();
     await booth.goto(BOOTH);
     await expect(booth.getByTestId("slide")).toBeVisible();
 
     const admin = await (await browser.newContext({ httpCredentials: { username: "e2e-admin", password: "e2e-password-not-secret" } })).newPage();
     await admin.goto(`${REVIEW}?tab=delivered`);
-    await admin.getByTestId("delivered-item").getByRole("button", { name: "Remove from slideshow" }).click();
-    await expect(admin.getByRole("status").filter({ hasText: "Done" })).toBeVisible();
+    admin.once("dialog", (d) => d.accept()); // confirm the irreversible removal
+    await admin.getByTestId("delivered-item").getByRole("button", { name: "Remove", exact: true }).click();
+    await expect(admin.getByRole("status").filter({ hasText: "Removed. The share link no longer works" })).toBeVisible();
+    await expect(admin.getByTestId("delivered-item")).toHaveCount(0);
 
-    // No reload on the booth: the SSE update removes the slide.
+    // No reload on the booth: the live update removes the slide.
     await expect(booth.getByTestId("slide")).toHaveCount(0, { timeout: 10_000 });
+
+    // The share link now says the organizer removed it.
+    const share = await (await browser.newContext({ httpCredentials: undefined })).newPage();
+    await share.goto("/s/e2e_slide_01_share_000000000000");
+    await expect(share.getByTestId("share-gone")).toHaveText("This portrait was removed by the event organizer.");
+    await expect(share.getByRole("img")).toHaveCount(0);
   });
 
   test("state changes switch the booth screen without a reload", async ({ browser }) => {
@@ -81,7 +89,7 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
 
     await admin.getByRole("button", { name: "Break" }).click();
     await expect(booth.locator("main[data-state]")).toHaveAttribute("data-state", "break", { timeout: 10_000 });
-    await expect(booth.getByTestId("status-message")).toHaveText("We'll be right back! The photo booth is taking a short break.");
+    await expect(booth.getByTestId("status-message")).toHaveText("We'll be right back! Portrait Studio is taking a short break.");
 
     await admin.getByRole("button", { name: "Go live" }).click();
     await expect(booth.locator("main[data-state]")).toHaveAttribute("data-state", "live", { timeout: 10_000 });

@@ -3,12 +3,12 @@
 import { useActionState } from "react";
 import { reviewAction, type ReviewState } from "@/lib/admin/review-actions";
 
-type Action = "approve" | "discard" | "slideshow_remove" | "print_remove" | "reprint";
+type Action = "approve" | "discard" | "remove" | "print_remove" | "reprint";
 
 const STYLE: Record<Action, string> = {
   approve: "bg-green-700 text-white hover:bg-green-600",
   discard: "bg-zinc-200 text-zinc-800 hover:bg-zinc-300",
-  slideshow_remove: "bg-zinc-200 text-zinc-800 hover:bg-zinc-300",
+  remove: "bg-red-700 text-white hover:bg-red-600",
   print_remove: "bg-zinc-200 text-zinc-800 hover:bg-zinc-300",
   reprint: "bg-zinc-900 text-white hover:bg-zinc-700",
 };
@@ -25,7 +25,17 @@ export function ReviewButtons({ slug, jobId, actions }: { slug: string; jobId: s
       )}
       <div className="flex flex-wrap gap-2">
         {actions.map((a) => (
-          <button key={a.action} name="action" value={a.action} disabled={pending} className={`rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${STYLE[a.action]}`}>
+          <button
+            key={a.action}
+            name="action"
+            value={a.action}
+            disabled={pending}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${STYLE[a.action]}`}
+            onClick={(e) => {
+              // Irreversible: confirm first.
+              if (a.action === "remove" && !confirm("Remove this portrait? It disappears from the booth screen, the share link stops working and the files are deleted. This cannot be undone.")) e.preventDefault();
+            }}
+          >
             {a.label}
           </button>
         ))}

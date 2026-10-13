@@ -9,7 +9,8 @@ import { backoffDelay } from "../retry";
 import { eventObjects } from "../sync/names";
 import { ConcurrentModification, SKIP, type SyncStore } from "../sync/store";
 import { bump } from "../stats";
-import { type PipelineDeps, type PipelineOutcome, runPipeline } from "./run";
+import { backgroundMenu, styleMenu } from "../conversation/selfie";
+import { type PipelineDeps, type PipelineOutcome, runPipeline, type ScreeningOutcome, screenPhoto } from "./run";
 
 export const LEASE_MS = 3 * 60 * 1000;
 export const MAX_ATTEMPTS = 3;
@@ -35,7 +36,8 @@ export interface WorkerDeps {
 
 /** Retry metadata stored on the job (`error` holds a short reason, never personal data). */
 function isRunnable(job: Job, now: Date): boolean {
-  if (job.state === "queued") return !job.leaseUntil || Date.parse(job.leaseUntil) <= now.getTime();
+  // Screening (D-18) and generation both wait in a state; leaseUntil doubles as "not before" after a retry.
+  if (job.state === "screening" || job.state === "queued") return !job.leaseUntil || Date.parse(job.leaseUntil) <= now.getTime();
   // An expired lease on a processing job means its worker died: take it back (SPEC §9.1).
   return job.state === "processing" && !!job.leaseUntil && Date.parse(job.leaseUntil) <= now.getTime();
 }
@@ -54,8 +56,9 @@ export async function workOnce(deps: WorkerDeps, limit = 1): Promise<number> {
     for await (const [, job] of jobs.entries((key) => deps.log.warn({ event: "job_invalid", slug: event.slug, jobId: key }, "invalid job item"))) {
       if (isRunnable(job, now)) candidates.push(job);
     }
-    // Oldest first.
-    candidates.sort((a, b) => (a.timestamps.queued ?? "").localeCompare(b.timestamps.queued ?? ""));
+    // Screening first (an attendee is waiting for the menu), then oldest first.
+    const created = (j: Job) => j.timestamps.screening ?? j.timestamps.queued ?? "";
+    candidates.sort((a, b) => Number(b.subjects === null) - Number(a.subjects === null) || created(a).localeCompare(created(b)));
     for (const c of candidates) {
       if (done >= limit) return done;
       const claimed = await claim(deps, event, c.jobId);
@@ -100,6 +103,21 @@ async function process(deps: WorkerDeps, event: PortraitEvent, job: Job): Promis
   }, HEARTBEAT_MS);
 
   const started = performance.now();
+  // Unscreened jobs run the photo checks first (D-18); screened ones generate.
+  if (job.subjects === null) {
+    let screened: ScreeningOutcome;
+    try {
+      screened = await screenPhoto({ ...deps.pipeline, signal: controller.signal }, job);
+    } catch (err) {
+      clearInterval(heartbeat);
+      return retryOrFail(deps, event, job, err);
+    }
+    clearInterval(heartbeat);
+    deps.log.info({ event: "job_screened", ...log, outcome: screened.kind, ms: Math.round(performance.now() - started) }, "photo screened");
+    if (screened.kind === "rejected") return finish(deps, event, job, { kind: "rejected", reason: screened.reason });
+    return afterScreening(deps, event, job, screened);
+  }
+
   let outcome: PipelineOutcome;
   try {
     outcome = await runPipeline({ ...deps.pipeline, signal: controller.signal }, event, job);
@@ -112,6 +130,33 @@ async function process(deps: WorkerDeps, event: PortraitEvent, job: Job): Promis
   await finish(deps, event, job, outcome);
 }
 
+/**
+ * The photo passed: store the scene, then either open the menus (the attendee
+ * picks style and background) or, with only one option each, generate at once.
+ */
+async function afterScreening(deps: WorkerDeps, event: PortraitEvent, job: Job, s: Extract<ScreeningOutcome, { kind: "passed" }>) {
+  const c = catalogs[event.config.language];
+  const style = job.style ?? (event.config.styles.length === 1 ? event.config.styles[0]! : null);
+  const background = job.background ?? (event.config.backgrounds.length === 1 ? event.config.backgrounds[0]! : null);
+  const ready = !!style && !!background;
+  const now = (deps.now?.() ?? new Date()).toISOString();
+  const updated = await deps.sync.map(eventObjects(event.slug).jobs, JobSchema).update(job.jobId, (cur) => {
+    if (cur?.state !== "processing") return SKIP;
+    const state = ready ? "queued" : "awaiting_choice";
+    return { ...cur, state, style, background, subjects: s.subjects, pet: s.pet, leaseUntil: null, attempts: 0, error: null, timestamps: { ...cur.timestamps, [state]: now } };
+  });
+  if (!updated || ready) return; // generation is picked up on the next pass
+
+  // Open the first menu the attendee still has to answer (SPEC §5.5).
+  const address = addressFromKey(job.address);
+  if (!address) return;
+  const sessions = deps.sync.map(eventObjects(event.slug).sessions, SessionSchema);
+  const step = style ? "awaiting_background" : "awaiting_style";
+  const session = await sessions.update(job.address, (cur) => (cur ? { ...cur, step, pendingJobId: job.jobId } : SKIP));
+  const msg = step === "awaiting_style" ? styleMenu(event, c) : backgroundMenu(event, c);
+  await deps.messenger.send(address, msg, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: event.config.qrSender });
+}
+
 /** Transient errors retry with backoff; after MAX_ATTEMPTS the job fails (SPEC §9.1, fail closed). */
 async function retryOrFail(deps: WorkerDeps, event: PortraitEvent, job: Job, err: unknown): Promise<void> {
   const jobs = deps.sync.map(eventObjects(event.slug).jobs, JobSchema);
@@ -122,9 +167,10 @@ async function retryOrFail(deps: WorkerDeps, event: PortraitEvent, job: Job, err
     const retryAfterMs = Number((err as { headers?: Record<string, string> }).headers?.["retry-after"]) * 1000 || undefined;
     const delay = backoffDelay(job.attempts, { baseMs: 5_000, maxMs: 60_000, minMs: 5_000 }, retryAfterMs);
     deps.log.warn({ event: "job_retry", slug: event.slug, jobId: job.jobId, attempt: job.attempts, status, error: message, delayMs: delay }, "job will be retried");
-    // Back to queued; leaseUntil doubles as "not before" for the next attempt.
+    // Back to the phase's waiting state; leaseUntil doubles as "not before" for the next attempt.
+    const waiting = job.subjects === null ? "screening" : "queued";
     await jobs.update(job.jobId, (cur) =>
-      cur?.state === "processing" ? { ...cur, state: "queued", leaseUntil: new Date(now.getTime() + delay).toISOString(), error: message } : SKIP,
+      cur?.state === "processing" ? { ...cur, state: waiting, leaseUntil: new Date(now.getTime() + delay).toISOString(), error: message } : SKIP,
     );
     return;
   }

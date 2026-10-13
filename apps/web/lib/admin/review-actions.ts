@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { log } from "../log";
 import { Messenger } from "../messaging/outbound";
 import { deliveryDeps } from "../pipeline/context";
-import { approveFlagged, discardFlagged, removeFromPrintQueue, removeFromSlideshow, reprint, ReviewError } from "../review/actions";
+import { approveFlagged, discardFlagged, removeFromPrintQueue, removePortrait, reprint, ReviewError } from "../review/actions";
 import { getServices } from "../services";
 import { SlugSchema } from "../sync/names";
 import { createTwilioMessagingApi } from "../twilio/messaging-api";
@@ -21,7 +22,7 @@ export interface ReviewState {
 const Input = z.object({
   slug: SlugSchema,
   jobId: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
-  action: z.enum(["approve", "discard", "slideshow_remove", "print_remove", "reprint"]),
+  action: z.enum(["approve", "discard", "remove", "print_remove", "reprint"]),
   actor: z.string().trim().max(60).optional(),
 });
 
@@ -57,9 +58,13 @@ export async function reviewAction(_prev: ReviewState, form: FormData): Promise<
       case "discard":
         await discardFlagged(base, event, jobId, actor);
         break;
-      case "slideshow_remove":
-        await removeFromSlideshow(base, event, jobId, actor);
-        break;
+      case "remove": {
+        const { blob } = getServices();
+        const r = await removePortrait({ ...base, blob }, event, jobId, actor);
+        // The card leaves the list, so confirm at page level.
+        revalidatePath(`/admin/events/${slug}/review`);
+        redirect(`/admin/events/${slug}/review?tab=delivered&notice=${r.printing ? "removed-printing" : "removed"}`);
+      }
       case "print_remove":
         await removeFromPrintQueue(base, event, jobId, actor);
         break;
@@ -70,6 +75,8 @@ export async function reviewAction(_prev: ReviewState, form: FormData): Promise<
     revalidatePath(`/admin/events/${slug}/review`);
     return { ok: true, message: "Done" };
   } catch (err) {
+    // redirect() works by throwing; let it through.
+    if ((err as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw err;
     if (err instanceof ReviewError) return { message: err.message };
     log.error({ event: "review_action_failed", action, slug, jobId, err: (err as Error).message }, "review action failed");
     return { message: "Something went wrong" };

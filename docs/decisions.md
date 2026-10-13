@@ -107,11 +107,16 @@ reviewed). The effort is chosen per model in `lib/pipeline/context.ts`.
 references are present, and brands are out of scope (§2.2). The review therefore uses the other 5 criteria, as V1 did
 without brand references.
 
-### D-16 Admin removals do not end the job
-*2026-10-12.* SPEC §9.1 lists `delivered → removed_by_admin` for "slideshow/print removal only". Removing an image
-from the slideshow or the print queue changes only that list. The job stays `delivered`, so the attendee keeps their
-portrait and share link. `removed_by_admin` is not used. Discarding a flagged image ends it as `rejected` with
-`error: discarded_by_admin`.
+### D-16 Admin "Remove" is a full takedown
+*2026-10-13, user decision (replaces the 2026-10-12 version).* One **Remove** action, with a confirmation step, on the
+delivered tab. It:
+- moves the job to `removed_by_admin`
+- takes the image off the booth screen at once
+- cancels a print that has not started (an in-progress print cannot be recalled; the admin is told)
+- **deletes the selfie and both output files immediately**
+
+The share link then shows "This portrait was removed by the event organizer." Discarding a flagged image ends it as
+`rejected` with `error: discarded_by_admin`.
 
 ### D-17 Booth screen updates
 *2026-10-12.* `/booth/[slug]/stream` (SSE, behind basic auth) polls Sync every 2 s per connection and pushes the full
@@ -119,7 +124,32 @@ state only when the event state, its config or the slideshow list changes. It se
 `X-Accel-Buffering: no` so proxies don't buffer the stream. A screen costs about 0.5 Sync reads per second. The client
 keeps the last state on screen and reconnects with exponential back-off (up to 30 s).
 
+### D-18 Photo checks run before the menus
+*2026-10-13, user decision.* A photo now creates its job immediately in a new `screening` state. The worker runs
+moderation, face detection and scene analysis (§9.2 steps 1–3). A photo that fails is rejected straight away with
+its §5.6 message, so nobody picks a style for a photo that can't be used. A photo that passes stores its scene
+(`subjects`, `pet`) and moves to `awaiting_choice`. The worker then opens the style menu, or with one style and one
+background goes straight to generation. Generation reuses the stored scene, with no second vision call. A new photo
+during screening or the menus replaces the old job. Checks still run in the worker, never in the webhook (§3.2).
+
+### D-19 Twilio Privacy Notice; no hashtag; one product name
+*2026-10-13, user decisions.*
+- Every consent message and the verification email link the **Twilio Privacy Notice**
+  (`https://www.twilio.com/en-us/legal/privacy`). The email uses Twilio's own privacy wording, adapted to Portrait
+  Studio. The app-specific `/privacy/[slug]` page (SPEC §10.6) is removed.
+- The QR prefill names the event ("Hi! I want my Portrait Studio portrait at SIGNAL London 🎨"). Routing matches the
+  event's full name or its code as whole words, with no `#` needed. A name match beats a code match, and the longest
+  name wins.
+- The product is called **Portrait Studio** everywhere: messages, templates, README and docs. "AI photo booth" and
+  similar phrasings are gone (SPEC.md and PROMPTS.md are left unchanged as source documents).
+- The SendGrid verification template is kept in `apps/web/assets/email/verification-email.html`. Every text comes
+  from the en and pt_BR catalogs as substitutions. **Manual step:** load it into SendGrid as a dynamic template
+  (subject `{{subject}}`) and link it to the Verify email integration.
+
 ## Open TODOs after the last milestone
+
+- **Fewer settings per page in the admin** (user, 2026-10-13): the event form shows every §4.2 field at once. Split it
+  into smaller sections or pages.
 
 - **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them

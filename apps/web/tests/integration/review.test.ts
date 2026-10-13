@@ -4,7 +4,8 @@ import type { DeliveryDeps } from "@/lib/delivery/deliver";
 import { defaultConfig, type EventConfigInput, type PortraitEvent } from "@/lib/events/schema";
 import { JobSchema, type Job } from "@/lib/jobs/schema";
 import { Messenger, type TwilioMessagingApi } from "@/lib/messaging/outbound";
-import { approveFlagged, discardFlagged, removeFromPrintQueue, removeFromSlideshow, reprint, ReviewError } from "@/lib/review/actions";
+import { approveFlagged, discardFlagged, removeFromPrintQueue, removePortrait, reprint, ReviewError } from "@/lib/review/actions";
+import { FakeBlob } from "../support/fake-blob";
 import { eventObjects } from "@/lib/sync/names";
 import { SyncStore } from "@/lib/sync/store";
 import { FakeSync } from "../support/fake-sync";
@@ -74,12 +75,32 @@ describe("admin review (SPEC §10.3)", () => {
     expect(w.sent).toEqual([]);
   });
 
-  it("remove from slideshow keeps the job delivered", async () => {
-    const w = await setup({}, { state: "delivered" });
+  it("remove takes the portrait down: off the slideshow, files deleted now, job removed_by_admin (D-16)", async () => {
+    const w = await setup({ printingEnabled: true }, { state: "delivered" });
+    const blob = new FakeBlob();
+    for (const p of ["s", "events/ev/generated/job_00000001.print.png", "events/ev/generated/job_00000001.jpg"]) await blob.put(p, Buffer.from("x"), "image/jpeg");
     await w.fake.createItem(w.ev.slideshow, "job_00000001", { blobPath: "x.jpg", addedAt: new Date().toISOString() });
-    await removeFromSlideshow({ sync: w.sync, log: w.log }, w.event, "job_00000001", undefined);
+    await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {} });
+
+    expect(await removePortrait({ sync: w.sync, blob, log: w.log }, w.event, "job_00000001", "Ana")).toEqual({ printing: false });
+    expect((await w.getJob()).state).toBe("removed_by_admin");
+    expect(blob.blobs.size).toBe(0); // selfie, print PNG and delivery JPEG gone immediately
     expect(await w.fake.getItem(w.ev.slideshow, "job_00000001")).toBeNull();
-    expect((await w.getJob()).state).toBe("delivered");
+    expect(await w.fake.getItem(w.ev.print, "job_00000001")).toBeNull();
+    expect((await w.counters()).printsReserved).toBe(0);
+    expect(w.log.info).toHaveBeenCalledWith(expect.objectContaining({ action: "portrait_remove", actor: "Ana", filesDeleted: 3 }), expect.any(String));
+  });
+
+  it("remove reports a print already in progress, and still takes the portrait down", async () => {
+    const w = await setup({ printingEnabled: true }, { state: "delivered" });
+    await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", who: "x", state: "printing", attempts: 1, leaseUntil: null, error: null, reprint: false, timestamps: {} });
+    expect(await removePortrait({ sync: w.sync, blob: new FakeBlob(), log: w.log }, w.event, "job_00000001", undefined)).toEqual({ printing: true });
+    expect((await w.getJob()).state).toBe("removed_by_admin");
+  });
+
+  it("only delivered portraits can be removed", async () => {
+    const w = await setup(); // flagged
+    await expect(removePortrait({ sync: w.sync, blob: new FakeBlob(), log: w.log }, w.event, "job_00000001", undefined)).rejects.toBeInstanceOf(ReviewError);
   });
 
   it("removes a queued print and releases the quota reservation, but not a printing one", async () => {

@@ -15,8 +15,10 @@ import type { InboundMedia } from "../twilio/inbound";
 import type { MemoryClient } from "../twilio/memory";
 import type { EmailVerifier } from "../twilio/verify";
 import { readSlideshowAnswer, SlideshowItemSchema } from "../delivery/slideshow";
+import { PRIVACY_NOTICE_URL } from "../privacy";
 import { bump } from "../stats";
 import { advanceConsent, beginConsent, type ConsentEffect } from "./consent";
+import { verificationEmailSubstitutions } from "./email-substitutions";
 import { downloadSelfie, isImage, type MediaFetch } from "./media";
 import { resolvePick, route } from "./routing";
 import { afterOptIn, handleSelfieFlow, type SelfieEffect } from "./selfie";
@@ -183,7 +185,7 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
   const key = keyOf(msg.from);
   const c = catalogs[event.config.language];
   const locale = event.config.language;
-  const privacyUrl = new URL(`/privacy/${event.slug}`, deps.publicBaseUrl).toString();
+  const privacyUrl = PRIVACY_NOTICE_URL;
   const sessions = sync.map(ev.sessions, SessionSchema, { ttlSeconds: SEVEN_DAYS });
 
   // Store a selfie before touching state, so the session only references blobs that exist.
@@ -258,14 +260,14 @@ async function decide(
         const sent = await deps.verifier.send({
           email: pre.email,
           locale: event.config.language,
-          substitutions: { consent_text: c.consent.emailConsentText({ eventName: event.config.name, privacyUrl }), event_name: event.config.name },
+          substitutions: verificationEmailSubstitutions(c, event.config.name, privacyUrl),
         });
         r = advanceConsent(session, event, c, input, privacyUrl, undefined, sent);
       }
     }
 
     if (r.effects.some((e) => e.type === "proceed")) {
-      const next = afterOptIn(r.session, event, c);
+      const next = afterOptIn(r.session, event, c, newJobId());
       return { session: next.session, messages: [...r.messages, ...next.messages], effects: [...r.effects.filter((e) => e.type === "opt-in"), ...next.effects] };
     }
     return { session: r.session, messages: r.messages, effects: [] };
@@ -284,13 +286,15 @@ async function decide(
   }
 
   if (unusableMedia) return { session, messages: [{ kind: "text", body: c.selfie.notAnImage }], effects: [] };
-  const r = handleSelfieFlow(session, event, c, { text: input.text, selection: input.selection, images: imageCount, selfieBlob });
+  const r = handleSelfieFlow(session, event, c, { text: input.text, selection: input.selection, images: imageCount, selfieBlob, newJobId: newJobId() });
   // Free text with no active step: chat reply arrives in milestone j (SPEC §5.10).
   if (!r.handled) return { session, messages: [{ kind: "text", body: c.selfie.ask }], effects: [] };
   return { session: r.session, messages: r.messages, effects: r.effects };
 }
 
 // TODO(profile-deletion): a profile deleted by us or another app looks like a new person here, so consent starts again (D-12).
+const newJobId = () => randomBytes(12).toString("base64url");
+
 async function lookupProfile(deps: Deps, from: Address) {
   try {
     const p = await deps.memory.lookup(from.channel === "whatsapp" ? "whatsapp" : "phone", from.e164);
@@ -338,24 +342,48 @@ async function runEffect(
       return;
     }
     case "create-job": {
-      const jobId = randomBytes(12).toString("base64url");
+      // Created in `screening`: the worker checks the photo before any menu (D-18).
       const job: Job = JobSchema.parse({
-        jobId,
+        jobId: effect.jobId,
         address: ctx.key,
         channel: ctx.address.channel,
-        style: effect.style,
-        background: effect.background,
+        style: null,
+        background: null,
         selfieBlob: effect.selfieBlob,
         shareId: randomBytes(18).toString("base64url"),
-        state: "queued",
-        timestamps: { queued: ctx.now.toISOString() },
+        state: "screening",
+        timestamps: { screening: ctx.now.toISOString() },
       });
       // TODO(scalability): the jobs map is an expected hot spot (SPEC §3.4).
-      await sync.map(ev.jobs, JobSchema, { ttlSeconds: SEVEN_DAYS }).create(jobId, job);
+      await sync.map(ev.jobs, JobSchema, { ttlSeconds: SEVEN_DAYS }).create(effect.jobId, job);
       await bump(sync, ctx.event.slug, "imagesRequested");
-      await bump(sync, ctx.event.slug, `style:${effect.style}`);
-      await bump(sync, ctx.event.slug, `background:${effect.background}`);
-      deps.log.info({ event: "job_queued", slug: ctx.event.slug, jobId, style: effect.style, background: effect.background }, "job queued");
+      deps.log.info({ event: "job_screening", slug: ctx.event.slug, jobId: effect.jobId }, "photo queued for screening");
+      return;
+    }
+    case "choose": {
+      const now = ctx.now.toISOString();
+      const updated = await sync.map(ev.jobs, JobSchema).update(effect.jobId, (cur) => {
+        // Only the attendee's own job, after screening passed.
+        if (!cur || cur.address !== ctx.key || cur.state !== "awaiting_choice") return SKIP;
+        const next = { ...cur, style: effect.style ?? cur.style, background: effect.background ?? cur.background };
+        return effect.start ? { ...next, state: "queued", timestamps: { ...cur.timestamps, queued: now } } : next;
+      });
+      if (effect.start && updated?.state === "queued" && updated.style && updated.background) {
+        await bump(sync, ctx.event.slug, `style:${updated.style}`);
+        await bump(sync, ctx.event.slug, `background:${updated.background}`);
+        deps.log.info({ event: "job_queued", slug: ctx.event.slug, jobId: effect.jobId, style: updated.style, background: updated.background }, "job queued");
+      }
+      return;
+    }
+    case "supersede-job": {
+      // A newer photo replaced this one before generation: drop it and its selfie.
+      let selfie: string | null = null;
+      await sync.map(ev.jobs, JobSchema).update(effect.jobId, (cur) => {
+        if (!cur || cur.address !== ctx.key || !["screening", "awaiting_choice"].includes(cur.state)) return SKIP;
+        selfie = cur.selfieBlob;
+        return { ...cur, state: "rejected", error: "superseded", leaseUntil: null, timestamps: { ...cur.timestamps, rejected: ctx.now.toISOString() } };
+      });
+      if (selfie) await deps.blob.delete(selfie);
       return;
     }
     case "discard-blob":

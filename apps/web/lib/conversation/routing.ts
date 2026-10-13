@@ -14,15 +14,21 @@ export type Route =
   | { kind: "pick"; live: PortraitEvent[] }
   | { kind: "none" };
 
-/** Finds `#CODE` or a bare event code in the text. Codes are compared case-insensitively. */
+/**
+ * Finds the event a message names (SPEC §5.2): its code or its full name, as
+ * whole words, case- and accent-insensitive. No hashtag needed. A full-name
+ * match beats a code match, and the longest name wins (so "SIGNAL London"
+ * beats "London").
+ */
 export function findCode(text: string, events: readonly PortraitEvent[]): PortraitEvent | undefined {
-  const words = normalize(text).split(" ").map((w) => w.replace(/^#/, ""));
-  // Slugs may contain dashes, which normalize() turns into spaces; compare those too.
-  const joined = normalize(text).replace(/#/g, "");
-  return events.find((e) => {
-    const code = normalize(e.slug);
-    return words.includes(code) || (code.includes(" ") && ` ${joined} `.includes(` ${code} `));
-  });
+  const hay = ` ${normalize(text).replace(/#/g, " ").replace(/\s+/g, " ")} `;
+  const has = (needle: string) => {
+    const n = normalize(needle).replace(/#/g, " ").replace(/\s+/g, " ").trim();
+    return n.length >= 2 && hay.includes(` ${n} `);
+  };
+  const byName = events.filter((e) => has(e.config.name)).sort((a, b) => b.config.name.length - a.config.name.length);
+  if (byName[0]) return byName[0];
+  return events.find((e) => has(e.slug));
 }
 
 /**

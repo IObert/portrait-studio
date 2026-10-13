@@ -22,7 +22,7 @@ async function seedBooth(): Promise<void> {
   const events = await getEventRepo();
   const slug = "e2e-booth";
   if (await events.get(slug)) return;
-  await events.create(slug, { ...defaultConfig("E2E Booth", "+13203780782"), ctaText: { headline: "Get your AI portrait", steps: ["Scan the code", "Send a selfie", "Pick a style"] } });
+  await events.create(slug, { ...defaultConfig("E2E Booth", "+13203780782"), ctaText: { headline: "Get your portrait", steps: ["Scan the code", "Send a selfie", "Pick a style"] } });
   await events.setState(slug, "live");
   const ev = eventObjects(slug);
   for (const m of [ev.jobs, ev.slideshow, ev.print]) await sync.ensureMap(m);
@@ -41,6 +41,9 @@ async function seedBooth(): Promise<void> {
     await sync.map(ev.jobs, JobSchema).put(id, job(id, state));
   }
   await sync.raw.createItem(ev.slideshow, "e2e_slide_01", { blobPath: `events/${slug}/generated/e2e_slide_01.jpg`, addedAt: new Date().toISOString() });
+  // A delivered job always has a share record (written at delivery).
+  await sync.ensureMap(Global.shares);
+  await sync.raw.createItem(Global.shares, "e2e_slide_01_share_000000000000", { eventSlug: slug, jobId: "e2e_slide_01", createdAt: new Date().toISOString() });
 }
 
 async function seedShare(): Promise<void> {
@@ -48,7 +51,7 @@ async function seedShare(): Promise<void> {
   const events = await getEventRepo();
   const slug = "e2e-share";
   if (await events.get(slug)) return;
-  await events.create(slug, { ...defaultConfig("E2E Summit", "+13203780782"), shareText: "My AI portrait from #E2ESummit" });
+  await events.create(slug, { ...defaultConfig("E2E Summit", "+13203780782"), shareText: "My portrait from E2E Summit" });
   await events.setState(slug, "live");
   const jpeg = await sharp({ create: { width: 1200, height: 1800, channels: 3, background: "#7c3aed" } }).jpeg().toBuffer();
   const deliveryJpeg = `events/${slug}/generated/e2e_job_01.jpg`;

@@ -1,4 +1,5 @@
 import { SessionSchema } from "../conversation/session";
+import type { BlobStore } from "../blob/store";
 import { deliver, type DeliveryDeps } from "../delivery/deliver";
 import { PrintJobSchema } from "../delivery/print-schema";
 import { SlideshowItemSchema } from "../delivery/slideshow";
@@ -61,12 +62,43 @@ export async function discardFlagged(deps: { sync: SyncStore; log: AuditLog }, e
 }
 
 /**
- * Remove from the slideshow (SPEC §5.8, §10.3). The attendee keeps the
- * portrait and share link; only the booth screen stops showing it.
+ * Remove a delivered portrait (SPEC §10.3, D-16, user decision): takes it off
+ * the booth screen, turns the share link off and deletes its files right away.
+ * The job ends as removed_by_admin. A print already printing cannot be recalled.
  */
-export async function removeFromSlideshow(deps: { sync: SyncStore; log: AuditLog }, event: PortraitEvent, jobId: string, actor: Actor) {
-  await deps.sync.map(eventObjects(event.slug).slideshow, SlideshowItemSchema).delete(jobId);
-  audit(deps.log, "slideshow_remove", event.slug, jobId, actor);
+export async function removePortrait(deps: { sync: SyncStore; blob: BlobStore; log: AuditLog }, event: PortraitEvent, jobId: string, actor: Actor) {
+  const ev = eventObjects(event.slug);
+  let removed: Job | null = null;
+  // 1. State first: the share page and slideshow stop showing it at once, even if a file delete fails.
+  await deps.sync.map(ev.jobs, JobSchema).update(jobId, (cur) => {
+    if (cur?.state !== "delivered") return SKIP;
+    removed = { ...cur, state: "removed_by_admin", timestamps: { ...cur.timestamps, removed_by_admin: new Date().toISOString() } };
+    return removed;
+  });
+  if (!removed) throw new ReviewError("Only delivered portraits can be removed");
+  const job = removed as Job;
+
+  // 2. Off the booth screen.
+  await deps.sync.map(ev.slideshow, SlideshowItemSchema).delete(jobId);
+
+  // 3. Cancel a print that has not started; one already printing cannot be recalled.
+  const print = deps.sync.map(ev.print, PrintJobSchema);
+  const p = await print.getVersioned(jobId);
+  let printing = false;
+  if (p && (p.data.state === "queued" || p.data.state === "failed")) {
+    await print.delete(jobId, p.revision);
+    if (p.data.state === "queued" && !p.data.reprint) await releasePrintReservation(deps.sync, event, jobId);
+  } else if (p && (p.data.state === "claimed" || p.data.state === "printing")) {
+    printing = true;
+  }
+
+  // 4. Delete the files now, not at the 7-day expiry.
+  const paths = [job.selfieBlob, job.outputBlobs?.printPng, job.outputBlobs?.deliveryJpeg].filter((x): x is string => !!x);
+  const results = await Promise.allSettled(paths.map((path) => deps.blob.delete(path)));
+  const failed = results.filter((r) => r.status === "rejected").length;
+  audit(deps.log, "portrait_remove", event.slug, jobId, actor, { filesDeleted: paths.length - failed, filesFailed: failed, printing });
+  if (failed) throw new ReviewError(`Removed, but ${failed} file(s) could not be deleted yet; they expire within 7 days`);
+  return { printing };
 }
 
 /** Remove from the print queue, only if it is not printed or printing yet (SPEC §10.3). */

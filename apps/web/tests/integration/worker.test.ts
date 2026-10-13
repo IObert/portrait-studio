@@ -82,6 +82,7 @@ async function queue(fake: FakeSync, over: Partial<Job> = {}) {
     selfieBlob: "events/ev/selfies/s.jpg",
     shareId: "s".repeat(24),
     state: "queued",
+    subjects: 1,
     timestamps: { queued: new Date().toISOString() },
     ...over,
   });
@@ -107,10 +108,6 @@ describe("worker pipeline (SPEC §9)", () => {
   });
 
   it.each([
-    ["moderation", { flagged: true }, "rejected", catalogs.en.job.moderationRejected],
-    ["no face", { face: "NO" }, "rejected", catalogs.en.job.noFace],
-    ["0 subjects", { scene: "Subjects: 0\nPets: none\nPositions: centered" }, "rejected", catalogs.en.job.noFace],
-    ["5 people", { scene: "Subjects: 5\nPets: none\nPositions: group" }, "rejected", catalogs.en.job.tooManyPeople],
     ["AI review FAIL", { review: "FAIL: 1. likeness" }, "flagged", catalogs.en.job.reviewFlagged],
     ["generation refused", { editError: Object.assign(new Error("blocked"), { code: "moderation_blocked" }) }, "rejected", catalogs.en.job.moderationRejected],
   ])("%s → %s with the §5.6 message, quota slot released", async (_n, o, state, message) => {
@@ -123,12 +120,13 @@ describe("worker pipeline (SPEC §9)", () => {
     expect(await inFlight(fake)).toBe(0);
   });
 
-  it("does not generate when a safety check rejects", async () => {
-    const o = fakeOpenAI({ flagged: true });
+  it("generation reuses the stored scene: no second vision call", async () => {
+    const o = fakeOpenAI();
     const { fake, deps } = await setup(o);
-    await queue(fake);
+    await queue(fake, { subjects: 3 });
     await workOnce(deps);
-    expect(o.calls.edit).toBe(0);
+    expect(o.client.moderations.create).not.toHaveBeenCalled();
+    expect(o.client.images.edit).toHaveBeenCalledWith(expect.objectContaining({ prompt: expect.stringContaining("exactly 3 HUMAN subjects") }), expect.anything());
   });
 
   it("fails closed: an unparseable review is retried, never passed", async () => {
@@ -208,5 +206,54 @@ describe("worker pipeline (SPEC §9)", () => {
     await workOnce(deps);
     expect(o.client.images.edit).toHaveBeenCalledWith(expect.objectContaining({ background: "transparent" }), expect.anything());
     expect((await getJob(fake)).aiReview?.result).toBe("pass");
+  });
+});
+
+describe("screening before the menus (D-18)", () => {
+  const screening = (fake: FakeSync) => queue(fake, { state: "screening", subjects: null, style: null, background: null, timestamps: { screening: new Date().toISOString() } });
+
+  it.each([
+    ["moderation", { flagged: true }, catalogs.en.job.moderationRejected],
+    ["no face", { face: "NO" }, catalogs.en.job.noFace],
+    ["0 subjects", { scene: "Subjects: 0\nPets: none\nPositions: centered" }, catalogs.en.job.noFace],
+    ["5 people", { scene: "Subjects: 5\nPets: none\nPositions: group" }, catalogs.en.job.tooManyPeople],
+  ])("%s → rejected right after the photo, before any menu", async (_n, o, message) => {
+    const ai = fakeOpenAI(o);
+    const { fake, deps, sent } = await setup(ai);
+    await screening(fake);
+    await workOnce(deps);
+    expect((await getJob(fake)).state).toBe("rejected");
+    expect(sent).toEqual([message]); // the rejection only; no style menu
+    expect(ai.calls.edit).toBe(0);
+    expect(await inFlight(fake)).toBe(0);
+  });
+
+  it("passes: stores the scene, opens the style menu, does not generate yet", async () => {
+    const ai = fakeOpenAI({ scene: "Subjects: 2\nPets: dog\nPositions: left-right pair" });
+    const { fake, deps, sent, ev } = await setup(ai);
+    await screening(fake);
+    await workOnce(deps);
+    const job = await getJob(fake);
+    expect(job).toMatchObject({ state: "awaiting_choice", subjects: 2, pet: "dog", style: null });
+    expect(ai.calls.edit).toBe(0);
+    expect(sent).toHaveLength(1); // the style menu (interactive, so no body)
+    expect(((await fake.getItem(ev.sessions, KEY))!.data as { step: string; pendingJobId: string }).step).toBe("awaiting_style");
+  });
+
+  it("one style and one background: goes straight to generation after screening", async () => {
+    const ai = fakeOpenAI();
+    const { fake, deps } = await setup(ai, { styles: ["anime"], backgrounds: ["gradient"] });
+    await screening(fake);
+    await workOnce(deps); // screen
+    expect((await getJob(fake))).toMatchObject({ state: "queued", style: "anime", background: "gradient" });
+    await workOnce(deps); // generate
+    expect(ai.calls.edit).toBe(1);
+  });
+
+  it("retries a failed screening back to screening, not to generation", async () => {
+    const { fake, deps } = await setup(fakeOpenAI({ visionError: Object.assign(new Error("503"), { status: 503 }) }));
+    await screening(fake);
+    await workOnce(deps);
+    expect((await getJob(fake))).toMatchObject({ state: "screening", attempts: 1, subjects: null });
   });
 });

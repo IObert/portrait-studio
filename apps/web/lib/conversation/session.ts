@@ -17,6 +17,8 @@ export const STEPS = [
   "awaiting_code",
   /** Opted in; waiting for a selfie. */
   "ready",
+  /** A photo is being checked by the worker (D-18). */
+  "screening",
   "awaiting_style",
   "awaiting_background",
 ] as const;
@@ -28,6 +30,8 @@ export const SessionSchema = z.object({
   optedIn: z.boolean().default(false),
   /** Blob path of the selfie waiting for consent or menu choices (SPEC §5.4, §5.5). */
   pendingSelfie: z.string().nullable().default(null),
+  /** The job created for the current photo, while it is screened or awaits menu choices (D-18). */
+  pendingJobId: z.string().nullable().default(null),
   style: z.enum(STYLE_IDS).nullable().default(null),
   background: z.enum(BACKGROUND_IDS).nullable().default(null),
   /** Case B data, kept only until the code is verified, then moved to Memory. */

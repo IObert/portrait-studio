@@ -28,24 +28,41 @@ export interface PipelineDeps {
 
 const MAX_SUBJECTS = 4;
 
-/**
- * One attempt at a job (SPEC §9.2). Throws on transient or unparseable
- * failures (the caller retries, then fails the job). Never passes a check by
- * default: every safety step must succeed.
- */
-export async function runPipeline(deps: PipelineDeps, event: PortraitEvent, job: Job): Promise<PipelineOutcome> {
+/** Result of screening a photo before the menus (SPEC §9.2 steps 1–3, D-18). */
+export type ScreeningOutcome =
+  | { kind: "passed"; subjects: number; pet: string | null }
+  | { kind: "rejected"; reason: "moderation" | "no_face" | "too_many_people" };
+
+async function loadSelfie(deps: Pick<PipelineDeps, "blob">, job: Job): Promise<Buffer> {
   const selfie = await deps.blob.get(job.selfieBlob);
   if (!selfie) throw new Error("Selfie blob missing");
   // Selfies were normalized on arrival (auto-rotated JPEG); re-encode defensively.
-  const jpeg = await sharp(selfie).rotate().jpeg({ quality: 90 }).toBuffer();
+  return sharp(selfie).rotate().jpeg({ quality: 90 }).toBuffer();
+}
 
-  // 2. Moderation (fail closed: errors throw).
+/**
+ * Safety checks right after the photo arrives, before any menu (D-18).
+ * Fails closed: errors throw (the caller retries, then fails the job).
+ */
+export async function screenPhoto(deps: PipelineDeps, job: Job): Promise<ScreeningOutcome> {
+  const jpeg = await loadSelfie(deps, job);
+  // 2. Moderation.
   if (await moderate(deps.openai, jpeg)) return { kind: "rejected", reason: "moderation" };
-
   // 3. Face detection and scene analysis, in parallel.
   const [hasFace, scene] = await Promise.all([detectFace(deps.openai, deps.vision, jpeg), analyzeScene(deps.openai, deps.vision, jpeg)]);
   if (!hasFace || scene.subjects === 0) return { kind: "rejected", reason: "no_face" };
   if (scene.subjects > MAX_SUBJECTS) return { kind: "rejected", reason: "too_many_people" };
+  return { kind: "passed", subjects: scene.subjects, pet: scene.pet };
+}
+
+/**
+ * Generation for a screened job with chosen options (SPEC §9.2 steps 4–7).
+ * Throws on transient or unparseable failures. Never passes a check by default.
+ */
+export async function runPipeline(deps: PipelineDeps, event: PortraitEvent, job: Job): Promise<PipelineOutcome> {
+  if (!job.style || !job.background || job.subjects === null) throw new Error("Job is not screened or has no choices");
+  const jpeg = await loadSelfie(deps, job);
+  const scene = { subjects: job.subjects, pet: job.pet };
 
   // 4. Prompt.
   const prompt = buildPrompt(job.style, job.background, scene);

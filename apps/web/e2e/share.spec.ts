@@ -8,7 +8,7 @@ test.describe("share page (SPEC §6.2)", () => {
     const anon = await browser.newContext({ httpCredentials: undefined });
     const page = await anon.newPage();
     await page.goto(`${baseURL}${SHARE}`);
-    await expect(page.getByRole("heading", { name: "My AI portrait from E2E Summit" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "My Portrait Studio portrait from E2E Summit" })).toBeVisible();
     const img = page.getByRole("img", { name: /E2E Summit/ });
     await expect(img).toBeVisible();
     expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(1200);
@@ -26,7 +26,7 @@ test.describe("share page (SPEC §6.2)", () => {
     await page.goto(`${baseURL}${SHARE}`);
     await page.getByRole("button", { name: "Copy text" }).click();
     await expect(page.getByRole("button", { name: "Copied!" })).toBeVisible();
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("My AI portrait from #E2ESummit");
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("My portrait from E2E Summit");
     await ctx.close();
   });
 

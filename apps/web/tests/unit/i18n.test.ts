@@ -30,8 +30,10 @@ describe.each(LOCALES)("catalog %s", (locale) => {
     for (const k of ["styleButton", "backgroundButton"] as const) expect(c.menus[k].length).toBeLessThanOrEqual(20);
   });
 
-  it("puts the event code in the QR prefill", () => {
-    expect(c.qrPrefill({ code: "SPLONDON" })).toContain("#SPLONDON");
+  it("names the event in the QR prefill, with no hashtag", () => {
+    const t = c.qrPrefill({ eventName: "SIGNAL London" });
+    expect(t).toContain("SIGNAL London");
+    expect(t).not.toContain("#");
   });
 
   it("states privacy, the link and marketing consent in the code request (SPEC §5.4)", () => {
@@ -45,7 +47,8 @@ describe.each(LOCALES)("catalog %s", (locale) => {
     const url = "https://x.test/privacy/ev";
     expect(c.consent.welcomeBack({ firstName: "Ana", privacyUrl: url })).toContain(url);
     expect(c.consent.agreeOnly({ eventName: "Ev", privacyUrl: url })).toContain(url);
-    expect(c.consent.emailConsentText({ eventName: "Ev", privacyUrl: url })).toContain(url);
+    expect(c.consent.askCode({ email: "a@b.co", privacyUrl: url, resendKeyword: "X" })).toContain(url);
+    expect(c.consent.emailConsentText).toMatch(/Portrait Studio/);
   });
 
   it("offers at least one agree and one resend keyword", () => {

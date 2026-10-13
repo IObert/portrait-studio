@@ -22,21 +22,28 @@ function Thumb({ url, label }: { url: string | null; label: string }) {
 }
 
 function Meta({ item }: { item: ReviewItem }) {
-  const bg = item.job.background === "uploaded" ? "Uploaded" : en.backgrounds[item.job.background].name;
+  const bg = !item.job.background ? "?" : item.job.background === "uploaded" ? "Uploaded" : en.backgrounds[item.job.background].name;
   return (
     <p className="text-xs text-zinc-500">
-      {en.styles[item.job.style].name} · {bg} · {item.job.subjects ?? "?"} {item.job.subjects === 1 ? "person" : "people"} · {item.who}
+      {item.job.style ? en.styles[item.job.style].name : "?"} · {bg} · {item.job.subjects ?? "?"} {item.job.subjects === 1 ? "person" : "people"} · {item.who}
     </p>
   );
 }
 
-async function Review({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string }> }) {
+const NOTICES: Record<string, string> = {
+  removed: "Removed. The share link no longer works and the files are deleted.",
+  "removed-printing": "Removed. A print was already in progress and could not be stopped.",
+};
+
+async function Review({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string; notice?: string }> }) {
   await requireAdmin();
   const slug = SlugSchema.safeParse((await params).slug);
   if (!slug.success) notFound();
   const event = await (await getEventRepo()).get(slug.data);
   if (!event) notFound();
-  const tab = (await searchParams).tab === "delivered" ? "delivered" : "flagged";
+  const sp = await searchParams;
+  const tab = sp.tab === "delivered" ? "delivered" : "flagged";
+  const notice = sp.notice ? NOTICES[sp.notice] : undefined;
   const { flagged, delivered } = await listForReview(slug.data);
   const tabLink = (t: string, label: string, n: number) => (
     <Link href={`/admin/events/${slug.data}/review?tab=${t}`} className={`rounded-md px-3 py-1.5 text-sm font-medium ${tab === t ? "bg-zinc-900 text-white" : "bg-zinc-200 text-zinc-800"}`}>
@@ -50,6 +57,11 @@ async function Review({ params, searchParams }: { params: Promise<{ slug: string
         ← {event.config.name}
       </Link>
       <h1 className="text-2xl font-semibold">Review</h1>
+      {notice && (
+        <p role="status" className="rounded-md bg-green-50 px-4 py-2 text-sm text-green-800">
+          {notice}
+        </p>
+      )}
       <nav className="flex gap-2">
         {tabLink("flagged", "Flagged", flagged.length)}
         {tabLink("delivered", "Delivered", delivered.length)}
@@ -82,7 +94,7 @@ async function Review({ params, searchParams }: { params: Promise<{ slug: string
           {delivered.map((item) => {
             const printPending = item.print && (item.print.state === "queued" || item.print.state === "failed");
             const actions = [
-              ...(item.inSlideshow ? [{ action: "slideshow_remove" as const, label: "Remove from slideshow" }] : []),
+              { action: "remove" as const, label: "Remove" },
               ...(printPending ? [{ action: "print_remove" as const, label: "Remove from print queue" }] : []),
               ...(event.config.printingEnabled ? [{ action: "reprint" as const, label: "Reprint" }] : []),
             ];
@@ -109,7 +121,7 @@ async function Review({ params, searchParams }: { params: Promise<{ slug: string
 export default function ReviewPage(props: PageProps<"/admin/events/[slug]/review">) {
   return (
     <Suspense fallback={<p className="text-zinc-500">Loading review…</p>}>
-      <Review params={props.params} searchParams={props.searchParams as Promise<{ tab?: string }>} />
+      <Review params={props.params} searchParams={props.searchParams as Promise<{ tab?: string; notice?: string }>} />
     </Suspense>
   );
 }

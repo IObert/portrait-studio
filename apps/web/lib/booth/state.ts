@@ -25,7 +25,7 @@ export interface BoothState {
 
 /** Link the QR code opens (SPEC §5.2): WhatsApp or SMS, prefilled with the event code. */
 export function qrTarget(event: PortraitEvent): string {
-  const text = catalogs[event.config.language].qrPrefill({ code: event.slug.toUpperCase() });
+  const text = catalogs[event.config.language].qrPrefill({ eventName: event.config.name });
   const number = event.config.qrSender.replace(/^\+/, "");
   if (event.config.leadChannel === "whatsapp") return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
   // `sms:<n>?&body=` works on both iOS and Android (SPEC §5.2).
