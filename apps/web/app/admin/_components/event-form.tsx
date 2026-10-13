@@ -149,10 +149,24 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2">
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" name="leadCollection" defaultChecked={config.leadCollection} />
-          Collect leads (name, verified email)
-        </label>
+        <fieldset className="space-y-2 sm:col-span-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="leadCollection" defaultChecked={config.leadCollection} />
+            Collect leads (name, verified email)
+          </label>
+          <div className="ml-6 grid gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-2">
+            <p className="text-xs text-zinc-500 sm:col-span-2">Verification email extras (only with lead collection on):</p>
+            <div>
+              <label className="block text-sm text-zinc-700" htmlFor="emailPromoCode">Promo code in the email</label>
+              <input id="emailPromoCode" name="emailPromoCode" defaultValue={config.emailPromoCode} maxLength={40} placeholder="e.g. wearedevs-25 (empty = no promo)" className={`${input} font-mono`} />
+              <FieldError state={state} name="emailPromoCode" />
+            </div>
+            <label className="flex items-center gap-2 self-end text-sm">
+              <input type="checkbox" name="emailShowSnippet" defaultChecked={config.emailShowSnippet} />
+              Show the &ldquo;sent with one line of code&rdquo; snippet
+            </label>
+          </div>
+        </fieldset>
         <div>
           <label className={label} htmlFor="maxImagesPerPerson">Portraits per person</label>
           <input id="maxImagesPerPerson" name="maxImagesPerPerson" type="number" min={1} max={20} defaultValue={config.maxImagesPerPerson} className={input} />

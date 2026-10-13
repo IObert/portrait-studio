@@ -40,6 +40,10 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
           <StateBadge state={event.state} />
         </div>
         <StateControls slug={slug} state={event.state} />
+        <nav className="flex gap-4 text-sm">
+          <Link href={`/admin/events/${slug}/review`} className="text-blue-700 hover:underline">Review</Link>
+          <Link href={`/booth/${slug}`} className="text-blue-700 hover:underline" target="_blank">Booth screen ↗</Link>
+        </nav>
       </div>
 
       <section className="space-y-3">

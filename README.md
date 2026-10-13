@@ -1,7 +1,7 @@
 # Portrait Studio
 
-An AI photo booth for events. Attendees scan a QR code, send a selfie over WhatsApp or SMS,
-and get back a stylized AI portrait, printed at the booth if the event has a printer.
+Portrait Studio for events. Attendees scan a QR code, send a selfie over WhatsApp or SMS,
+and get back a stylized portrait, printed at the booth if the event has a printer.
 
 > This README grows with each milestone. The sections marked *(coming)* are filled in as those parts are built.
 
@@ -71,6 +71,18 @@ Portraits are delivered over WhatsApp (image, caption and share link), MMS for U
 share page `/s/<shareId>` has Share (with the image file), Copy text and Download, plus OpenGraph tags; it expires
 after 7 days. Outside the WhatsApp 24-hour window, delivery uses the approved `delivery` template (created by
 `setup:twilio`). Until that template exists, those deliveries are skipped and logged.
+
+## Review and booth screen
+
+- `/admin/events/<code>/review`:
+  - **Flagged** tab: selfie, output and the AI's reason, with **Approve & send** (not counted toward quota) and **Discard**.
+  - **Delivered** tab: remove from the slideshow, remove from the print queue, reprint (not counted toward quota).
+  - Each action can log an optional admin name.
+- `/booth/<code>` (basic auth): a full-screen kiosk page.
+  - **live**: the CTA, the QR code for the event's lead channel (prefilled with the event code) and the consented slideshow.
+  - **break** and **ended** get their own screens.
+  - Updates are pushed by the Twilio Sync client SDK, using a read-only token scoped to that event. On a network drop
+    the screen keeps showing the last state.
 
 ## Deployment
 

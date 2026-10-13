@@ -19,6 +19,13 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
+// `--check`: load every module and exit. Used by CI to prove the image's worker starts.
+if (process.argv.includes("--check")) {
+  await import("../lib/pipeline/run");
+  log.info("worker check ok");
+  process.exit(0);
+}
+
 const workerId = randomUUID().slice(0, 8);
 const deps = await buildWorkerDeps(workerId);
 const concurrency = getEnv().WORKER_CONCURRENCY;

@@ -74,6 +74,7 @@ async function world(): Promise<World> {
     verifier: verifier as unknown as EmailVerifier,
     fetchMedia: async () => new Response(image, { headers: { "content-type": "image/jpeg" } }),
     publicBaseUrl: "https://booth.test",
+    slideUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
     log,
   };
   const w: World = {
@@ -99,6 +100,17 @@ async function liveEvent(w: World, slug: string, over: Partial<EventConfigInput>
   await w.events.setState(slug, "live");
 }
 
+/** Plays the worker's role: the photo passed screening, menus open (D-18). */
+async function passScreening(w: World, slug: string, key: string, subjects = 1) {
+  const ev = eventObjects(slug);
+  const [job] = (await jobs(w, slug)).filter((j) => j.state === "screening");
+  expect(job, "a screening job exists").toBeDefined();
+  await w.fake.updateItem(ev.jobs, job!.jobId, { ...job!, state: "awaiting_choice", subjects, pet: null });
+  const cur = (await w.fake.getItem(ev.sessions, key))!;
+  await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), step: "awaiting_style", pendingJobId: job!.jobId });
+  return job!;
+}
+
 async function jobs(w: World, slug: string) {
   const out = [];
   for await (const it of w.fake.listItems(eventObjects(slug).jobs)) out.push(JobSchema.parse(it.data));
@@ -115,11 +127,10 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await w.say(WA, "hello")).toEqual([catalogs.en.routing.noActiveEvent]);
   });
 
-  it("Case C end to end: agree, selfie, menus, job queued", async () => {
+  it("Case C end to end: agree, selfie screened first, then menus, job queued", async () => {
     await liveEvent(w, "ev", { leadCollection: false, backgrounds: ["gradient", "solid-white"] });
-    const first = await w.say(WA, "Hi! I want my AI portrait #ev");
-    expect(first[0]).toContain("Welcome to the AI photo booth at Event ev");
-    expect(first[0]).toContain("https://booth.test/privacy/ev");
+    const first = await w.say(WA, "Hi! I want my portrait ev");
+    expect(first[0]).toContain("Event ev");
 
     // A selfie before consent is kept as pending, but nothing proceeds.
     const early = await w.say(WA, "", selfieMsg);
@@ -127,8 +138,11 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await jobs(w, "ev")).toEqual([]);
 
     const agreed = await w.say(WA, "", { selection: ACTION.agree });
-    expect(agreed[0]).toBe(catalogs.en.selfie.usingPending);
-    expect(agreed[1]).toBe(catalogs.en.menus.styleBody);
+    // The photo is checked before any menu (D-18).
+    expect(agreed).toEqual([catalogs.en.selfie.usingPending, catalogs.en.selfie.checking]);
+    expect((await jobs(w, "ev"))[0]).toMatchObject({ state: "screening", style: null });
+    expect(await w.say(WA, "hello?")).toEqual([catalogs.en.selfie.stillChecking]);
+    await passScreening(w, "ev", "whatsapp:+447700900123");
 
     expect(await w.say(WA, "2")).toEqual([catalogs.en.menus.backgroundBody]); // Pop Art
     expect(await w.say(WA, "white")).toEqual([catalogs.en.job.started]);
@@ -149,7 +163,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect((await w.say(SMS, "Ana Souza"))[0]).toContain("Thanks, Ana!");
     const askCode = await w.say(SMS, "ana@example.com");
     expect(askCode[0]).toContain("6-digit code to ana@example.com");
-    expect(w.verifier.send).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@example.com", locale: "en", substitutions: expect.objectContaining({ consent_text: expect.stringContaining("https://booth.test/privacy/ev") }) }));
+    expect(w.verifier.send).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@example.com", locale: "en", substitutions: { event_name: "Event ev" } }));
 
     expect((await w.say(SMS, "111111"))[0]).toContain("didn't work");
     w.verifier.check.mockResolvedValueOnce("approved");
@@ -157,8 +171,8 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(w.memory.upsert).toHaveBeenCalledWith({ firstName: "Ana", lastName: "Souza", email: "ana@example.com", phone: "+447700900456" });
     expect((await w.fake.getItem(Global.profileLinks, "mem_profile_new"))!.data).toEqual({ events: ["ev"] });
 
-    // One style and one background: menus are skipped.
-    expect(await w.say(SMS, "", selfieMsg)).toEqual([catalogs.en.job.started]);
+    // The photo is screened first; with one style and one background the worker then generates.
+    expect(await w.say(SMS, "", selfieMsg)).toEqual([catalogs.en.selfie.checking]);
     expect(await jobs(w, "ev")).toHaveLength(1);
   });
 
@@ -218,16 +232,24 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
 
   it("replies in the event language (pt_BR)", async () => {
     await liveEvent(w, "rio", { language: "pt_BR", leadCollection: false });
-    expect((await w.say(WA, "#rio"))[0]).toContain("Bem-vindo à cabine de fotos com IA");
+    expect((await w.say(WA, "#rio"))[0]).toContain("Bem-vindo ao Portrait Studio");
   });
 
   it("enforces the per-person quota across selfies", async () => {
     await liveEvent(w, "ev", { leadCollection: false, styles: ["anime"], backgrounds: ["original"], maxImagesPerPerson: 1 });
     await w.say(WA, "#ev");
     await w.say(WA, "", { selection: ACTION.agree });
-    expect(await w.say(WA, "", selfieMsg)).toEqual([catalogs.en.job.started]);
+    expect(await w.say(WA, "", selfieMsg)).toEqual([catalogs.en.selfie.checking]);
+    // A second photo during screening replaces the first: still one job slot.
+    expect(await w.say(WA, "", selfieMsg)).toEqual([catalogs.en.selfie.checking]);
+    expect((await jobs(w, "ev")).filter((j) => j.state !== "rejected")).toHaveLength(1);
+    // Once that job is delivered the quota is used up.
+    const ev = eventObjects("ev");
+    const cur = (await w.fake.getItem(ev.sessions, "whatsapp:+447700900123"))!;
+    await w.fake.updateItem(ev.sessions, "whatsapp:+447700900123", { ...(cur.data as object), step: "ready", pendingJobId: null, counters: { delivered: 1, printed: 0, printsReserved: 0, inFlight: 0 } });
     expect((await w.say(WA, "", selfieMsg))[0]).toContain("already used your 1 free portrait");
-    expect(await jobs(w, "ev")).toHaveLength(1);
+    // No new job for the refused photo (the superseded one stays as a rejected record).
+    expect((await jobs(w, "ev")).filter((j) => j.state !== "rejected")).toHaveLength(1);
   });
 
   it("rejects non-image media and multiple photos", async () => {

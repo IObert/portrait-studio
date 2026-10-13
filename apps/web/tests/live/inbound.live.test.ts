@@ -61,7 +61,7 @@ describe.skipIf(!live)("inbound webhook (live, local only)", () => {
     await events.create(slug, { ...defaultConfig("Portrait Studio live test", BOOTH), leadCollection: false });
     await events.setState(slug, "live");
     try {
-      await send(`Hi! I want my AI portrait #${slug}`); // reply: consent prompt with an "I agree" button
+      await send(`Hi! I want my portrait ${slug}`); // reply: consent prompt with an "I agree" button
       expect(await session()).toMatchObject({ step: "awaiting_agree", optedIn: false });
       await send("", { ButtonPayload: "ps:agree" }); // reply: "Send us a selfie…"
       expect(await session()).toMatchObject({ step: "ready", optedIn: true });

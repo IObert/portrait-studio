@@ -1,7 +1,7 @@
 {
   "name": "portrait-studio",
   "private": true,
-  "description": "Portrait Studio: an AI photo booth for events",
+  "description": "Portrait Studio",
   "packageManager": "pnpm@10.27.0",
   "engines": {
     "node": ">=22.12"

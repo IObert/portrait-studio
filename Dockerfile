@@ -34,7 +34,10 @@ COPY --from=build --chown=node:node /repo/apps/web/public ./apps/web/public
 COPY --from=build --chown=node:node /repo/package.json /repo/pnpm-workspace.yaml ./
 COPY --from=build --chown=node:node /repo/node_modules ./node_modules
 COPY --from=build --chown=node:node /repo/apps/web/node_modules ./apps/web/node_modules
+# Everything the worker imports at runtime: code, catalogs and fixed frames.
 COPY --from=build --chown=node:node /repo/apps/web/lib ./apps/web/lib
+COPY --from=build --chown=node:node /repo/apps/web/i18n ./apps/web/i18n
+COPY --from=build --chown=node:node /repo/apps/web/assets ./apps/web/assets
 COPY --from=build --chown=node:node /repo/apps/web/worker ./apps/web/worker
 COPY --from=build --chown=node:node /repo/apps/web/package.json /repo/apps/web/tsconfig.json ./apps/web/
 USER node

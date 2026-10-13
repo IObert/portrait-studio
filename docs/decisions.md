@@ -36,9 +36,8 @@ its job.
 *2026-10-09.* Sessions, jobs, print items and slideshow entries have a 7-day TTL, matching the blobs.
 Leads and stats are kept until the event is deleted.
 
-### D-06 Booth screen updates over server-sent events (picks an option in §10.4)
-*2026-10-09.* The booth uses server-sent events from the web app instead of a browser Sync token. This
-avoids Sync ACLs and keeps the booth from reading other events' data.
+### D-06 Booth screen updates (superseded)
+*2026-10-09.* Originally server-sent events. Replaced by the Sync client SDK with scoped read-only tokens (D-17).
 
 ### D-07 Deployment
 *2026-10-09.*
@@ -107,7 +106,76 @@ reviewed). The effort is chosen per model in `lib/pipeline/context.ts`.
 references are present, and brands are out of scope (§2.2). The review therefore uses the other 5 criteria, as V1 did
 without brand references.
 
+### D-16 Admin "Remove" is a full takedown
+*2026-10-13, user decision (replaces the 2026-10-12 version).* One **Remove** action, with a confirmation step, on the
+delivered tab. It:
+- moves the job to `removed_by_admin`
+- takes the image off the booth screen at once
+- cancels a print that has not started (an in-progress print cannot be recalled; the admin is told)
+- **deletes the selfie and both output files immediately**
+
+The share link then shows "This portrait was removed by the event organizer." Discarding a flagged image ends it as
+`rejected` with `error: discarded_by_admin`.
+
+### D-17 Booth screen updates are pushed by Twilio Sync
+*2026-10-13, user decision (replaces the SSE/polling version and D-06).* The booth screen uses the **Twilio Sync
+client SDK** (`twilio-sync`): Sync pushes changes, with no polling.
+- The server keeps a public document, `ev_<slug>_booth`, in sync with the event: name, state, CTA, QR code SVG,
+  number, and the localized break and ended texts. There is no personal data in it. `EventRepo.onChange` republishes
+  it on every event write.
+- Slideshow items carry their signed image URL, so a push contains everything the screen needs.
+- `/booth/<slug>/token` (basic auth) mints a 1-hour read-only token for the identity `booth:<slug>`, granted read on
+  `ev_<slug>_booth` and `ev_<slug>_slideshow` only. The service has ACLs on, so everything else is denied with 54007.
+  This was verified live against `events`, `sessions`, `jobs` and `leads`. The browser opens objects with
+  `open_existing`, since creating them would need write access, and refreshes the token before it expires.
+- On a network drop the SDK reconnects by itself and the screen keeps its last state.
+- In CI (in-memory Sync) the screen uses its server render. The real push is tested in
+  `tests/live/booth-sync.live.test.ts` (`RUN_LIVE_SYNC_TESTS=1`).
+
+### D-18 Photo checks run before the menus
+*2026-10-13, user decision.* A photo now creates its job immediately in a new `screening` state. The worker runs
+moderation, face detection and scene analysis (§9.2 steps 1–3). A photo that fails is rejected straight away with
+its §5.6 message, so nobody picks a style for a photo that can't be used. A photo that passes stores its scene
+(`subjects`, `pet`) and moves to `awaiting_choice`. The worker then opens the style menu, or with one style and one
+background goes straight to generation. Generation reuses the stored scene, with no second vision call. A new photo
+during screening or the menus replaces the old job. Checks still run in the worker, never in the webhook (§3.2).
+
+### D-19 Twilio Privacy Notice; no hashtag; one product name
+*2026-10-13, user decisions.*
+- Every consent message and the verification email **only link** the Twilio Privacy Notice
+  (`https://www.twilio.com/en-us/legal/privacy`). The app has no privacy text of its own, copied or adapted. The
+  app-specific `/privacy/[slug]` page (SPEC §10.6) is removed.
+- The QR prefill names the event ("Hi! I'm at SIGNAL London and want to try Portrait Studio 🎨"). Routing matches the
+  event's full name or its code as whole words, with no `#` needed. A name match beats a code match, and the longest
+  name wins.
+- The product is called **Portrait Studio** everywhere: messages, templates, README and docs. "AI photo booth" and
+  similar phrasings are gone (SPEC.md and PROMPTS.md are left unchanged as source documents). A sentence that names
+  the product does not also say "portrait" or "retrato".
+
+### D-20 Verification email: the user's template, with per-event extras
+*2026-10-13, user decisions.* `apps/web/assets/email/verification-email.html` is the user's template, renamed to
+Portrait Studio and with its "ordering" lines adapted. It holds its own wording, and **English is used for every
+event**, including pt_BR events (a deviation from SPEC §12, accepted by the user). The Verify call sends only:
+- `event_name`
+- `promo_code`: the event's **promo code** setting; when empty, the gift block is hidden
+- `show_snippet`: the event's **show code snippet** setting; when off, the snippet and the Verify CTA are hidden
+
+Both settings only work with lead collection on, and validation enforces that. Variables use underscores:
+SendGrid's Handlebars does not accept `{{event-name}}`. **Manual step:** paste the file into a SendGrid dynamic
+template (subject "Your Portrait Studio verification code") and set it on the Verify email integration.
+
+### D-21 Shorter Twilio request timeout
+*2026-10-13.* The worker logged "timeout of 30000ms exceeded" about every 10 minutes while idle: both lanes failed
+on the same shared Sync call. That is the Twilio SDK's default 30 s timeout on a keep-alive socket the network had
+silently dropped. Every Twilio client now comes from `lib/twilio/client.ts`, which sets an **8 s timeout**, plus
+keep-alive with a 5 s idle recycle. The callers' own retries (SyncStore, worker) then open a fresh connection, so a
+stale socket costs seconds instead of 30 s. Covered by a unit test against a server that never answers, and by the
+live Sync tests.
+
 ## Open TODOs after the last milestone
+
+- **Fewer settings per page in the admin** (user, 2026-10-13): the event form shows every §4.2 field at once. Split it
+  into smaller sections or pages.
 
 - **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them

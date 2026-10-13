@@ -1,10 +1,10 @@
 import "server-only";
-import twilio from "twilio";
+import { twilioClient } from "./client";
 import type { TwilioMessagingApi } from "../messaging/outbound";
 
 /** Twilio implementation of the sender's API slice: Messages via the SDK, Content via REST JSON. */
 export function createTwilioMessagingApi(cfg: { accountSid: string; apiKeySid: string; apiKeySecret: string }): TwilioMessagingApi {
-  const client = twilio(cfg.apiKeySid, cfg.apiKeySecret, { accountSid: cfg.accountSid, autoRetry: true, maxRetries: 3 });
+  const client = twilioClient(cfg, { autoRetry: true, maxRetries: 3 });
   const auth = "Basic " + Buffer.from(`${cfg.apiKeySid}:${cfg.apiKeySecret}`).toString("base64");
   return {
     async createMessage(p) {

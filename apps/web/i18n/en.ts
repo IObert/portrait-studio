@@ -17,15 +17,15 @@ export const en = {
     original: { name: "Original", aliases: ["keep", "same"] },
   },
 
-  qrPrefill: ({ code }) => `Hi! I want my AI portrait 🎨 #${code}`,
+  qrPrefill: ({ eventName }) => `Hi! I'm at ${eventName} and want to try Portrait Studio 🎨`,
 
   routing: {
-    noActiveEvent: "Hi! There's no photo booth running right now. Check back during the event!",
+    noActiveEvent: "Hi! Portrait Studio isn't running right now. Check back during the event!",
     pickEvent: "Hi! Which event are you at?",
     pickEventButton: "Choose event",
     pickEventReplyHint: "Reply with the number of your event.",
     pickEventInvalid: "Sorry, I didn't catch that. Please pick your event from the list.",
-    onBreak: "We'll be right back! The photo booth is taking a short break.",
+    onBreak: "We'll be right back! Portrait Studio is taking a short break.",
     ended: "This event has ended. Thanks for stopping by!",
   },
 
@@ -35,10 +35,10 @@ export const en = {
     welcomeBack: ({ firstName, privacyUrl }) =>
       `Welcome back, ${firstName}! Tap *I agree* to start. We process your photo to create your portrait. Privacy notice: ${privacyUrl}`,
     agreeOnly: ({ eventName, privacyUrl }) =>
-      `Welcome to the AI photo booth at ${eventName}! We process your selfie to create your portrait and keep it for 7 days. Privacy notice: ${privacyUrl}\n\nTap *I agree* to start.`,
+      `Welcome to Portrait Studio at ${eventName}! We use your selfie to create your artwork and keep it for 7 days. Privacy notice: ${privacyUrl}\n\nTap *I agree* to start.`,
     smsAgreeHint: ({ keyword }) => `Reply ${keyword} to start.`,
     agreeReminder: "Please agree to the privacy notice first, then send your selfie.",
-    askName: ({ eventName }) => `Welcome to the AI photo booth at ${eventName}! What's your full name?`,
+    askName: ({ eventName }) => `Welcome to Portrait Studio at ${eventName}! What's your full name?`,
     nameInvalid: "Please send your full name (first and last name).",
     askEmail: ({ firstName }) => `Thanks, ${firstName}! What's your email address?`,
     emailInvalid: "That doesn't look like an email address. Please try again.",
@@ -48,14 +48,14 @@ export const en = {
     codeResent: ({ email }) => `We've sent a new code to ${email}.`,
     codeLocked: ({ resendKeyword }) => `Too many attempts. Please wait 10 minutes, then reply ${resendKeyword} for a new code.`,
     resendKeywords: ["resend", "new code"],
-    emailConsentText: ({ eventName, privacyUrl }) =>
-      `Enter this code in your chat to confirm your email for the AI photo booth at ${eventName}. By entering it you agree to our use of your name, email and selfie to create your portrait and to receive updates and offers, as described in the privacy notice: ${privacyUrl}`,
     optedIn: "You're all set!",
   },
 
   selfie: {
     ask: "Send us a selfie and we'll turn it into art!",
     usingPending: "Thanks! Let's use the selfie you already sent.",
+    checking: "Nice photo! Give us a moment to check it…",
+    stillChecking: "Still checking your photo, just a moment!",
     oneAtATime: "One at a time! Send a single selfie and we'll work our magic.",
     quotaReached: ({ eventName, max }) =>
       `You've already used your ${max} free ${max === 1 ? "portrait" : "portraits"} for ${eventName}. Thanks for stopping by!`,
@@ -80,6 +80,7 @@ export const en = {
     failed: "Sorry, something went wrong while creating your portrait. Please send your selfie again.",
   },
 
+
   delivery: {
     caption: ({ styleName, shareUrl }) => `Here's your ${styleName} portrait! Share it: ${shareUrl}`,
     linkOnly: ({ styleName, shareUrl }) => `Your ${styleName} portrait is ready! See and share it here: ${shareUrl}`,
@@ -94,35 +95,17 @@ export const en = {
   },
 
   share: {
-    title: ({ eventName }) => `My AI portrait from ${eventName}`,
+    title: ({ eventName }) => `Made with Portrait Studio at ${eventName}`,
     share: "Share",
     copyText: "Copy text",
     copied: "Copied!",
     download: "Download",
     gone: "This portrait is no longer available.",
+    removed: "This portrait was removed by the event organizer.",
   },
 
   errors: {
     generic: "Sorry, something went wrong on our side. Please try again in a moment.",
   },
 
-  privacy: {
-    title: ({ eventName }) => `Privacy notice: AI photo booth at ${eventName}`,
-    todoBanner: "Draft: the event organizer has not completed this privacy notice yet.",
-    sections: {
-      controller: "Who is responsible for your data",
-      data: "What data we collect",
-      purposes: "Why we use it",
-      processors: "Who processes it",
-      retention: "How long we keep it",
-      rights: "Your rights and how to use them",
-      contact: "Contact",
-    },
-    knownFacts: {
-      processors: "Twilio (messaging, data storage, email verification), OpenAI (image processing and generation), Microsoft Azure (image storage) and Twilio SendGrid (verification email).",
-      retention: "Selfies and generated portraits are deleted automatically after 7 days.",
-      deletion: "To delete all your data, send a message to the booth saying you want your data deleted. We will ask you to confirm.",
-    },
-    notFound: "This privacy notice could not be found.",
-  },
 } satisfies Catalog;

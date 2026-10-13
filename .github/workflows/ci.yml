@@ -81,3 +81,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: docker build --tag portrait-studio:ci .
+      # The worker runs from source in the image: prove every module it imports is there.
+      - name: Worker starts in the image
+        run: docker run --rm --workdir /repo/apps/web portrait-studio:ci node --conditions=react-server --import tsx worker/main.ts --check
+      - name: Web server starts in the image
+        run: |
+          docker run -d --name web -p 3000:3000 portrait-studio:ci
+          for i in $(seq 1 30); do curl -sf localhost:3000/healthz && exit 0; sleep 1; done
+          docker logs web; exit 1

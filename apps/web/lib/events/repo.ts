@@ -35,8 +35,18 @@ export class InvalidTransition extends Error {
 /** Events in the global `events` map (SPEC §3.4). Every write is If-Match guarded. */
 export class EventRepo {
   private readonly map;
+  /**
+   * Runs after every successful write (e.g. publishing the booth document, D-17).
+   * Errors are the caller's to handle; they never undo the write.
+   */
+  onChange?: (event: PortraitEvent) => Promise<void>;
+
   constructor(private readonly sync: SyncStore, private readonly now: () => Date = () => new Date()) {
     this.map = sync.map(Global.events, EventSchema);
+  }
+
+  private async changed(event: PortraitEvent) {
+    await this.onChange?.(event);
   }
 
   async init() {
@@ -73,6 +83,7 @@ export class EventRepo {
     };
     // Slug is immutable and unique (SPEC §4.2): create-if-absent, never overwrite.
     if (!(await this.map.create(slug, event))) throw new SlugTaken(slug);
+    await this.changed(event);
     return event;
   }
 
@@ -87,6 +98,7 @@ export class EventRepo {
       return { ...fn(current), slug: current.slug, createdAt: current.createdAt, updatedAt: this.now().toISOString() };
     });
     if (missing || !result) throw new EventNotFound(slug);
+    await this.changed(result);
     return result;
   }
 

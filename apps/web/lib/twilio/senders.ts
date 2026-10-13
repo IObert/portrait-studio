@@ -1,5 +1,5 @@
 import "server-only";
-import twilio from "twilio";
+import { twilioClient } from "./client";
 
 export interface Sender {
   e164: string;
@@ -14,7 +14,7 @@ export interface Sender {
  * service's number pool is the source of truth; docs/decisions.md D-10.)
  */
 export async function listSenders(cfg: { accountSid: string; apiKeySid: string; apiKeySecret: string; messagingServiceSid: string }): Promise<Sender[]> {
-  const client = twilio(cfg.apiKeySid, cfg.apiKeySecret, { accountSid: cfg.accountSid });
+  const client = twilioClient(cfg);
   const auth = "Basic " + Buffer.from(`${cfg.apiKeySid}:${cfg.apiKeySecret}`).toString("base64");
   const [numbers, wa] = await Promise.all([
     client.messaging.v1.services(cfg.messagingServiceSid).phoneNumbers.list({ limit: 100 }),

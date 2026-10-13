@@ -17,15 +17,15 @@ export const pt_BR = {
     original: { name: "Original", aliases: ["manter", "mesmo"] },
   },
 
-  qrPrefill: ({ code }) => `Oi! Quero meu retrato com IA 🎨 #${code}`,
+  qrPrefill: ({ eventName }) => `Oi! Estou no ${eventName} e quero experimentar o Portrait Studio 🎨`,
 
   routing: {
-    noActiveEvent: "Oi! Não há nenhuma cabine de fotos funcionando agora. Volte durante o evento!",
+    noActiveEvent: "Oi! O Portrait Studio não está funcionando agora. Volte durante o evento!",
     pickEvent: "Oi! Em qual evento você está?",
     pickEventButton: "Escolher evento",
     pickEventReplyHint: "Responda com o número do seu evento.",
     pickEventInvalid: "Desculpe, não entendi. Escolha o seu evento na lista.",
-    onBreak: "Já voltamos! A cabine de fotos está fazendo uma pequena pausa.",
+    onBreak: "Já voltamos! O Portrait Studio está fazendo uma pequena pausa.",
     ended: "Este evento terminou. Obrigado pela visita!",
   },
 
@@ -35,10 +35,10 @@ export const pt_BR = {
     welcomeBack: ({ firstName, privacyUrl }) =>
       `Que bom te ver de novo, ${firstName}! Toque em *Eu concordo* para começar. Usamos sua foto para criar seu retrato. Aviso de privacidade: ${privacyUrl}`,
     agreeOnly: ({ eventName, privacyUrl }) =>
-      `Bem-vindo à cabine de fotos com IA do ${eventName}! Usamos sua selfie para criar seu retrato e a guardamos por 7 dias. Aviso de privacidade: ${privacyUrl}\n\nToque em *Eu concordo* para começar.`,
+      `Bem-vindo ao Portrait Studio no ${eventName}! Usamos sua selfie para criar sua arte e a guardamos por 7 dias. Aviso de privacidade: ${privacyUrl}\n\nToque em *Eu concordo* para começar.`,
     smsAgreeHint: ({ keyword }) => `Responda ${keyword} para começar.`,
     agreeReminder: "Primeiro aceite o aviso de privacidade e depois envie sua selfie.",
-    askName: ({ eventName }) => `Bem-vindo à cabine de fotos com IA do ${eventName}! Qual é o seu nome completo?`,
+    askName: ({ eventName }) => `Bem-vindo ao Portrait Studio no ${eventName}! Qual é o seu nome completo?`,
     nameInvalid: "Envie seu nome completo (nome e sobrenome).",
     askEmail: ({ firstName }) => `Obrigado, ${firstName}! Qual é o seu e-mail?`,
     emailInvalid: "Esse e-mail não parece válido. Tente de novo.",
@@ -48,14 +48,14 @@ export const pt_BR = {
     codeResent: ({ email }) => `Enviamos um novo código para ${email}.`,
     codeLocked: ({ resendKeyword }) => `Muitas tentativas. Aguarde 10 minutos e responda ${resendKeyword} para receber um novo código.`,
     resendKeywords: ["reenviar", "novo código", "novo codigo"],
-    emailConsentText: ({ eventName, privacyUrl }) =>
-      `Digite este código no chat para confirmar seu e-mail na cabine de fotos com IA do ${eventName}. Ao digitá-lo, você concorda com o uso do seu nome, e-mail e selfie para criar seu retrato e receber novidades e ofertas, conforme o aviso de privacidade: ${privacyUrl}`,
     optedIn: "Tudo pronto!",
   },
 
   selfie: {
     ask: "Envie uma selfie e nós a transformamos em arte!",
     usingPending: "Obrigado! Vamos usar a selfie que você já enviou.",
+    checking: "Bela foto! Só um instante enquanto a verificamos…",
+    stillChecking: "Ainda verificando sua foto, só um instante!",
     oneAtATime: "Uma de cada vez! Envie uma única selfie e nós fazemos a mágica.",
     quotaReached: ({ eventName, max }) =>
       `Você já usou ${max === 1 ? "o seu retrato gratuito" : `os seus ${max} retratos gratuitos`} do ${eventName}. Obrigado pela visita!`,
@@ -80,6 +80,7 @@ export const pt_BR = {
     failed: "Desculpe, algo deu errado ao criar seu retrato. Envie sua selfie de novo.",
   },
 
+
   delivery: {
     caption: ({ styleName, shareUrl }) => `Aqui está o seu retrato ${styleName}! Compartilhe: ${shareUrl}`,
     linkOnly: ({ styleName, shareUrl }) => `Seu retrato ${styleName} está pronto! Veja e compartilhe aqui: ${shareUrl}`,
@@ -94,35 +95,17 @@ export const pt_BR = {
   },
 
   share: {
-    title: ({ eventName }) => `Meu retrato com IA do ${eventName}`,
+    title: ({ eventName }) => `Feito com o Portrait Studio no ${eventName}`,
     share: "Compartilhar",
     copyText: "Copiar texto",
     copied: "Copiado!",
     download: "Baixar",
     gone: "Este retrato não está mais disponível.",
+    removed: "Este retrato foi removido pelo organizador do evento.",
   },
 
   errors: {
     generic: "Desculpe, algo deu errado do nosso lado. Tente de novo em instantes.",
   },
 
-  privacy: {
-    title: ({ eventName }) => `Aviso de privacidade: cabine de fotos com IA do ${eventName}`,
-    todoBanner: "Rascunho: o organizador do evento ainda não concluiu este aviso de privacidade.",
-    sections: {
-      controller: "Quem é responsável pelos seus dados",
-      data: "Quais dados coletamos",
-      purposes: "Para que os usamos",
-      processors: "Quem os processa",
-      retention: "Por quanto tempo os guardamos",
-      rights: "Seus direitos e como exercê-los",
-      contact: "Contato",
-    },
-    knownFacts: {
-      processors: "Twilio (mensagens, armazenamento de dados, verificação de e-mail), OpenAI (processamento e geração de imagens), Microsoft Azure (armazenamento de imagens) e Twilio SendGrid (e-mail de verificação).",
-      retention: "Selfies e retratos gerados são apagados automaticamente após 7 dias.",
-      deletion: "Para apagar todos os seus dados, envie uma mensagem à cabine dizendo que quer apagar seus dados. Pediremos que você confirme.",
-    },
-    notFound: "Este aviso de privacidade não foi encontrado.",
-  },
 } satisfies Catalog;

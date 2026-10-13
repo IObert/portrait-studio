@@ -11,7 +11,7 @@ export async function generateMetadata(props: PageProps<"/s/[shareId]">): Promis
   await connection();
   const view = await loadShare((await props.params).shareId);
   const base: Metadata = { robots: { index: false, follow: false } };
-  if (!view) return { ...base, title: catalogs.en.share.gone };
+  if ("gone" in view) return { ...base, title: catalogs[view.locale].share[view.gone === "removed" ? "removed" : "gone"] };
   const title = catalogs[view.event.config.language].share.title({ eventName: view.event.config.name });
   return {
     ...base,
@@ -24,8 +24,13 @@ export async function generateMetadata(props: PageProps<"/s/[shareId]">): Promis
 async function Share({ params }: { params: Promise<{ shareId: string }> }) {
   await connection();
   const view = await loadShare((await params).shareId);
-  if (!view) {
-    return <p className="text-center text-lg text-white/80">{catalogs.en.share.gone}</p>;
+  if ("gone" in view) {
+    const c = catalogs[view.locale];
+    return (
+      <p className="text-center text-lg text-white/80" data-testid="share-gone">
+        {view.gone === "removed" ? c.share.removed : c.share.gone}
+      </p>
+    );
   }
   const c = catalogs[view.event.config.language];
   return (

@@ -60,6 +60,7 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
   await deps.sync.ensureMap(Global.shares);
   await deps.sync.map(Global.shares, ShareSchema, { ttlSeconds: SEVEN_DAYS }).put(job.shareId, { eventSlug: event.slug, jobId: job.jobId, createdAt: now.toISOString() });
   const shareUrl = new URL(`/s/${job.shareId}`, deps.publicBaseUrl).toString();
+  if (!job.style) throw new Error("Job has no style");
   const styleName = c.styles[job.style].name;
   const media = deps.mediaUrl(job.outputBlobs.deliveryJpeg, MEDIA_LINK_TTL);
 

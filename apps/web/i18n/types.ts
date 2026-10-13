@@ -13,8 +13,8 @@ export interface Catalog {
   styles: Record<StyleId, { name: string; aliases: readonly string[] }>;
   backgrounds: Record<Exclude<BackgroundId, "uploaded">, { name: string; aliases: readonly string[] }>;
 
-  /** QR prefill text; must contain the event code (SPEC §5.2). */
-  qrPrefill: (p: { code: string }) => string;
+  /** QR prefill text; names the event so routing can find it (SPEC §5.2). No hashtag. */
+  qrPrefill: (p: { eventName: string }) => string;
 
   routing: {
     noActiveEvent: string;
@@ -56,8 +56,6 @@ export interface Catalog {
     codeLocked: (p: { resendKeyword: string }) => string;
     /** Localized keyword that sends a new code (SPEC §5.4). */
     resendKeywords: readonly string[];
-    /** Text substituted into the verification email (privacy notice + consent statement). */
-    emailConsentText: (p: { eventName: string; privacyUrl: string }) => string;
     optedIn: string;
   };
 
@@ -65,6 +63,10 @@ export interface Catalog {
     ask: string;
     /** After opt-in, when a selfie was sent before consent and is now being used. */
     usingPending: string;
+    /** Photo received; safety checks run before the menus (D-18). */
+    checking: string;
+    /** A message arrived while the photo is still being checked. */
+    stillChecking: string;
     oneAtATime: string;
     quotaReached: (p: { eventName: string; max: number }) => string;
     notAnImage: string;
@@ -92,6 +94,7 @@ export interface Catalog {
     failed: string;
   };
 
+
   /** Delivery (SPEC §6.1) and slideshow consent (§5.8). */
   delivery: {
     caption: (p: { styleName: string; shareUrl: string }) => string;
@@ -117,6 +120,8 @@ export interface Catalog {
     copied: string;
     download: string;
     gone: string;
+    /** Taken down by the organizer (D-16). */
+    removed: string;
   };
 
   errors: {
@@ -124,25 +129,4 @@ export interface Catalog {
     generic: string;
   };
 
-  /** Privacy notice page (SPEC §10.6). Section headings follow GDPR Art. 13/14; bodies are TODO. */
-  privacy: {
-    title: (p: { eventName: string }) => string;
-    todoBanner: string;
-    sections: {
-      controller: string;
-      data: string;
-      purposes: string;
-      processors: string;
-      retention: string;
-      rights: string;
-      contact: string;
-    };
-    /** Facts we already know and can state; the rest is for the user to write. */
-    knownFacts: {
-      processors: string;
-      retention: string;
-      deletion: string;
-    };
-    notFound: string;
-  };
 }

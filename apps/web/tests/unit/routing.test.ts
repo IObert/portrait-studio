@@ -20,7 +20,7 @@ describe("route (SPEC §5.2)", () => {
   const paris = ev("paris", "live", "Paris Summit");
 
   it("binds on a live event code, even with other live events", () => {
-    expect(route("Hi! I want my AI portrait 🎨 #SPLONDON", [london, paris], null)).toEqual({ kind: "event", event: london, bind: true });
+    expect(route("Hi! I want my portrait SPLONDON", [london, paris], null)).toEqual({ kind: "event", event: london, bind: true });
   });
   it("re-binds when a code for another live event arrives", () => {
     expect(route("#paris", [london, paris], bind("splondon"))).toEqual({ kind: "event", event: paris, bind: true });
@@ -60,6 +60,20 @@ describe("route (SPEC §5.2)", () => {
     expect(findCode("hey #SP-LONDON", [dashed, paris])).toBe(dashed);
     expect(findCode("SP LONDON is cool", [dashed])).toBe(dashed);
   });
+  it("matches the event by its full name, no hashtag (QR prefill)", () => {
+    const london = ev("splondon", "live", "SIGNAL London");
+    const paris = ev("paris", "live", "Paris Summit");
+    expect(findCode("Hi! I'm at SIGNAL London and want to try Portrait Studio 🎨", [london, paris])).toBe(london);
+    expect(findCode("hey signal london!", [london, paris])).toBe(london);
+    expect(route("Hi! I'm at Paris Summit and want to try Portrait Studio 🎨", [london, paris], null)).toEqual({ kind: "event", event: paris, bind: true });
+  });
+
+  it("prefers the longest matching name", () => {
+    const short = ev("lon", "live", "London");
+    const long = ev("splondon", "live", "SIGNAL London");
+    expect(findCode("SIGNAL London", [short, long])).toBe(long);
+  });
+
   it("does not match a code inside another word", () => {
     expect(findCode("comparison", [ev("paris", "live")])).toBeUndefined();
   });

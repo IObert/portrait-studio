@@ -6,6 +6,8 @@ import type { Session } from "./session";
 import { normalize } from "./text";
 
 export interface SelfieInput {
+  /** Id for a job created by this message (kept pure: the caller generates it). */
+  newJobId: string;
   text: string;
   selection?: string;
   /** Number of image attachments in this message. */
@@ -15,8 +17,12 @@ export interface SelfieInput {
 }
 
 export type SelfieEffect =
-  /** Create the generation job (worker picks it up, SPEC §3.2). */
-  | { type: "create-job"; selfieBlob: string; style: StyleId; background: BackgroundId }
+  /** Create the job in `screening`: the worker checks the photo before any menu (D-18). */
+  | { type: "create-job"; jobId: string; selfieBlob: string }
+  /** Record a menu choice on the pending job; `start` moves it on to generation. */
+  | { type: "choose"; jobId: string; style?: StyleId; background?: BackgroundId; start: boolean }
+  /** A newer photo replaces a pending one: its job is dropped (SPEC §5.5 step 6). */
+  | { type: "supersede-job"; jobId: string }
   /** A pending selfie was replaced and its blob is no longer needed. */
   | { type: "discard-blob"; blobPath: string };
 
@@ -67,47 +73,65 @@ function menu<T extends string>(options: Option<T>[], body: string, button: stri
     : { kind: "list", body, button, items, smsBody };
 }
 
+/** Style menu (SPEC §5.5), sent by the worker after a photo passes screening (D-18). */
+export function styleMenu(event: PortraitEvent, c: Catalog): OutboundMessage {
+  return menu(styleOptions(event, c), c.menus.styleBody, c.menus.styleButton, c);
+}
+
+export function backgroundMenu(event: PortraitEvent, c: Catalog): OutboundMessage {
+  return menu(backgroundOptions(event, c), c.menus.backgroundBody, c.menus.backgroundButton, c);
+}
+
 function quotaLeft(session: Session, event: PortraitEvent): number {
   // In-flight jobs count so that parallel selfies cannot exceed the quota.
   return event.config.maxImagesPerPerson - session.counters.delivered - session.counters.inFlight;
 }
 
-/** After all choices are known: create the job and say it started (SPEC §5.5 step 5). */
-function startJob(session: Session, c: Catalog, style: StyleId, background: BackgroundId): SelfieResult {
-  const selfieBlob = session.pendingSelfie!;
+/** A photo that passed the cheap checks: create the job for screening (D-18). */
+function screenSelfie(session: Session, c: Catalog, selfieBlob: string, jobId: string, intro?: string): SelfieResult {
+  const effects: SelfieEffect[] = [];
+  // A newer photo replaces the pending one (SPEC §5.5 step 6).
+  if (session.pendingJobId) effects.push({ type: "supersede-job", jobId: session.pendingJobId });
+  else if (session.pendingSelfie && session.pendingSelfie !== selfieBlob) effects.push({ type: "discard-blob", blobPath: session.pendingSelfie });
+  effects.push({ type: "create-job", jobId, selfieBlob });
   return {
     session: {
       ...session,
-      step: "ready",
+      step: "screening",
       pendingSelfie: null,
+      pendingJobId: jobId,
       style: null,
       background: null,
-      counters: { ...session.counters, inFlight: session.counters.inFlight + 1 },
+      counters: { ...session.counters, inFlight: session.counters.inFlight + (session.pendingJobId ? 0 : 1) },
     },
-    messages: [{ kind: "text", body: c.job.started }],
-    effects: [{ type: "create-job", selfieBlob, style, background }],
+    messages: [...(intro ? [{ kind: "text" as const, body: intro }] : []), { kind: "text", body: c.selfie.checking }],
+    effects,
     handled: true,
   };
 }
 
-/** Moves on from a known selfie: skip menus with one option (SPEC §5.5). */
-function nextAfterSelfie(session: Session, event: PortraitEvent, c: Catalog): SelfieResult {
-  const styles = styleOptions(event, c);
-  const backgrounds = backgroundOptions(event, c);
-  const style = session.style ?? (styles.length === 1 ? styles[0]!.id : null);
-  if (!style) {
-    return { session: { ...session, step: "awaiting_style" }, messages: [menu(styles, c.menus.styleBody, c.menus.styleButton, c)], effects: [], handled: true };
-  }
-  const background = session.background ?? (backgrounds.length === 1 ? backgrounds[0]!.id : null);
-  if (!background) {
+/**
+ * A menu answer for the pending, screened job (SPEC §5.5). Style first, then
+ * background; with both chosen the job moves on to generation.
+ */
+function choose(session: Session, event: PortraitEvent, c: Catalog, choice: { style?: StyleId; background?: BackgroundId }): SelfieResult {
+  const jobId = session.pendingJobId!;
+  const style = choice.style ?? session.style ?? (event.config.styles.length === 1 ? event.config.styles[0]! : null);
+  const background = choice.background ?? session.background ?? (event.config.backgrounds.length === 1 ? event.config.backgrounds[0]! : null);
+  if (style && !background) {
     return {
       session: { ...session, step: "awaiting_background", style },
-      messages: [menu(backgrounds, c.menus.backgroundBody, c.menus.backgroundButton, c)],
-      effects: [],
+      messages: [backgroundMenu(event, c)],
+      effects: [{ type: "choose", jobId, style, start: false }],
       handled: true,
     };
   }
-  return startJob({ ...session, style, background }, c, style, background);
+  return {
+    session: { ...session, step: "ready", pendingJobId: null, style: null, background: null },
+    messages: [{ kind: "text", body: c.job.started }],
+    effects: [{ type: "choose", jobId, style: style!, background: background!, start: true }],
+    handled: true,
+  };
 }
 
 /**
@@ -120,26 +144,24 @@ export function handleSelfieFlow(session: Session, event: PortraitEvent, c: Cata
   if (input.images > 1) return none([{ kind: "text", body: c.selfie.oneAtATime }]);
 
   if (input.images === 1 && input.selfieBlob) {
-    if (quotaLeft(session, event) <= 0)
+    // A replacement does not use another slot of the quota.
+    if (!session.pendingJobId && quotaLeft(session, event) <= 0)
       return { ...none([{ kind: "text", body: c.selfie.quotaReached({ eventName: event.config.name, max: event.config.maxImagesPerPerson }) }]), effects: [{ type: "discard-blob", blobPath: input.selfieBlob }] };
-    // A new selfie while a menu is pending replaces the pending one (SPEC §5.5 step 6).
-    const effects: SelfieEffect[] = session.pendingSelfie ? [{ type: "discard-blob", blobPath: session.pendingSelfie }] : [];
-    const r = nextAfterSelfie({ ...session, pendingSelfie: input.selfieBlob, style: null, background: null }, event, c);
-    return { ...r, effects: [...effects, ...r.effects] };
+    return screenSelfie(session, c, input.selfieBlob, input.newJobId);
   }
 
-  if (session.step === "awaiting_style") {
-    const styles = styleOptions(event, c);
-    const style = pickOption(styles, input);
-    if (!style) return none([{ kind: "text", body: c.menus.invalidChoice }, menu(styles, c.menus.styleBody, c.menus.styleButton, c)]);
-    return nextAfterSelfie({ ...session, style }, event, c);
+  if (session.step === "screening") return none([{ kind: "text", body: c.selfie.stillChecking }]);
+
+  if (session.step === "awaiting_style" && session.pendingJobId) {
+    const style = pickOption(styleOptions(event, c), input);
+    if (!style) return none([{ kind: "text", body: c.menus.invalidChoice }, styleMenu(event, c)]);
+    return choose(session, event, c, { style });
   }
 
-  if (session.step === "awaiting_background") {
-    const backgrounds = backgroundOptions(event, c);
-    const background = pickOption(backgrounds, input);
-    if (!background) return none([{ kind: "text", body: c.menus.invalidChoice }, menu(backgrounds, c.menus.backgroundBody, c.menus.backgroundButton, c)]);
-    return nextAfterSelfie({ ...session, background }, event, c);
+  if (session.step === "awaiting_background" && session.pendingJobId) {
+    const background = pickOption(backgroundOptions(event, c), input);
+    if (!background) return none([{ kind: "text", body: c.menus.invalidChoice }, backgroundMenu(event, c)]);
+    return choose(session, event, c, { background });
   }
 
   // Ready and no image: free text, handled by the chat reply in milestone j (SPEC §5.10).
@@ -147,7 +169,7 @@ export function handleSelfieFlow(session: Session, event: PortraitEvent, c: Cata
 }
 
 /** Right after opt-in: continue with a pending selfie, or ask for one (SPEC §5.4). */
-export function afterOptIn(session: Session, event: PortraitEvent, c: Catalog): SelfieResult {
+export function afterOptIn(session: Session, event: PortraitEvent, c: Catalog, newJobId: string): SelfieResult {
   if (!session.pendingSelfie) return { session: { ...session, step: "ready" }, messages: [{ kind: "text", body: c.selfie.ask }], effects: [], handled: true };
   if (quotaLeft(session, event) <= 0)
     return {
@@ -156,6 +178,5 @@ export function afterOptIn(session: Session, event: PortraitEvent, c: Catalog): 
       effects: [{ type: "discard-blob", blobPath: session.pendingSelfie }],
       handled: true,
     };
-  const r = nextAfterSelfie(session, event, c);
-  return { ...r, messages: [{ kind: "text", body: c.selfie.usingPending }, ...r.messages] };
+  return screenSelfie(session, c, session.pendingSelfie, newJobId, c.selfie.usingPending);
 }

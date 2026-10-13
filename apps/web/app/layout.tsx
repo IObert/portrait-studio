@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Portrait Studio",
-  description: "AI photo booth for events",
+  description: "Portrait Studio",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
