@@ -12,9 +12,14 @@ const OUT = mkdtempSync(path.join(tmpdir(), "ps-prints-"));
 const PNG = Buffer.concat([Buffer.from([0x89]), Buffer.from("PNG\r\n\x1a\n"), Buffer.alloc(16)]);
 const item = (over: Partial<PrintItem> = {}): PrintItem => ({ jobId: "job_1", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, timestamps: { queued: "2026-10-14T12:00:00Z" }, ...over });
 
-/** Lets real I/O (the saved copy) finish; setImmediate is not faked. */
-async function until(cond: () => boolean) {
-  for (let i = 0; i < 1000 && !cond(); i++) await new Promise((r) => setImmediate(r));
+/**
+ * Lets real I/O (the saved copy) finish. Bounded by wall-clock time, not a
+ * tick count, so a slow disk (CI runners) does not fail it; setImmediate and
+ * performance.now are not faked.
+ */
+async function until(cond: () => boolean, timeoutMs = 5_000) {
+  const start = performance.now();
+  while (!cond() && performance.now() - start < timeoutMs) await new Promise((r) => setImmediate(r));
   if (!cond()) throw new Error("condition not reached");
 }
 
