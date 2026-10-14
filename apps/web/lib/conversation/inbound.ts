@@ -14,7 +14,10 @@ import { ConcurrentModification, SKIP, type SyncStore } from "../sync/store";
 import type { InboundMedia } from "../twilio/inbound";
 import type { MemoryClient } from "../twilio/memory";
 import type { EmailVerifier } from "../twilio/verify";
-import { requestPrint } from "../delivery/print-request";
+import { canPrintAgain, printsLeft, requestPrint } from "../delivery/print-request";
+import { PrintJobSchema } from "../delivery/print-schema";
+import { ACTION_SLIDESHOW } from "./actions";
+import { normalize } from "./text";
 import { readSlideshowAnswer, SlideshowItemSchema } from "../delivery/slideshow";
 import { PRIVACY_NOTICE_URL } from "../privacy";
 import { bump } from "../stats";
@@ -228,12 +231,14 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
   await reply(deps, msg.from, msg.to, messages, now, locale, outcome.session.lastInboundAt);
 }
 
-type SlideshowEffect = { type: "slideshow"; jobId: string; answer: "print" | "yes" | "no" };
+type SlideshowEffect = { type: "slideshow"; jobId: string; answer: "print" | "printonly" | "yes" | "no" };
+/** "print" typed any time: list the person's portraits to print (D-28). */
+type PrintMenuEffect = { type: "print-menu" };
 
 interface Outcome {
   session: Session;
   messages: OutboundMessage[];
-  effects: (ConsentEffect | SelfieEffect | SlideshowEffect)[];
+  effects: (ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect)[];
 }
 
 async function decide(
@@ -289,16 +294,24 @@ async function decide(
     if (answer) {
       return {
         session: session.pendingSlideshow?.jobId === answer.jobId ? { ...session, pendingSlideshow: null } : session,
-        messages: answer.answer === "print" ? [] : [{ kind: "text", body: answer.answer === "yes" ? c.delivery.slideshowThanksYes : c.delivery.slideshowThanksNo }],
+        messages: answer.answer === "print" || answer.answer === "printonly" ? [] : [{ kind: "text", body: answer.answer === "yes" ? c.delivery.slideshowThanksYes : c.delivery.slideshowThanksNo }],
         effects: [{ type: "slideshow", jobId: answer.jobId, answer: answer.answer }],
       };
     }
   }
 
   if (unusableMedia) return { session, messages: [{ kind: "text", body: c.selfie.notAnImage }], effects: [] };
+  // "print" in a message, when nothing else is waiting for an answer (D-28).
+  if (imageCount === 0 && session.step === "ready" && event.config.printingEnabled && mentionsPrint(input.text, c)) {
+    return { session, messages: [], effects: [{ type: "print-menu" }] };
+  }
   const r = handleSelfieFlow(session, event, c, { text: input.text, selection: input.selection, images: imageCount, selfieBlob, newJobId: newJobId() });
   // Free text with no active step: chat reply arrives in milestone j (SPEC §5.10).
-  if (!r.handled) return { session, messages: [{ kind: "text", body: c.selfie.ask }], effects: [] };
+  if (!r.handled) {
+    const left = printsLeft(event, session.counters);
+    const body = left > 0 && session.delivered.length > 0 ? `${c.selfie.ask}\n${c.delivery.printHint({ printsLeft: left })}` : c.selfie.ask;
+    return { session, messages: [{ kind: "text", body }], effects: [] };
+  }
   return { session: r.session, messages: r.messages, effects: r.effects };
 }
 
@@ -319,7 +332,7 @@ async function lookupProfile(deps: Deps, from: Address) {
 /** Runs one effect; may return a reply that depends on its outcome. */
 async function runEffect(
   deps: Deps,
-  effect: ConsentEffect | SelfieEffect | SlideshowEffect,
+  effect: ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect,
   ctx: { event: PortraitEvent; key: string; address: Address; now: Date; session: Session },
 ): Promise<OutboundMessage | void> {
   const { sync } = deps;
@@ -403,7 +416,7 @@ async function runEffect(
     case "slideshow": {
       if (effect.answer === "no") return; // "No" or no answer: never shown (SPEC §5.8)
       let printReply: OutboundMessage | undefined;
-      if (effect.answer === "print") {
+      if (effect.answer === "print" || effect.answer === "printonly") {
         // Print + show (D-24): the print is requested first; the portrait is shown either way.
         const d = catalogs[ctx.event.config.language].delivery;
         const r = await requestPrint({ sync, mediaUrl: deps.mediaUrl }, ctx.event, ctx.key, ctx.address, effect.jobId, ctx.now);
@@ -411,12 +424,64 @@ async function runEffect(
         printReply = { kind: "text", body };
         deps.log.info({ event: "print_requested", slug: ctx.event.slug, jobId: effect.jobId, result: r.status }, "print requested");
       }
-      await addToSlideshow(deps, ctx, effect.jobId);
+      // Print only (the print menu) leaves the screen choice as it was.
+      if (effect.answer !== "printonly") await addToSlideshow(deps, ctx, effect.jobId);
       return printReply;
     }
+    case "print-menu":
+      return printMenu(deps, ctx);
     default:
       return;
   }
+}
+
+/** Matches the event language's print keyword as a word anywhere in the message. */
+function mentionsPrint(text: string, c: Catalog): boolean {
+  const words = new Set(normalize(text).split(" "));
+  return c.delivery.printKeywords.some((k) => words.has(normalize(k)));
+}
+
+/**
+ * The print menu (D-28): the person's delivered portraits that can be
+ * printed, newest first, as one Print button or a list. Read from the
+ * session's short list, not by scanning the jobs map.
+ */
+async function printMenu(deps: Deps, ctx: { event: PortraitEvent; key: string; session: Session }): Promise<OutboundMessage> {
+  const c = catalogs[ctx.event.config.language];
+  const d = c.delivery;
+  const left = printsLeft(ctx.event, ctx.session.counters);
+  const ev = eventObjects(ctx.event.slug);
+  const ids = [...ctx.session.delivered].reverse();
+  const [jobs, prints] = await Promise.all([
+    Promise.all(ids.map((id) => deps.sync.map(ev.jobs, JobSchema).get(id).catch(() => null))),
+    Promise.all(ids.map((id) => deps.sync.map(ev.print, PrintJobSchema).get(id).catch(() => null))),
+  ]);
+  const options = ids
+    .map((id, i) => ({ id, job: jobs[i], print: prints[i] }))
+    // Own, still delivered (not removed), and not already on its way.
+    .filter((o) => o.job && o.job.address === ctx.key && o.job.state === "delivered" && o.job.style && (!o.print || canPrintAgain(o.print)));
+  if (ctx.session.delivered.length === 0) return { kind: "text", body: d.printMenuEmpty };
+  if (left < 1) return { kind: "text", body: d.printMenuNone };
+  if (options.length === 0) return { kind: "text", body: d.printAlready };
+  // Remember the order shown, for an SMS "PRINT 2". Best effort: buttons work without it.
+  await deps.sync
+    .map(ev.sessions, SessionSchema)
+    .update(ctx.key, (cur) => (cur ? { ...cur, printMenu: options.map((o) => o.id) } : SKIP))
+    .catch(() => {});
+
+  if (options.length === 1) {
+    const o = options[0]!;
+    const body = d.printMenuOne({ styleName: c.styles[o.job!.style!].name, printsLeft: left });
+    return { kind: "buttons", body, buttons: [{ id: ACTION_SLIDESHOW.printOnly(o.id), title: d.printMenuPrint }], smsBody: `${body} ${d.printSmsHintOne}` };
+  }
+  // Newest first, numbered, so two of the same style are told apart.
+  const items = options.map((o, n) => ({
+    id: ACTION_SLIDESHOW.printOnly(o.id),
+    title: d.printMenuItem({ n: n + 1, styleName: c.styles[o.job!.style!].name, printed: o.print?.state === "printed" }).slice(0, 24),
+  }));
+  const body = d.printMenuMany({ printsLeft: left });
+  const smsBody = `${body}\n\n${items.map((it) => it.title).join("\n")}\n\n${d.printSmsHintMany}`;
+  return { kind: "list", body, button: d.printMenuButton, items, smsBody };
 }
 
 /** Adds the attendee's own delivered portrait to the booth screen (SPEC §5.8). */

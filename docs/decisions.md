@@ -245,6 +245,18 @@ when it was switched on.*
 - The model follows this most of the time, not always. If it is still not good enough, the fallback is to move the
   photo below the tab in the frame designs.
 
+### D-28 "print" in the chat (user decision; ahead of the §5.10 chat replies)
+*2026-10-14.*
+- A message containing the event language's print word (`print` / `imprimir`) while nothing else awaits an answer
+  replies with the person's printable portraits, newest first: one **Print it** button, or a numbered list.
+  Already-printed ones are marked and can be printed again (D-26). Choosing one prints it **without** adding it to
+  the booth screen (`ps:slide:printonly:<jobId>`).
+- SMS: `PRINT 2` picks the second portrait listed. The session keeps the order shown (`printMenu`).
+- The session keeps up to 10 delivered job ids (`delivered`, a WhatsApp list's limit), so the menu reads only
+  those jobs rather than scanning the jobs map (SPEC §3.4 hot spot).
+- The "send us a selfie" fallback adds "Or reply PRINT…" when the person has prints left and a portrait.
+- Milestone j's AI chat replies (§5.10) will replace the fallback; this keyword handling stays in front of it.
+
 ## Open TODOs after the last milestone
 
 - **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and

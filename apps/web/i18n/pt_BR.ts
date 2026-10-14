@@ -104,6 +104,16 @@ export const pt_BR = {
     printNoneLeft: "Você já usou todas as suas impressões neste evento, então este fica só no digital.",
     printAlready: "Este retrato já está a caminho da impressora.",
     printUnavailable: "A impressão não está disponível agora, então este fica só no digital.",
+    printMenuOne: ({ styleName, printsLeft }) => `Imprimir seu retrato ${styleName}? Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}.`,
+    printMenuMany: ({ printsLeft }) => `Qual retrato devemos imprimir? Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}.`,
+    printMenuButton: "Escolher",
+    printMenuPrint: "Imprimir",
+    printMenuItem: ({ n, styleName, printed }) => `${n}. ${styleName}${printed ? " (impresso)" : ""}`,
+    printSmsHintOne: "Responda IMPRIMIR 1 para imprimir.",
+    printSmsHintMany: "Responda IMPRIMIR e o número, por exemplo IMPRIMIR 1. O 1 é o mais recente.",
+    printMenuNone: "Você já usou todas as suas impressões neste evento.",
+    printMenuEmpty: "Você ainda não tem um retrato para imprimir. Mande uma selfie primeiro!",
+    printHint: ({ printsLeft }) => `Ou responda IMPRIMIR para imprimir um dos seus retratos (${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"} restantes).`,
   },
 
   share: {

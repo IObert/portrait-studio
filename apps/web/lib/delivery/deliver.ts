@@ -78,7 +78,8 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
       counters.inFlight = Math.max(0, counters.inFlight - 1);
     }
     left = printsLeft(event, counters);
-    return { ...s, counters, pendingSlideshow: { jobId: job.jobId, group, print: left > 0 } };
+    const delivered = [...s.delivered.filter((id) => id !== job.jobId), job.jobId].slice(-10);
+    return { ...s, counters, delivered, pendingSlideshow: { jobId: job.jobId, group, print: left > 0 } };
   });
 
   // 4. Send (SPEC §6.1, §5.11).

@@ -104,6 +104,16 @@ export const en = {
     printNoneLeft: "You've used all your prints for this event, so this one stays digital.",
     printAlready: "This portrait is already on its way to the printer.",
     printUnavailable: "Printing isn't available right now, so this one stays digital.",
+    printMenuOne: ({ styleName, printsLeft }) => `Print your ${styleName} portrait? You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left.`,
+    printMenuMany: ({ printsLeft }) => `Which portrait should we print? You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left.`,
+    printMenuButton: "Choose",
+    printMenuPrint: "Print it",
+    printMenuItem: ({ n, styleName, printed }) => `${n}. ${styleName}${printed ? " (printed)" : ""}`,
+    printSmsHintOne: "Reply PRINT 1 to print it.",
+    printSmsHintMany: "Reply PRINT and the number, e.g. PRINT 1. 1 is your newest.",
+    printMenuNone: "You've used all your prints for this event.",
+    printMenuEmpty: "You don't have a portrait to print yet. Send us a selfie first!",
+    printHint: ({ printsLeft }) => `Or reply PRINT to print one of your portraits (${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left).`,
   },
 
   share: {

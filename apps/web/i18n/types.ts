@@ -125,6 +125,20 @@ export interface Catalog {
     printNoneLeft: string;
     printAlready: string;
     printUnavailable: string;
+    /** Print menu (D-28): reply PRINT any time. */
+    printMenuOne: (p: { styleName: string; printsLeft: number }) => string;
+    printMenuMany: (p: { printsLeft: number }) => string;
+    printMenuButton: string;
+    printMenuPrint: string;
+    /** List row: "1. Anime", marked when printed before. At most 24 characters. */
+    printMenuItem: (p: { n: number; styleName: string; printed: boolean }) => string;
+    /** SMS: how to answer the print menu. */
+    printSmsHintOne: string;
+    printSmsHintMany: string;
+    printMenuNone: string;
+    printMenuEmpty: string;
+    /** Added to the selfie prompt when prints are left. */
+    printHint: (p: { printsLeft: number }) => string;
   };
 
   /** Share page (SPEC §6.2). */
