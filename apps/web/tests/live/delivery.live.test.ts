@@ -42,7 +42,7 @@ describe.skipIf(!live)("delivery (live, local only)", () => {
     }
 
     const started = new Date(Date.now() - 5_000);
-    await events.create(slug, { ...defaultConfig("Portrait Studio live test", BOOTH), leadCollection: false, styles: ["cartoon"], backgrounds: ["gradient"], frame: "placeholder-border" });
+    await events.create(slug, { ...defaultConfig("Portrait Studio live test", BOOTH), leadCollection: false, styles: ["cartoon"], backgrounds: ["gradient"], frame: "twilio-tab-bottom" });
     await events.setState(slug, "live");
     try {
       await send(`#${slug}`);

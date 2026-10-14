@@ -218,7 +218,7 @@ API is needed.
 | Q2a Memory profile in Case C | No profile. Only a lead record is written. |
 | Q2b Returning profile without a verified email, at an event that collects leads | Greet them by name, skip the name step, then ask for email and code. |
 | Q3 Framing | Chest up for every style. Cartoon's hard-coded "waist up" is replaced by the shared composition text. `{preserve}` uses the settings text in PROMPTS.md §C. |
-| Q4 Fixed frames | Ship `none` plus one placeholder border, clearly marked as a placeholder, until real 1200×1800 PNGs are supplied. |
+| Q4 Fixed frames | Ship `none` plus one placeholder border, clearly marked as a placeholder, until real 1200×1800 PNGs are supplied. **Superseded 2026-10-14:** the five supplied Twilio frames are the fixed frames; the placeholder was removed. |
 | Q5 Admin reprints | They do not count toward `maxPrintsPerPerson`. They are logged with the admin's name. |
 | Q6 Models | `OPENAI_VISION_MODEL=gpt-6.1-sol`, `OPENAI_CHAT_MODEL=gpt-6-luna`. Both use the Responses API with reasoning effort `none`. |
 | Q7 Shared types | None. The two projects stay independent, with a contract in `PROTOCOL.md` and fixture-based contract tests. |

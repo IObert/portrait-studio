@@ -18,7 +18,6 @@ export type BackgroundId = (typeof BACKGROUND_IDS)[number];
 /** Fixed frames shipped in apps/web/assets/frames (SPEC §8.3). */
 export const FIXED_FRAMES = [
   "none",
-  "placeholder-border",
   "twilio-tab-bottom",
   "twilio-tab-bottom-left",
   "twilio-tab-top",

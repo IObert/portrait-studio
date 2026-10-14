@@ -5,10 +5,9 @@ portrait goes (SPEC §8.3). The file name is the frame id in `lib/events/schema.
 
 | File | Status |
 |---|---|
-| `placeholder-border.png` | Plain dark border (the original placeholder, docs/decisions.md, Q4) |
-| `twilio-tab-bottom.png` | Dark border, red Twilio tab centred at the bottom |
-| `twilio-tab-bottom-left.png` | Dark border, red Twilio tab bottom left |
-| `twilio-tab-top.png` | Dark border, red Twilio tab centred at the top |
+| `twilio-tab-bottom.png` | Overlay: red Twilio tab centred at the bottom; the portrait fills the print |
+| `twilio-tab-bottom-left.png` | Overlay: red Twilio tab bottom left |
+| `twilio-tab-top.png` | Overlay: red Twilio tab centred at the top |
 | `twilio-border-left.png` | Red border, tilted window, logo top left |
 | `twilio-border-right.png` | Red border, tilted window, logo top right |
 

@@ -31,7 +31,7 @@ describe.skipIf(!live)("pipeline (live AI)", () => {
     const event: PortraitEvent = {
       slug: "ev",
       state: "live",
-      config: { ...defaultConfig("Live pipeline", "+13203780782"), backgrounds: ["uploaded"], uploadedBackgroundName: "Stage", frame: "placeholder-border" },
+      config: { ...defaultConfig("Live pipeline", "+13203780782"), backgrounds: ["uploaded"], uploadedBackgroundName: "Stage", frame: "twilio-tab-bottom" },
       uploads: { frame: null, background: { blobPath: "assets/events/ev/background.jpg", contentType: "image/jpeg", width: 1024, height: 1536, uploadedAt: new Date().toISOString() } },
       printerTokenHash: null,
       printerTokenCreatedAt: null,

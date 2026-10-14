@@ -9,7 +9,6 @@ import type { Option } from "@/app/admin/_components/event-form";
 
 const FRAME_LABELS: Record<(typeof FRAME_IDS)[number], string> = {
   none: "No frame",
-  "placeholder-border": "Placeholder border",
   "twilio-tab-bottom": "Twilio tab, bottom",
   "twilio-tab-bottom-left": "Twilio tab, bottom left",
   "twilio-tab-top": "Twilio tab, top",
