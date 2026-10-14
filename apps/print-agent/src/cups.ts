@@ -53,7 +53,39 @@ function firstLine(s: string): string {
   return (s.split("\n").find((l) => l.trim()) ?? "").trim().slice(0, 160);
 }
 
-/** `lpstat -W completed -o <queue>` lists finished jobs; is ours among them? */
-export function isCompleted(completedOutput: string, requestId: string): boolean {
-  return completedOutput.split("\n").some((l) => l.trim().split(/\s+/)[0] === requestId);
+/**
+ * CUPS job ids look like `<queue>-<n>`; IPP wants the number. `lpstat -W
+ * completed` also lists cancelled and aborted jobs, so the real state is read
+ * with `ipptool` (shipped with CUPS) instead.
+ */
+export function jobNumber(requestId: string): number | null {
+  const n = Number(/-(\d+)$/.exec(requestId)?.[1]);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/** IPP Get-Job-Attributes test file for `ipptool`; `$job-id` comes from `-d job-id=<n>`. */
+export const JOB_STATE_TEST = `{
+  OPERATION Get-Job-Attributes
+  GROUP operation-attributes-tag
+  ATTR charset attributes-charset utf-8
+  ATTR naturalLanguage attributes-natural-language en
+  ATTR uri printer-uri $uri
+  ATTR integer job-id $job-id
+  ATTR name requesting-user-name $user
+  ATTR keyword requested-attributes job-state,job-state-reasons
+  DISPLAY job-state
+  DISPLAY job-state-reasons
+}
+`;
+
+/** IPP job states (RFC 8011 §5.3.7). Only `completed` means it is on paper. */
+export type JobState = "pending" | "held" | "processing" | "stopped" | "canceled" | "aborted" | "completed" | "unknown";
+
+/** Reads `job-state (enum) = completed` from `ipptool -t` output. */
+export function parseJobState(output: string): { state: JobState; reasons: string } {
+  const state = /job-state \(enum\) = ([a-z-]+)/.exec(output)?.[1];
+  const reasons = /job-state-reasons \([^)]*\) = (.+)/.exec(output)?.[1]?.trim() ?? "";
+  const known: JobState[] = ["pending", "held", "processing", "stopped", "canceled", "aborted", "completed"];
+  const normalised = state === "pending-held" ? "held" : state === "processing-stopped" ? "stopped" : state;
+  return { state: known.includes(normalised as JobState) ? (normalised as JobState) : "unknown", reasons };
 }

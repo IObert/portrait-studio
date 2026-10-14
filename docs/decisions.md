@@ -206,11 +206,25 @@ API is needed.
 - The admin reprint is unchanged.
 - Simulated prints go to `prints/` in the repo root (gitignored).
 
+### D-25 One print, one copy
+*2026-10-14. Found on the real DS620: with the printer off, three attempts left three CUPS jobs, and all three printed
+when it was switched on.*
+- A print is submitted to CUPS once, and its request id is stored on the item (`printerJobId`). After that the agent
+  only waits for that job or cancels it.
+- A printer that is off, paused or out of paper is a reason to wait, not a failure: the agent keeps its lease and
+  claims nothing new until the printer is ready.
+- Done means IPP `job-state = completed` (via `ipptool`). `lpstat -W completed` also lists cancelled jobs.
+- Before any retry or final failure, the CUPS job is cancelled. A job stalled for 10 min while the printer reports
+  ready counts as an error.
+- The server never requeues a `printing` item that has a `printerJobId`, because that copy may already be on paper;
+  the next agent resumes it instead.
+- The admin page already shows the printer status (heartbeat), so staff can see why nothing comes out.
+
 ## Open TODOs after the last milestone
 
-- **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy`,
-  `Resolution=300x300dpi` plus the borderless scaling flags are taken from the spec and **not yet verified on a
-  printer**. Run `lpoptions -p <queue> -l` (the agent logs it at start-up) and correct `apps/print-agent/src/cups.ts`.
+- **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and
+  `Resolution=300x300dpi` are confirmed against the DS620's `lpoptions` (2026-10-14), and a print came out. Still
+  to check on paper: that the borderless scaling flags leave no white edge and nothing is cropped.
 
 - **Fewer settings per page in the admin** (user, 2026-10-13): the event form shows every §4.2 field at once. Split it
   into smaller sections or pages.

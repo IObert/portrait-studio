@@ -104,6 +104,14 @@ describe("print settlement (SPEC §11.2, §4.3, §5.9)", () => {
     expect((await w2.item()).state).toBe("failed");
   });
 
+  it("never requeues a print that is already at the printer, however old (D-25)", async () => {
+    const stale = new Date(NOW.getTime() - 60 * 60 * 1000).toISOString();
+    const w = await setup();
+    await w.put({ state: "printing", attempts: 1, leaseUntil: stale, printerJobId: "DS620-24" });
+    expect(await settlePrints(w.deps)).toBe(0);
+    expect(await w.item()).toMatchObject({ state: "printing", printerJobId: "DS620-24" });
+  });
+
   it("leaves a print with a recent lease alone", async () => {
     const w = await setup();
     await w.put({ state: "printing", leaseUntil: new Date(NOW.getTime() - 1000).toISOString() });

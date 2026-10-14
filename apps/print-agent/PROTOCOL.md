@@ -66,13 +66,20 @@ queued ──claim──▶ claimed ──▶ printing ──▶ printed
 | Transition | Who | How |
 |---|---|---|
 | `queued → claimed` | agent | `map.mutate(jobId, …)`: only if `state === "queued"` and `leaseUntil` has passed. Sets `attempts += 1` and `leaseUntil = now + 2 min`. Returning `null` cancels, so a lost race is harmless. |
-| `claimed → printing` | agent | After the PNG has downloaded and been handed to CUPS (or the simulator) |
-| `printing → printed` | agent | The CUPS job completed (`lpstat -W completed`). Sets `timestamps.printed`. |
-| `→ queued` (retry) | agent | A print error with `attempts < 3`. Sets `error` and `leaseUntil = now + backoff` ("not before"). |
-| `→ failed` | agent | A print error with `attempts = 3`. The attendee already has the image, so nothing is sent to them (SPEC §11.2). |
-| expired lease → `queued` | worker | A `claimed` or `printing` item whose `leaseUntil` is more than 5 min old goes back to `queued`, or to `failed` once attempts are used up (SPEC §11.2 "stuck jobs") |
+| `claimed → printing` | agent | After the PNG has downloaded and been handed to CUPS (or the simulator). Sets `printerJobId`, the CUPS request id. |
+| `printing → printed` | agent | The CUPS job's IPP `job-state` is `completed` (read with `ipptool`; `lpstat -W completed` also lists cancelled jobs). Sets `timestamps.printed`. |
+| `→ queued` (retry) | agent | A print error with `attempts < 3`, **after cancelling the CUPS job**. Clears `printerJobId`, sets `error` and `leaseUntil = now + backoff` ("not before"). |
+| `→ failed` | agent | A print error with `attempts = 3`, after cancelling the CUPS job. The attendee already has the image, so nothing is sent to them (SPEC §11.2). |
+| expired lease → `queued` | worker | A `claimed` item, or a `printing` item **without** `printerJobId`, whose `leaseUntil` is more than 5 min old goes back to `queued`, or to `failed` once attempts are used up (SPEC §11.2 "stuck jobs") |
+| expired lease, resumed | agent | A `printing` item **with** `printerJobId` is never requeued. The next agent takes it over and waits for that same CUPS job. |
 
-- The agent renews `leaseUntil` every 30 s while an item is `printing`.
+**One print, one copy (docs/decisions.md D-25).** A print is submitted to CUPS once. While the printer is off, paused
+or out of paper, the agent keeps the lease and waits: CUPS holds the job and prints it when the printer is back.
+The agent claims nothing new while the printer is not ready. A job that makes no progress for 10 min while the
+printer says it is ready is cancelled and retried.
+
+- The agent renews `leaseUntil` every 30 s while an item is `claimed` or `printing`, including while it waits for
+  the printer.
 - **After `printed`**, the server worker counts the print (SPEC §4.3), updates the stats and sends the promo once
   (SPEC §5.9). The agent never contacts attendees.
 

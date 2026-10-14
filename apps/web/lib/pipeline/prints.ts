@@ -49,7 +49,9 @@ export async function settlePrints(deps: PrintDeps): Promise<number> {
       }
       if ((item.state === "printed" || item.state === "failed") && !item.settledAt) {
         if (await settle(deps, event, item, now)) handled++;
-      } else if ((item.state === "claimed" || item.state === "printing") && item.leaseUntil && now.getTime() - Date.parse(item.leaseUntil) > STUCK_AFTER_MS) {
+      } else if ((item.state === "claimed" || (item.state === "printing" && !item.printerJobId)) && item.leaseUntil && now.getTime() - Date.parse(item.leaseUntil) > STUCK_AFTER_MS) {
+        // A print already at the printer is left alone: the next agent resumes it and reads its
+        // real state, so a requeue can never add a second copy (D-25).
         await release(deps, event, item, now);
         handled++;
       }
@@ -109,7 +111,7 @@ async function sendPromo(deps: PrintDeps, event: PortraitEvent, addressKey: stri
 async function release(deps: PrintDeps, event: PortraitEvent, item: SettledJob, now: Date) {
   const ev = eventObjects(event.slug);
   await deps.sync.map(ev.print, Settled).update(item.jobId, (cur) => {
-    if (!cur || (cur.state !== "claimed" && cur.state !== "printing") || !cur.leaseUntil) return SKIP;
+    if (!cur || (cur.state !== "claimed" && cur.state !== "printing") || !cur.leaseUntil || cur.printerJobId) return SKIP;
     if (now.getTime() - Date.parse(cur.leaseUntil) <= STUCK_AFTER_MS) return SKIP;
     return cur.attempts >= MAX_PRINT_ATTEMPTS
       ? { ...cur, state: "failed", leaseUntil: null, error: "agent stopped responding", timestamps: { ...cur.timestamps, failed: now.toISOString() } }
