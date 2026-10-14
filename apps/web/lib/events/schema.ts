@@ -15,11 +15,16 @@ export const FIXED_BACKGROUNDS = ["gradient", "solid-white", "solid-black", "ori
 export const BACKGROUND_IDS = [...FIXED_BACKGROUNDS, "uploaded"] as const;
 export type BackgroundId = (typeof BACKGROUND_IDS)[number];
 
-/**
- * Fixed frames shipped in apps/web/assets/frames (SPEC §8.3). `placeholder-border`
- * stands in until real frames are supplied (docs/decisions.md, Q4).
- */
-export const FIXED_FRAMES = ["none", "placeholder-border"] as const;
+/** Fixed frames shipped in apps/web/assets/frames (SPEC §8.3). */
+export const FIXED_FRAMES = [
+  "none",
+  "placeholder-border",
+  "twilio-tab-bottom",
+  "twilio-tab-bottom-left",
+  "twilio-tab-top",
+  "twilio-border-left",
+  "twilio-border-right",
+] as const;
 export const FRAME_IDS = [...FIXED_FRAMES, "uploaded"] as const;
 export type FrameId = (typeof FRAME_IDS)[number];
 
