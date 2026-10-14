@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { type ConnectionState, SyncClient, type SyncMapItem } from "twilio-sync";
 import type { BoothDoc, BoothSlide } from "@/lib/booth/state";
+import { SlideStack } from "./slide-stack";
 
-const SLIDE_MS = 6_000;
 const MAX_BACKOFF_MS = 30_000;
 
 async function fetchToken(slug: string): Promise<string> {
@@ -22,7 +22,6 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
   const [doc, setDoc] = useState(initialDoc);
   const [slides, setSlides] = useState(initialSlides);
   const [online, setOnline] = useState(true);
-  const [slide, setSlide] = useState(0);
   const backoff = useRef(1_000);
 
   useEffect(() => {
@@ -89,14 +88,6 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
     };
   }, [slug]);
 
-  // Auto-advance through the consented images.
-  const shown = doc.state === "live" ? slides : [];
-  useEffect(() => {
-    if (shown.length < 2) return;
-    const t = setInterval(() => setSlide((s) => (s + 1) % shown.length), SLIDE_MS);
-    return () => clearInterval(t);
-  }, [shown.length]);
-  const current = shown.length ? shown[slide % shown.length] : null;
 
   return (
     <main lang={doc.locale === "pt_BR" ? "pt-BR" : "en"} className="relative flex h-screen w-screen overflow-hidden bg-zinc-950 text-white" data-state={doc.state}>
@@ -121,12 +112,7 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
             </div>
           </section>
           <section className="flex min-w-0 flex-1 items-center justify-center">
-            {current ? (
-              // eslint-disable-next-line @next/next/no-img-element -- signed, expiring URL
-              <img key={current.id} src={current.url} alt="" data-testid="slide" className="max-h-full max-w-full rounded-2xl object-contain shadow-2xl" />
-            ) : (
-              <div className="aspect-[2/3] max-h-full w-full max-w-full rounded-2xl border-2 border-dashed border-white/20" />
-            )}
+            <SlideStack slides={slides} />
           </section>
         </div>
       ) : (

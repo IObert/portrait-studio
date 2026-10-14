@@ -22,3 +22,39 @@ body {
   color: var(--foreground);
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Booth slideshow: card stack (app/booth/[slug]/slide-stack.tsx). */
+.booth-card {
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 900ms ease-out;
+}
+.booth-card-drop {
+  animation: booth-card-drop 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes booth-card-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4%) rotate(-6deg) scale(1.08);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .booth-card {
+    transform: none;
+    transition: none;
+  }
+  .booth-card-drop {
+    animation: booth-card-fade 600ms ease-in-out both;
+  }
+  @keyframes booth-card-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
