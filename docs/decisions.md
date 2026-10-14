@@ -192,6 +192,20 @@ API is needed.
   ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (§17 Q5).
 - The admin command now defaults to `--simulate`, since it works with no printer attached.
 
+### D-24 Attendees choose what to print (user decision)
+*2026-10-14. Changes SPEC §6.1, §9.2 and §11: nothing is printed automatically any more.*
+- Two per-event limits: `maxImagesPerPerson` (X, portraits delivered for free) and `maxPrintsPerPerson` (Y, portraits
+  sent to the printer).
+- After each delivery, one question with three buttons replaces the slideshow question: **Print + show**, **Show
+  only**, **No thanks**. Printing a portrait also puts it on the booth screen. When printing is off or no prints are
+  left, the question is the plain slideshow Yes / No.
+- The buttons carry the job id, so an earlier portrait can still be printed later. SMS: `PRINT` / `YES` / `NO` answer
+  the latest question.
+- `lib/delivery/print-request.ts` checks that it is the person's own delivered job, reserves a print on the session
+  first (so two taps never print twice), then queues it. A failed print may be asked for again.
+- The admin reprint is unchanged.
+- Simulated prints go to `prints/` in the repo root (gitignored).
+
 ## Open TODOs after the last milestone
 
 - **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy`,

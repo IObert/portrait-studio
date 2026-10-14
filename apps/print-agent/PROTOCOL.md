@@ -33,7 +33,8 @@ Authorization: Bearer pst_sp-london_xxxxxxxx…
 
 ## 3. Print queue: Sync Map `ev_<slug>_print`
 
-Key: `jobId`. Value (SPEC §11.3). It holds no personal data; `who` is a masked address at most.
+Key: `jobId`. The server adds an item when an attendee asks for a print, or an admin reprints (docs/decisions.md D-24).
+Value (SPEC §11.3). It holds no personal data; `who` is a masked address at most.
 
 ```json
 {

@@ -14,6 +14,7 @@ import { ConcurrentModification, SKIP, type SyncStore } from "../sync/store";
 import type { InboundMedia } from "../twilio/inbound";
 import type { MemoryClient } from "../twilio/memory";
 import type { EmailVerifier } from "../twilio/verify";
+import { requestPrint } from "../delivery/print-request";
 import { readSlideshowAnswer, SlideshowItemSchema } from "../delivery/slideshow";
 import { PRIVACY_NOTICE_URL } from "../privacy";
 import { bump } from "../stats";
@@ -60,6 +61,8 @@ export interface Deps {
   publicBaseUrl: string;
   /** Signed, long-lived link for a slideshow image (D-17). */
   slideUrl: (blobPath: string) => string;
+  /** Signed link for the print agent to download a print PNG (D-24). */
+  mediaUrl: (blobPath: string, ttlSeconds: number) => string;
   log: { info(o: object, m: string): void; warn(o: object, m: string): void; error(o: object, m: string): void };
   now?: () => Date;
 }
@@ -217,11 +220,15 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
   // released and handleInbound re-runs the message on the fresh state.
   await sessions.writeIfUnchanged(key, outcome.session, read?.revision ?? null);
 
-  for (const effect of outcome.effects) await runEffect(deps, effect, { event, key, address: msg.from, now, session: outcome.session });
-  await reply(deps, msg.from, msg.to, outcome.messages, now, locale, outcome.session.lastInboundAt);
+  const messages = [...outcome.messages];
+  for (const effect of outcome.effects) {
+    const extra = await runEffect(deps, effect, { event, key, address: msg.from, now, session: outcome.session });
+    if (extra) messages.push(extra);
+  }
+  await reply(deps, msg.from, msg.to, messages, now, locale, outcome.session.lastInboundAt);
 }
 
-type SlideshowEffect = { type: "slideshow"; jobId: string; answer: "yes" | "no" };
+type SlideshowEffect = { type: "slideshow"; jobId: string; answer: "print" | "yes" | "no" };
 
 interface Outcome {
   session: Session;
@@ -275,13 +282,14 @@ async function decide(
     return { session: r.session, messages: r.messages, effects: [] };
   }
 
-  // Slideshow answer to the last delivery (SPEC §5.8), before anything else.
+  // Answer to the print / slideshow question (SPEC §5.8, D-24), before anything else.
+  // A print reply is sent by the effect, once the print is (or is not) queued.
   if (imageCount === 0) {
     const answer = readSlideshowAnswer(session, c, input);
     if (answer) {
       return {
         session: session.pendingSlideshow?.jobId === answer.jobId ? { ...session, pendingSlideshow: null } : session,
-        messages: [{ kind: "text", body: answer.answer === "yes" ? c.delivery.slideshowThanksYes : c.delivery.slideshowThanksNo }],
+        messages: answer.answer === "print" ? [] : [{ kind: "text", body: answer.answer === "yes" ? c.delivery.slideshowThanksYes : c.delivery.slideshowThanksNo }],
         effects: [{ type: "slideshow", jobId: answer.jobId, answer: answer.answer }],
       };
     }
@@ -308,11 +316,12 @@ async function lookupProfile(deps: Deps, from: Address) {
   }
 }
 
+/** Runs one effect; may return a reply that depends on its outcome. */
 async function runEffect(
   deps: Deps,
   effect: ConsentEffect | SelfieEffect | SlideshowEffect,
   ctx: { event: PortraitEvent; key: string; address: Address; now: Date; session: Session },
-) {
+): Promise<OutboundMessage | void> {
   const { sync } = deps;
   const ev = eventObjects(ctx.event.slug);
   switch (effect.type) {
@@ -392,20 +401,36 @@ async function runEffect(
       await deps.blob.delete(effect.blobPath);
       return;
     case "slideshow": {
-      if (effect.answer !== "yes") return; // "No" or no answer: never shown (SPEC §5.8)
-      // Only the attendee's own delivered job can be added.
-      const job = await sync.map(ev.jobs, JobSchema).get(effect.jobId);
-      if (!job || job.address !== ctx.key || job.state !== "delivered" || !job.outputBlobs) return;
-      await sync.ensureMap(ev.slideshow);
-      // The signed link travels with the item, so the booth gets a ready URL in the push (D-17).
-      const url = deps.slideUrl(job.outputBlobs.deliveryJpeg);
-      if (await sync.map(ev.slideshow, SlideshowItemSchema, { ttlSeconds: SEVEN_DAYS }).create(effect.jobId, { blobPath: job.outputBlobs.deliveryJpeg, addedAt: ctx.now.toISOString(), url })) {
-        await bump(sync, ctx.event.slug, "slideshowYes");
+      if (effect.answer === "no") return; // "No" or no answer: never shown (SPEC §5.8)
+      let printReply: OutboundMessage | undefined;
+      if (effect.answer === "print") {
+        // Print + show (D-24): the print is requested first; the portrait is shown either way.
+        const d = catalogs[ctx.event.config.language].delivery;
+        const r = await requestPrint({ sync, mediaUrl: deps.mediaUrl }, ctx.event, ctx.key, ctx.address, effect.jobId, ctx.now);
+        const body = r.status === "queued" ? d.printQueued({ printsLeft: r.printsLeft }) : r.status === "none-left" ? d.printNoneLeft : r.status === "already" ? d.printAlready : d.printUnavailable;
+        printReply = { kind: "text", body };
+        deps.log.info({ event: "print_requested", slug: ctx.event.slug, jobId: effect.jobId, result: r.status }, "print requested");
       }
-      return;
+      await addToSlideshow(deps, ctx, effect.jobId);
+      return printReply;
     }
     default:
       return;
+  }
+}
+
+/** Adds the attendee's own delivered portrait to the booth screen (SPEC §5.8). */
+async function addToSlideshow(deps: Deps, ctx: { event: PortraitEvent; key: string; now: Date }, jobId: string) {
+  const { sync } = deps;
+  const ev = eventObjects(ctx.event.slug);
+  // Only the attendee's own delivered job can be added.
+  const job = await sync.map(ev.jobs, JobSchema).get(jobId);
+  if (!job || job.address !== ctx.key || job.state !== "delivered" || !job.outputBlobs) return;
+  await sync.ensureMap(ev.slideshow);
+  // The signed link travels with the item, so the booth gets a ready URL in the push (D-17).
+  const url = deps.slideUrl(job.outputBlobs.deliveryJpeg);
+  if (await sync.map(ev.slideshow, SlideshowItemSchema, { ttlSeconds: SEVEN_DAYS }).create(jobId, { blobPath: job.outputBlobs.deliveryJpeg, addedAt: ctx.now.toISOString(), url })) {
+    await bump(sync, ctx.event.slug, "slideshowYes");
   }
 }
 

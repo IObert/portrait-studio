@@ -2,8 +2,10 @@
 export const ACTION_SLIDESHOW = {
   yes: (jobId: string) => `ps:slide:yes:${jobId}`,
   no: (jobId: string) => `ps:slide:no:${jobId}`,
-  parse(payload: string | undefined): { answer: "yes" | "no"; jobId: string } | null {
-    const m = /^ps:slide:(yes|no):([A-Za-z0-9_-]{8,64})$/.exec(payload ?? "");
-    return m ? { answer: m[1] as "yes" | "no", jobId: m[2]! } : null;
+  /** Print and show on the booth screen (D-24). */
+  print: (jobId: string) => `ps:slide:print:${jobId}`,
+  parse(payload: string | undefined): { answer: "print" | "yes" | "no"; jobId: string } | null {
+    const m = /^ps:slide:(print|yes|no):([A-Za-z0-9_-]{8,64})$/.exec(payload ?? "");
+    return m ? { answer: m[1] as "print" | "yes" | "no", jobId: m[2]! } : null;
   },
 } as const;

@@ -110,6 +110,21 @@ export interface Catalog {
     noKeywords: readonly string[];
     slideshowThanksYes: string;
     slideshowThanksNo: string;
+    /** Combined print + slideshow question, when the person still has prints (D-24). */
+    printQuestion: (p: { printsLeft: number }) => string;
+    printQuestionGroup: (p: { printsLeft: number }) => string;
+    /** Button titles: at most 20 characters (WhatsApp quick replies). */
+    printAndSlideshow: string;
+    slideshowOnly: string;
+    noThanks: string;
+    /** Exact SMS keyword for "print and show". */
+    printKeywords: readonly string[];
+    /** SMS hint listing the keywords for the combined question. */
+    printSmsHint: string;
+    printQueued: (p: { printsLeft: number }) => string;
+    printNoneLeft: string;
+    printAlready: string;
+    printUnavailable: string;
   };
 
   /** Share page (SPEC §6.2). */

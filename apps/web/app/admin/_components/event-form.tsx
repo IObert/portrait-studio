@@ -168,7 +168,7 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
           </div>
         </fieldset>
         <div>
-          <label className={label} htmlFor="maxImagesPerPerson">Portraits per person</label>
+          <label className={label} htmlFor="maxImagesPerPerson">Free portraits per person (digital)</label>
           <input id="maxImagesPerPerson" name="maxImagesPerPerson" type="number" min={1} max={20} defaultValue={config.maxImagesPerPerson} className={input} />
           <FieldError state={state} name="maxImagesPerPerson" />
         </div>
@@ -177,7 +177,7 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
           Printing enabled
         </label>
         <div>
-          <label className={label} htmlFor="maxPrintsPerPerson">Prints per person (total, all images)</label>
+          <label className={label} htmlFor="maxPrintsPerPerson">Prints per person (attendees pick which portraits)</label>
           <input id="maxPrintsPerPerson" name="maxPrintsPerPerson" type="number" min={0} max={20} defaultValue={config.maxPrintsPerPerson} className={input} />
           <FieldError state={state} name="maxPrintsPerPerson" />
         </div>

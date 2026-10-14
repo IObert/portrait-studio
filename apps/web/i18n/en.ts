@@ -92,6 +92,18 @@ export const en = {
     noKeywords: ["no", "n", "nope"],
     slideshowThanksYes: "Thanks! Look out for it on the screen.",
     slideshowThanksNo: "No problem, it won't be shown.",
+    printQuestion: ({ printsLeft }) => `Want it printed? You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left. Printed portraits are also shown on the booth screen.`,
+    printQuestionGroup: ({ printsLeft }) =>
+      `Want it printed? You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left. Printed portraits are also shown on the booth screen, so please only choose that if everyone in the photo agrees.`,
+    printAndSlideshow: "Print + show",
+    slideshowOnly: "Show only",
+    noThanks: "No thanks",
+    printKeywords: ["print"],
+    printSmsHint: "Reply PRINT to print it and show it on the screen, YES to only show it, or NO.",
+    printQueued: ({ printsLeft }) => `It's on its way to the printer! Pick it up at the booth. Prints left: ${printsLeft}.`,
+    printNoneLeft: "You've used all your prints for this event, so this one stays digital.",
+    printAlready: "This portrait is already printed or on its way to the printer.",
+    printUnavailable: "Printing isn't available right now, so this one stays digital.",
   },
 
   share: {

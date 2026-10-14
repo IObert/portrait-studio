@@ -1,15 +1,16 @@
 import { z } from "zod";
 import { catalogs } from "../../i18n";
+import type { Catalog } from "../../i18n/types";
 import { ACTION_SLIDESHOW } from "../conversation/actions";
 import { SessionSchema } from "../conversation/session";
 import type { PortraitEvent } from "../events/schema";
 import { type Job, JobSchema } from "../jobs/schema";
 import { type Address, mask, supportsMms } from "../messaging/address";
-import { insideWindow, type Messenger } from "../messaging/outbound";
+import { insideWindow, type Messenger, type OutboundMessage } from "../messaging/outbound";
 import { bump } from "../stats";
 import { eventObjects, Global } from "../sync/names";
 import { SKIP, type SyncStore } from "../sync/store";
-import { PrintJobSchema } from "./print-schema";
+import { printsLeft } from "./print-request";
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60;
 /** Twilio fetches media right away; give it room for retries. */
@@ -36,7 +37,7 @@ export interface DeliverOptions {
 
 /**
  * Delivers a finished portrait (SPEC §6.1) and does the follow-ups: share
- * record, quota, stats, print job and the slideshow question (§5.8).
+ * record, quota, stats and the print / slideshow question (§5.8, D-24).
  * Idempotent per job: a second call for a delivered job does nothing.
  */
 export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job, address: Address, opts: DeliverOptions = {}): Promise<"sent" | "skipped"> {
@@ -64,9 +65,11 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
   const styleName = c.styles[job.style].name;
   const media = deps.mediaUrl(job.outputBlobs.deliveryJpeg, MEDIA_LINK_TTL);
 
-  // 3. Session: quota (not for admin approvals), in-flight slot, and decide print.
+  // 3. Session: quota (not for admin approvals) and the in-flight slot. Nothing is
+  // printed here: the attendee chooses which portraits to print (D-24).
   const sessions = deps.sync.map(ev.sessions, SessionSchema);
-  let printReserved = false;
+  const group = (job.subjects ?? 1) > 1;
+  let left = 0;
   const session = await sessions.update(job.address, (s) => {
     if (!s) return SKIP;
     const counters = { ...s.counters };
@@ -74,10 +77,8 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
       counters.delivered += 1;
       counters.inFlight = Math.max(0, counters.inFlight - 1);
     }
-    // A print reserves quota until it finishes or finally fails (docs/decisions.md).
-    printReserved = event.config.printingEnabled && counters.printed + counters.printsReserved < event.config.maxPrintsPerPerson;
-    if (printReserved) counters.printsReserved += 1;
-    return { ...s, counters, pendingSlideshow: { jobId: job.jobId, group: (job.subjects ?? 1) > 1 } };
+    left = printsLeft(event, counters);
+    return { ...s, counters, pendingSlideshow: { jobId: job.jobId, group, print: left > 0 } };
   });
 
   // 4. Send (SPEC §6.1, §5.11).
@@ -102,45 +103,40 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
     await bump(deps.sync, event.slug, "deliveryCount");
   }
 
-  // 6. Print job (SPEC §6.1, §11.3). Personal data is not allowed: masked address only.
-  if (printReserved) {
-    await deps.sync.ensureMap(ev.print);
-    await deps.sync.map(ev.print, PrintJobSchema, { ttlSeconds: SEVEN_DAYS }).create(job.jobId, {
-      jobId: job.jobId,
-      blobPath: job.outputBlobs.printPng,
-      url: deps.mediaUrl(job.outputBlobs.printPng, SEVEN_DAYS),
-      who: mask(address),
-      state: "queued",
-      attempts: 0,
-      leaseUntil: null,
-      error: null,
-      reprint: false,
-      timestamps: { queued: now.toISOString() },
-    });
-  }
-
-  // 7. Slideshow question, inside the window only (SPEC §5.8, §5.11).
-  if (result === "sent") {
-    const group = (job.subjects ?? 1) > 1;
-    const body = group ? c.delivery.slideshowQuestionGroup : c.delivery.slideshowQuestion;
-    const yes = c.delivery.yesKeywords[0]!.toUpperCase();
-    const no = c.delivery.noKeywords[0]!.toUpperCase();
-    await deps.messenger.send(
-      address,
-      {
-        kind: "buttons",
-        body,
-        buttons: [
-          { id: ACTION_SLIDESHOW.yes(job.jobId), title: c.delivery.slideshowYes },
-          { id: ACTION_SLIDESHOW.no(job.jobId), title: c.delivery.slideshowNo },
-        ],
-        smsBody: `${body} (${yes} / ${no})`,
-      },
-      ctx,
-    );
-  }
-  deps.log.info({ event: "delivered", slug: event.slug, jobId: job.jobId, channel: address.channel, result, print: printReserved, approved: !!opts.approvedByAdmin }, "portrait delivered");
+  // 6. One question, inside the window only (SPEC §5.8, §5.11, D-24): print and
+  // show, show only, or neither. Without prints left it is the slideshow question.
+  if (result === "sent") await deps.messenger.send(address, followUp(c, job.jobId, group, left), ctx);
+  deps.log.info({ event: "delivered", slug: event.slug, jobId: job.jobId, channel: address.channel, result, printOffered: left > 0, approved: !!opts.approvedByAdmin }, "portrait delivered");
   return result;
+}
+
+function followUp(c: Catalog, jobId: string, group: boolean, printsLeft: number): OutboundMessage {
+  const d = c.delivery;
+  if (printsLeft > 0) {
+    const body = group ? d.printQuestionGroup({ printsLeft }) : d.printQuestion({ printsLeft });
+    return {
+      kind: "buttons",
+      body,
+      buttons: [
+        { id: ACTION_SLIDESHOW.print(jobId), title: d.printAndSlideshow },
+        { id: ACTION_SLIDESHOW.yes(jobId), title: d.slideshowOnly },
+        { id: ACTION_SLIDESHOW.no(jobId), title: d.noThanks },
+      ],
+      smsBody: `${body} ${d.printSmsHint}`,
+    };
+  }
+  const body = group ? d.slideshowQuestionGroup : d.slideshowQuestion;
+  const yes = d.yesKeywords[0]!.toUpperCase();
+  const no = d.noKeywords[0]!.toUpperCase();
+  return {
+    kind: "buttons",
+    body,
+    buttons: [
+      { id: ACTION_SLIDESHOW.yes(jobId), title: d.slideshowYes },
+      { id: ACTION_SLIDESHOW.no(jobId), title: d.slideshowNo },
+    ],
+    smsBody: `${body} (${yes} / ${no})`,
+  };
 }
 
 /** Out-of-window WhatsApp delivery with the approved template (SPEC §5.7, §6.3). */

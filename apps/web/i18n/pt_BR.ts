@@ -92,6 +92,18 @@ export const pt_BR = {
     noKeywords: ["nao", "não", "n"],
     slideshowThanksYes: "Obrigado! Fique de olho na tela.",
     slideshowThanksNo: "Tudo bem, ele não será mostrado.",
+    printQuestion: ({ printsLeft }) => `Quer imprimir? Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}. Retratos impressos também aparecem na tela da cabine.`,
+    printQuestionGroup: ({ printsLeft }) =>
+      `Quer imprimir? Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}. Retratos impressos também aparecem na tela da cabine, então só escolha isso se todos na foto concordarem.`,
+    printAndSlideshow: "Imprimir + mostrar",
+    slideshowOnly: "Só mostrar",
+    noThanks: "Não, obrigado",
+    printKeywords: ["imprimir"],
+    printSmsHint: "Responda IMPRIMIR para imprimir e mostrar na tela, SIM para só mostrar, ou NAO.",
+    printQueued: ({ printsLeft }) => `Está indo para a impressora! Retire na cabine. Impressões restantes: ${printsLeft}.`,
+    printNoneLeft: "Você já usou todas as suas impressões neste evento, então este fica só no digital.",
+    printAlready: "Este retrato já foi impresso ou está a caminho da impressora.",
+    printUnavailable: "A impressão não está disponível agora, então este fica só no digital.",
   },
 
   share: {
