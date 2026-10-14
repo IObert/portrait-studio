@@ -137,8 +137,10 @@ export interface Catalog {
     gone: string;
     /** Print button (D-26). */
     print: (p: { printsLeft: number }) => string;
+    /** Same, for a portrait printed before (another copy). */
+    printAgain: (p: { printsLeft: number }) => string;
     printing: string;
-    printDone: string;
+    printPending: string;
     /** Taken down by the organizer (D-16). */
     removed: string;
   };

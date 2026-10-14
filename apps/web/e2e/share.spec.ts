@@ -56,7 +56,7 @@ test.describe("share page (SPEC §6.2)", () => {
 test.describe("print from the share page (D-26)", () => {
   const PRINT_SHARE = "/s/e2ePrintShareFixture000001";
 
-  test("anyone with the link can print once; the quota is the owner's; it is not added to the screen", async ({ browser, baseURL }) => {
+  test("anyone with the link can print; a second tap while it is on its way does nothing", async ({ browser, baseURL }) => {
     const anon = await browser.newContext({ httpCredentials: undefined });
     const page = await anon.newPage();
     await page.goto(`${baseURL}${PRINT_SHARE}`);

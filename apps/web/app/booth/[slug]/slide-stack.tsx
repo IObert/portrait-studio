@@ -76,25 +76,33 @@ export function SlideStack({ slides }: { slides: BoothSlide[] }) {
     };
   }, []);
 
-  if (cards.length === 0) return <div className="aspect-[2/3] h-full max-h-full max-w-full rounded-2xl border-2 border-dashed border-white/20" />;
-
+  // A 2:3 box that fits the column on any screen: as tall as it can be, unless the column is too narrow
+  // (portrait screens), then as wide as the column. Container units read the parent's size.
+  // 94%: room for the tilted cards below the top one.
+  const box = "aspect-[2/3] h-[min(94cqh,141cqw)]";
   return (
-    // Fixed 2:3 box: cards stack inside it, so the layout never jumps.
-    <div className="relative aspect-[2/3] h-full max-h-full max-w-full">
-      {cards.map((c, i) => {
-        const top = i === cards.length - 1;
-        return (
-          // eslint-disable-next-line @next/next/no-img-element -- signed, expiring URL
-          <img
-            key={c.key}
-            src={c.slide.url}
-            alt=""
-            data-testid={top ? "slide" : undefined}
-            className={`booth-card absolute inset-0 h-full w-full rounded-2xl object-cover shadow-2xl ${top ? "booth-card-drop" : ""}`}
-            style={{ "--tilt": `${top ? 0 : c.tilt}deg`, zIndex: i } as React.CSSProperties}
-          />
-        );
-      })}
+    <div className="flex h-full w-full items-center justify-center [container-type:size]">
+      {cards.length === 0 ? (
+        <div className={`${box} rounded-2xl border-2 border-dashed border-white/20`} />
+      ) : (
+        // Fixed box: cards stack inside it, so the layout never jumps.
+        <div className={`relative ${box}`}>
+          {cards.map((c, i) => {
+            const top = i === cards.length - 1;
+            return (
+              // eslint-disable-next-line @next/next/no-img-element -- signed, expiring URL
+              <img
+                key={c.key}
+                src={c.slide.url}
+                alt=""
+                data-testid={top ? "slide" : undefined}
+                className={`booth-card absolute inset-0 h-full w-full rounded-2xl object-cover shadow-2xl ${top ? "booth-card-drop" : ""}`}
+                style={{ "--tilt": `${top ? 0 : c.tilt}deg`, zIndex: i } as React.CSSProperties}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

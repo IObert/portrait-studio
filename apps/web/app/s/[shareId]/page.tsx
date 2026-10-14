@@ -46,12 +46,16 @@ async function Share({ params }: { params: Promise<{ shareId: string }> }) {
         // Only plain strings cross to the client (the catalog also holds functions).
         labels={{ share: c.share.share, copyText: c.share.copyText, copied: c.share.copied, download: c.share.download }}
       />
-      {view.print && (view.print.left > 0 || view.print.already) && (
+      {view.print && (view.print.left > 0 || view.print.pending) && (
         <PrintButton
           shareId={shareId}
           left={view.print.left}
-          already={view.print.already}
-          labels={{ print: c.share.print({ printsLeft: view.print.left }), printing: c.share.printing, printDone: c.share.printDone }}
+          pending={view.print.pending}
+          labels={{
+            print: (view.print.printedBefore ? c.share.printAgain : c.share.print)({ printsLeft: view.print.left }),
+            printing: c.share.printing,
+            printPending: c.share.printPending,
+          }}
         />
       )}
     </div>

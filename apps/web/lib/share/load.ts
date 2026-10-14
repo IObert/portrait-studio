@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getEventRepo } from "../admin/context";
 import { SessionSchema } from "../conversation/session";
 import { ShareSchema } from "../delivery/deliver";
-import { printsLeft } from "../delivery/print-request";
+import { canPrintAgain, printsLeft } from "../delivery/print-request";
 import { PrintJobSchema } from "../delivery/print-schema";
 import { getEnv, requireEnv } from "../env";
 import type { PortraitEvent } from "../events/schema";
@@ -24,8 +24,8 @@ export interface ShareView {
   imageUrl: string;
   styleId: string;
   subjects: number;
-  /** Print button (D-26): null when printing is off; otherwise prints left and whether this one is already printing/printed. */
-  print: { left: number; already: boolean } | null;
+  /** Print button (D-26): null when printing is off; otherwise prints left, whether a print is on its way, and whether it was printed before. */
+  print: { left: number; pending: boolean; printedBefore: boolean } | null;
 }
 
 /** The event and job behind a live share id, for the print button (D-26). */
@@ -71,7 +71,11 @@ export async function loadShare(rawId: string): Promise<ShareView | ShareGone> {
       sync.map(ev.sessions, SessionSchema).get(job.address).catch(() => null),
       sync.map(ev.print, PrintJobSchema).get(job.jobId).catch(() => null),
     ]);
-    print = { left: session ? printsLeft(event, session.counters) : 0, already: !!item && item.state !== "failed" };
+    print = {
+      left: session ? printsLeft(event, session.counters) : 0,
+      pending: !!item && !canPrintAgain(item),
+      printedBefore: item?.state === "printed",
+    };
   }
   return {
     event,

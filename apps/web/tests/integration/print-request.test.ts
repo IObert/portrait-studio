@@ -44,6 +44,20 @@ describe("requestPrint (D-24, D-26)", () => {
     expect(await w.go()).toEqual({ status: "none-left" });
   });
 
+  it("a finished print can be printed again once it is counted; another copy uses another print", async () => {
+    const w = await setup(3);
+    expect(await w.go()).toMatchObject({ status: "queued" });
+    const item = (await w.fake.getItem(w.ev.print, "job_share_01"))!.data as object;
+    // Printed but not yet counted by the server: still blocked, so no print escapes the quota.
+    await w.fake.updateItem(w.ev.print, "job_share_01", { ...item, state: "printed" });
+    expect(await w.go()).toEqual({ status: "already" });
+    // Counted (settled): another copy is allowed, as a fresh item.
+    await w.fake.updateItem(w.ev.print, "job_share_01", { ...item, state: "printed", settledAt: NOW.toISOString() });
+    expect(await w.go()).toEqual({ status: "queued", printsLeft: 1 });
+    expect((await w.fake.getItem(w.ev.print, "job_share_01"))!.data).toMatchObject({ state: "queued", attempts: 0 });
+    expect(((await w.fake.getItem(w.ev.print, "job_share_01"))!.data as { settledAt?: string }).settledAt).toBeUndefined();
+  });
+
   it("two taps at once still print once", async () => {
     const w = await setup(3);
     const results = await Promise.all([w.go(), w.go()]);

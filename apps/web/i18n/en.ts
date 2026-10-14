@@ -102,7 +102,7 @@ export const en = {
     printSmsHint: "Reply PRINT to print it and show it on the screen, YES to only show it, or NO.",
     printQueued: ({ printsLeft }) => `It's on its way to the printer! Pick it up at the booth. Prints left: ${printsLeft}.`,
     printNoneLeft: "You've used all your prints for this event, so this one stays digital.",
-    printAlready: "This portrait is already printed or on its way to the printer.",
+    printAlready: "This portrait is already on its way to the printer.",
     printUnavailable: "Printing isn't available right now, so this one stays digital.",
   },
 
@@ -115,7 +115,8 @@ export const en = {
     gone: "This portrait is no longer available.",
     print: ({ printsLeft }) => `Print at the booth (${printsLeft} left)`,
     printing: "Sending to the printer…",
-    printDone: "Printed or on its way to the printer",
+    printAgain: ({ printsLeft }) => `Print again (${printsLeft} left)`,
+    printPending: "On its way to the printer",
     removed: "This portrait was removed by the event organizer.",
   },
 

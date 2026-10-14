@@ -14,6 +14,14 @@ export type PrintRequestResult =
   | { status: "already" }
   | { status: "unavailable" };
 
+/**
+ * Whether a portrait with this print record may be printed (again): after a
+ * failure, or once a finished print has been counted by the server (D-26).
+ */
+export function canPrintAgain(item: { state: string; settledAt?: string }): boolean {
+  return item.state === "failed" || (item.state === "printed" && !!item.settledAt);
+}
+
 /** Prints the person may still ask for (SPEC §4.3); queued prints reserve quota. */
 export function printsLeft(event: PortraitEvent, counters: { printed: number; printsReserved: number }): number {
   if (!event.config.printingEnabled) return 0;
@@ -40,9 +48,10 @@ export async function requestPrint(
 
   await deps.sync.ensureMap(ev.print);
   const print = deps.sync.map(ev.print, PrintJobSchema, { ttlSeconds: SEVEN_DAYS });
-  // A failed print may be asked for again; anything else for this job means it is printed or on its way.
+  // A failed print may be asked for again, and so may a finished one (another copy). Only a print
+  // that is still on its way, or printed but not yet counted, blocks: that is almost always a double tap.
   const existing = await print.getVersioned(jobId);
-  if (existing && existing.data.state !== "failed") return { status: "already" };
+  if (existing && !canPrintAgain(existing.data)) return { status: "already" };
 
   // 1. Reserve one print on the session.
   const sessions = deps.sync.map(ev.sessions, SessionSchema);

@@ -337,7 +337,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect((await w.fake.getItem(ev.print, "job_print_01"))!.data).toMatchObject({ state: "queued", who: "whatsapp:+44…23", url: expect.stringContaining("job_print_01.print.png"), reprint: false });
     expect((await w.fake.getItem(ev.slideshow, "job_print_01"))!.data).toMatchObject({ blobPath: "events/ev/generated/job_print_01.jpg" });
 
-    // A second tap does not print twice; another portrait finds the quota used.
+    // A second tap while it is on its way does not print twice; another portrait finds the quota used.
     expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_01" })).toEqual([catalogs.en.delivery.printAlready]);
     expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_02" })).toEqual([catalogs.en.delivery.printNoneLeft]);
     expect(await w.fake.getItem(ev.print, "job_print_02").catch(() => null)).toBeNull();
