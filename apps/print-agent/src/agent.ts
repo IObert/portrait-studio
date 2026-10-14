@@ -2,7 +2,8 @@ import { type SyncDocument, SyncClient, type SyncMap, type SyncMapItem } from "t
 import { z } from "zod";
 import { log } from "./log.js";
 import type { Printer } from "./printer.js";
-import { NOT_READY } from "./printer.js";
+import path from "node:path";
+import { NOT_READY, savePrint } from "./printer.js";
 import { claim, claimable, failed, printed, type PrintItem, renew, resumable, resume, startPrinting } from "./queue.js";
 
 export const AGENT_VERSION = "0.1.0";
@@ -187,6 +188,10 @@ export async function printOne(queue: Pick<SyncMap, "mutate">, work: Work, print
       if (!res.ok) throw new Error(`download failed: HTTP ${res.status}`);
       const png = Buffer.from(await res.arrayBuffer());
       if (png.byteLength < 8 || png.subarray(1, 4).toString() !== "PNG") throw new Error("download is not a PNG");
+      // A copy of every print, for manual reprints. Never blocks the print.
+      await savePrint(printer.outDir, png, jobId)
+        .then((file) => log("info", `Saved ${path.basename(file)}`))
+        .catch((err: Error) => log("warn", `Could not save a copy of ${jobId}: ${err.message}`));
       const submitted = await printer.submit(png, jobId, signal);
       printerJobId = submitted;
       const started = await transition(queue, jobId, (cur) => startPrinting(cur, new Date(), submitted));

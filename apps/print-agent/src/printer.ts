@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { JOB_STATE_TEST, jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId, type PrinterStatus } from "./cups.js";
@@ -17,6 +17,8 @@ export type JobOutcome = { kind: "done" } | { kind: "failed"; reason: string } |
 export interface Printer {
   readonly mode: "cups" | "simulate";
   readonly queue: string;
+  /** Folder that keeps a copy of every print. */
+  readonly outDir: string;
   /** Hands the PNG to the printer; returns the printer's job id. */
   submit(png: Buffer, jobId: string, signal: AbortSignal): Promise<string>;
   check(printerJobId: string): Promise<JobOutcome>;
@@ -27,23 +29,42 @@ export interface Printer {
   describe(): Promise<string>;
 }
 
+/** File name of a saved print: sortable by time, with the job id for finding it later. */
+export function printFileName(jobId: string, now = new Date()): string {
+  return `${now.toISOString().replace(/[:.]/g, "-")}_${jobId.replace(/[^A-Za-z0-9_-]/g, "")}.png`;
+}
+
+/**
+ * Keeps a copy of every print in `outDir` (both modes), so staff can reprint
+ * by hand. Written before the print is submitted; a failed save is logged by
+ * the caller and never stops the print.
+ */
+export async function savePrint(outDir: string, png: Buffer, jobId: string, now = new Date()): Promise<string> {
+  await mkdir(outDir, { recursive: true });
+  const file = path.join(outDir, printFileName(jobId, now));
+  await writeFile(file, png);
+  return file;
+}
+
 /** States in which the printer cannot take a job now. Prints stay queued. */
 export const NOT_READY: readonly PrinterStatus[] = ["offline", "paused", "out_of_paper", "error"];
 
 /** CUPS via `lp` / `ipptool` / `cancel`, called with execFile (never a shell). */
-export function cupsPrinter(queue: string, tmpDir: string): Printer {
+export function cupsPrinter(queue: string, outDir: string): Printer {
   // Validate once at start-up (throws on an unsafe name).
   lpArgs(queue, "/dev/null");
+  const tmpDir = path.join(outDir, ".tmp");
   const printerUri = `ipp://localhost/printers/${queue}`;
   const testFile = path.join(tmpDir, "job-state.test");
   return {
     mode: "cups",
     queue,
+    outDir,
     async submit(png, jobId, signal) {
       await mkdir(tmpDir, { recursive: true });
       const file = path.join(tmpDir, `${jobId.replace(/[^A-Za-z0-9_-]/g, "")}.png`);
       await writeFile(file, png);
-      const { stdout } = await run("lp", lpArgs(queue, file), { signal, timeout: 30_000 });
+      const { stdout } = await run("lp", lpArgs(queue, file), { signal, timeout: 30_000 }).finally(() => rm(file, { force: true }));
       const id = parseRequestId(stdout);
       if (!id) throw new Error(`lp did not return a request id: ${stdout.trim().slice(0, 120)}`);
       return id;
@@ -96,8 +117,8 @@ export function cupsPrinter(queue: string, tmpDir: string): Printer {
 }
 
 /**
- * Simulator (SPEC §11.2): no printer needed. "Printing" writes the PNG to
- * `outDir` after a short delay that imitates a real print.
+ * Simulator (SPEC §11.2): no printer needed. "Printing" waits a little to
+ * imitate a real print; the copy the agent saves in `outDir` is the result.
  */
 export function simulatedPrinter(outDir: string, delayMs = 4_000): Printer {
   type SimJob = { finished: boolean; cancelled: boolean; error?: string };
@@ -106,7 +127,8 @@ export function simulatedPrinter(outDir: string, delayMs = 4_000): Printer {
   return {
     mode: "simulate",
     queue: "simulator",
-    async submit(png, jobId, signal) {
+    outDir,
+    async submit(_png, _jobId, signal) {
       const id = `simulator-${++next}`;
       const entry: SimJob = { finished: false, cancelled: false };
       void (async () => {
@@ -117,10 +139,7 @@ export function simulatedPrinter(outDir: string, delayMs = 4_000): Printer {
         // Like a CUPS cancel: a cancelled job never reaches paper.
         if (signal.aborted || entry.cancelled) {
           entry.error = entry.cancelled ? "canceled" : "aborted";
-          return;
         }
-        await mkdir(outDir, { recursive: true });
-        await writeFile(path.join(outDir, `${new Date().toISOString().replace(/[:.]/g, "-")}_${jobId.replace(/[^A-Za-z0-9_-]/g, "")}.png`), png);
       })()
         .catch((err: Error) => void (entry.error = err.message))
         .finally(() => void (entry.finished = true));

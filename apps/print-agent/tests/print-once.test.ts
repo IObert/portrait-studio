@@ -1,3 +1,6 @@
+import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { printOne, STALLED_MS } from "../src/agent.js";
 import type { JobOutcome, Printer } from "../src/printer.js";
@@ -5,8 +8,15 @@ import type { PrinterStatus } from "../src/cups.js";
 import type { PrintItem } from "../src/queue.js";
 import { FakeQueue } from "./support/fake-queue.js";
 
+const OUT = mkdtempSync(path.join(tmpdir(), "ps-prints-"));
 const PNG = Buffer.concat([Buffer.from([0x89]), Buffer.from("PNG\r\n\x1a\n"), Buffer.alloc(16)]);
 const item = (over: Partial<PrintItem> = {}): PrintItem => ({ jobId: "job_1", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, timestamps: { queued: "2026-10-14T12:00:00Z" }, ...over });
+
+/** Lets real I/O (the saved copy) finish; setImmediate is not faked. */
+async function until(cond: () => boolean) {
+  for (let i = 0; i < 1000 && !cond(); i++) await new Promise((r) => setImmediate(r));
+  if (!cond()) throw new Error("condition not reached");
+}
 
 /** A CUPS stand-in: jobs wait while the printer is off and complete once it is on. */
 function fakePrinter() {
@@ -22,6 +32,7 @@ function fakePrinter() {
   p.printer = {
     mode: "cups",
     queue: "DS620",
+    outDir: OUT,
     async submit() {
       const id = `DS620-${24 + p.submitted.length}`;
       p.submitted.push(id);
@@ -60,6 +71,7 @@ describe("one print, one copy (D-25)", () => {
     const q = new FakeQueue([item()]);
     const fp = fakePrinter();
     const run = printOne(q as never, { jobId: "job_1", resume: false }, fp.printer, new AbortController().signal);
+    await until(() => fp.submitted.length === 1);
     // Off for 5 minutes (today's case was ~40 s): the agent just waits.
     await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
     expect(q.items.get("job_1")).toMatchObject({ state: "printing", attempts: 1, printerJobId: "DS620-24" });
@@ -69,6 +81,16 @@ describe("one print, one copy (D-25)", () => {
     expect(fp.submitted).toEqual(["DS620-24"]);
     expect(fp.cancelled).toEqual([]);
     expect(q.items.get("job_1")).toMatchObject({ state: "printed", attempts: 1 });
+  });
+
+  it("keeps a copy of every print in the output folder, before it is sent to the printer", async () => {
+    const q = new FakeQueue([item({ jobId: "job_copy_1" })]);
+    const fp = fakePrinter();
+    fp.power = "on";
+    await printOne(q as never, { jobId: "job_copy_1", resume: false }, fp.printer, new AbortController().signal);
+    const files = readdirSync(OUT).filter((f) => f.endsWith("_job_copy_1.png"));
+    expect(files).toHaveLength(1);
+    expect(readFileSync(path.join(OUT, files[0]!)).equals(PNG)).toBe(true);
   });
 
   it("a job cancelled at the printer is not reported as printed, and its retry starts clean", async () => {
@@ -87,6 +109,7 @@ describe("one print, one copy (D-25)", () => {
     fp.power = "on";
     fp.completeAfterOn = Number.POSITIVE_INFINITY;
     const run = printOne(q as never, { jobId: "job_1", resume: false }, fp.printer, new AbortController().signal);
+    await until(() => fp.submitted.length === 1);
     await vi.advanceTimersByTimeAsync(STALLED_MS + 5_000);
     await run;
     expect(fp.cancelled).toEqual(["DS620-24"]);
@@ -107,6 +130,7 @@ describe("one print, one copy (D-25)", () => {
     const fp = fakePrinter();
     const stop = new AbortController();
     const run = printOne(q as never, { jobId: "job_1", resume: false }, fp.printer, stop.signal);
+    await until(() => fp.submitted.length === 1);
     await vi.advanceTimersByTimeAsync(10_000);
     stop.abort();
     await vi.advanceTimersByTimeAsync(5_000);

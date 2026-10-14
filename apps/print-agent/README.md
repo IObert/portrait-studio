@@ -29,8 +29,8 @@ node agent.mjs --url https://<app> --token pst_<event>_<secret> --printer DNP_DS
 | `--url` | The app's public URL |
 | `--token` | The event's printer token (admin UI → event → Print agent) |
 | `--printer` | CUPS queue name; required unless `--simulate` |
-| `--simulate` | Write PNGs to `--out` instead of printing |
-| `--out` | Folder for simulated prints (default `./prints`) |
+| `--simulate` | Do not print; only save the copy in `--out` |
+| `--out` | Folder that keeps a copy of **every** print, in both modes, for manual reprints (default `./prints`). Files are named `<time>_<jobId>.png`. |
 | `--help`, `--version` | Print usage or the version |
 
 Logs go to the console as readable lines. Stop it with Ctrl-C.

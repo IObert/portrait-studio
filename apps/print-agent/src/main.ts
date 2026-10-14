@@ -28,9 +28,10 @@ if (major < 22) {
 }
 
 // parseAgentArgs guarantees --printer unless --simulate.
-const printer = args.simulate || !args.printer ? simulatedPrinter(args.out) : cupsPrinter(args.printer, path.join(args.out, ".tmp"));
+const printer = args.simulate || !args.printer ? simulatedPrinter(args.out) : cupsPrinter(args.printer, args.out);
 log("info", `Portrait Studio print agent ${AGENT_VERSION} (server ${new URL(args.url).origin})`);
-log("info", args.simulate ? `Simulator mode: prints are written to ${path.resolve(args.out)}` : `Printer queue: ${args.printer}`);
+log("info", args.simulate ? "Simulator mode: nothing goes to a printer" : `Printer queue: ${args.printer}`);
+log("info", `A copy of every print is saved in ${path.resolve(args.out)}`);
 
 const controller = new AbortController();
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
