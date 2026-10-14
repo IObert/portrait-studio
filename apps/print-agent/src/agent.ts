@@ -177,11 +177,12 @@ export async function printOne(queue: Pick<SyncMap, "mutate">, work: Work, print
   const held = work.resume ? await transition(queue, jobId, (cur) => resume(cur, new Date())) : await transition(queue, jobId, (cur) => claim(cur, new Date()));
   if (!held) return; // another agent got it, or it changed
   const renewal = setInterval(() => void transition(queue, jobId, (cur) => renew(cur, new Date())).catch(() => {}), RENEW_MS);
-  let printerJobId = work.resume ? (held.printerJobId ?? null) : null;
+  // Resume only a job this printer issued; one from another queue or the simulator is printed afresh (D-25).
+  let printerJobId = work.resume && held.printerJobId && printer.owns(held.printerJobId) ? held.printerJobId : null;
   try {
     if (!printerJobId) {
-      // Left over from a released stuck item: make sure that copy never prints.
-      if (held.printerJobId) await printer.cancel(held.printerJobId);
+      // Left over on this printer from a released item: make sure that copy never prints.
+      if (held.printerJobId && printer.owns(held.printerJobId)) await printer.cancel(held.printerJobId);
       log("info", `Printing ${jobId} (attempt ${held.attempts})`);
       if (!held.url) throw new Error("print item has no download link");
       const res = await fetch(held.url, { signal: AbortSignal.timeout(60_000) });

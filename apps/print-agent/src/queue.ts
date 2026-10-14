@@ -40,7 +40,8 @@ export function claim(item: PrintItem | null, now: Date): PrintItem | null {
  * for it, or cancels it.
  */
 export function startPrinting(item: PrintItem | null, now: Date, printerJobId: string): PrintItem | null {
-  if (!item || item.state !== "claimed") return null;
+  // `printing` too: a resumed item whose old job belonged to another printer gets a fresh one.
+  if (!item || (item.state !== "claimed" && item.state !== "printing")) return null;
   return { ...item, state: "printing", printerJobId, leaseUntil: new Date(now.getTime() + LEASE_MS).toISOString(), timestamps: { ...item.timestamps, printing: now.toISOString() } };
 }
 

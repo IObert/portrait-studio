@@ -44,6 +44,8 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
 try {
   await runAgent({ url: args.url, token: args.token, printer, signal: controller.signal });
   log("info", "Stopped.");
+  // The Sync SDK keeps reconnect timers alive after shutdown; exit explicitly so a stopped agent never lingers.
+  process.exit(0);
 } catch (err) {
   if (err instanceof AgentUnauthorized) {
     log("error", err.message);

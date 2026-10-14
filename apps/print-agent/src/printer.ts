@@ -19,6 +19,8 @@ export interface Printer {
   readonly queue: string;
   /** Folder that keeps a copy of every print. */
   readonly outDir: string;
+  /** Whether a stored printer job id was issued by this printer (not another queue or the simulator). */
+  owns(printerJobId: string): boolean;
   /** Hands the PNG to the printer; returns the printer's job id. */
   submit(png: Buffer, jobId: string, signal: AbortSignal): Promise<string>;
   check(printerJobId: string): Promise<JobOutcome>;
@@ -60,6 +62,8 @@ export function cupsPrinter(queue: string, outDir: string): Printer {
     mode: "cups",
     queue,
     outDir,
+    // CUPS request ids are `<queue>-<n>`.
+    owns: (id) => id.startsWith(`${queue}-`) && jobNumber(id) !== null,
     async submit(png, jobId, signal) {
       await mkdir(tmpDir, { recursive: true });
       const file = path.join(tmpDir, `${jobId.replace(/[^A-Za-z0-9_-]/g, "")}.png`);
@@ -128,6 +132,8 @@ export function simulatedPrinter(outDir: string, delayMs = 4_000): Printer {
     mode: "simulate",
     queue: "simulator",
     outDir,
+    // Simulated jobs live in this process only: after a restart nothing can be resumed.
+    owns: (id) => jobs.has(id),
     async submit(_png, _jobId, signal) {
       const id = `simulator-${++next}`;
       const entry: SimJob = { finished: false, cancelled: false };

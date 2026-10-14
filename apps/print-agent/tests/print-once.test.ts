@@ -33,6 +33,7 @@ function fakePrinter() {
     mode: "cups",
     queue: "DS620",
     outDir: OUT,
+    owns: (id) => id.startsWith("DS620-"),
     async submit() {
       const id = `DS620-${24 + p.submitted.length}`;
       p.submitted.push(id);
@@ -123,6 +124,16 @@ describe("one print, one copy (D-25)", () => {
     await printOne(q as never, { jobId: "job_1", resume: true }, fp.printer, new AbortController().signal);
     expect(fp.submitted).toEqual([]);
     expect(q.items.get("job_1")).toMatchObject({ state: "printed", attempts: 1 });
+  });
+
+  it("a job left by another printer (e.g. the simulator) is printed afresh, not resumed", async () => {
+    const q = new FakeQueue([item({ state: "printing", attempts: 1, printerJobId: "simulator-1", leaseUntil: "2026-10-14T11:59:00Z" })]);
+    const fp = fakePrinter();
+    fp.power = "on";
+    await printOne(q as never, { jobId: "job_1", resume: true }, fp.printer, new AbortController().signal);
+    expect(fp.submitted).toEqual(["DS620-24"]);
+    expect(fp.cancelled).toEqual([]);
+    expect(q.items.get("job_1")).toMatchObject({ state: "printed", printerJobId: "DS620-24" });
   });
 
   it("stopping the agent mid-wait keeps the printer job for the next start", async () => {
