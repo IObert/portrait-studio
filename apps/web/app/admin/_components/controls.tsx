@@ -98,7 +98,8 @@ export function AssetUpload({
 export function PrinterToken({ slug, appUrl, hasToken }: { slug: string; appUrl: string; hasToken: boolean }) {
   const [state, action, pending] = useActionState(rotatePrinterTokenAction, {});
   const [copied, setCopied] = useState(false);
-  const command = state.token ? `node agent.mjs --url ${appUrl} --token ${state.token} --printer <CUPS queue>` : null;
+  // Simulator by default: it works with no printer attached (SPEC §11.2).
+  const command = state.token ? `node agent.mjs --url ${appUrl} --token ${state.token} --simulate --out ./prints` : null;
   return (
     <div className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
       <form action={action} className="flex items-center gap-3">
@@ -127,7 +128,7 @@ export function PrinterToken({ slug, appUrl, hasToken }: { slug: string; appUrl:
               {copied ? "Copied" : "Copy command"}
             </button>
             <span className="text-xs text-zinc-500">
-              No printer yet? Replace <code>--printer &lt;CUPS queue&gt;</code> with <code>--simulate --out ./prints</code>.
+              With a real printer, replace <code>--simulate --out ./prints</code> with <code>--printer &lt;CUPS queue&gt;</code> (see <code>lpstat -p</code>). Needs Node.js 22+.
             </span>
           </div>
         </div>

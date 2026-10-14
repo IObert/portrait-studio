@@ -117,7 +117,7 @@ export async function removeFromPrintQueue(deps: { sync: SyncStore; log: AuditLo
  * Reprint (SPEC §10.3). Does not count toward the attendee's print quota
  * (§17 Q5); logged with the admin's name.
  */
-export async function reprint(deps: { sync: SyncStore; log: AuditLog }, event: PortraitEvent, jobId: string, actor: Actor) {
+export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: (blobPath: string, ttlSeconds: number) => string }, event: PortraitEvent, jobId: string, actor: Actor) {
   if (!event.config.printingEnabled) throw new ReviewError("Printing is off for this event");
   const job = await deps.sync.map(eventObjects(event.slug).jobs, JobSchema).get(jobId);
   if (!job || job.state !== "delivered" || !job.outputBlobs) throw new ReviewError("Only delivered images can be reprinted");
@@ -129,6 +129,7 @@ export async function reprint(deps: { sync: SyncStore; log: AuditLog }, event: P
   await print.put(jobId, {
     jobId,
     blobPath: job.outputBlobs.printPng,
+    url: deps.mediaUrl(job.outputBlobs.printPng, 7 * 24 * 60 * 60),
     who: cur?.who ?? "admin reprint",
     state: "queued",
     attempts: 0,

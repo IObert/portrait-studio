@@ -33,6 +33,8 @@ async function call<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+type Flags = { read: boolean; write: boolean; manage: boolean };
+
 const ttl = (o?: WriteOptions) => (o?.ttlSeconds ? { itemTtl: o.ttlSeconds } : {});
 
 /** Sync over the REST API (twilio-node). Objects are addressed by unique name. */
@@ -40,6 +42,10 @@ export function createTwilioSyncBackend(cfg: TwilioSyncConfig): SyncBackend {
   // Our own retry handles 429/5xx/timeouts (SyncStore.run), so the SDK must not retry.
   const client = twilioClient(cfg);
   const svc: ServiceContext = client.sync.v1.services(cfg.serviceSid);
+  const grant = (kind: "map" | "document", name: string, identity: string, flags: Flags) =>
+    kind === "map"
+      ? call(() => svc.syncMaps(name).syncMapPermissions(identity).update(flags))
+      : call(() => svc.documents(name).documentPermissions(identity).update(flags));
 
   return {
     async ensureMap(name) {
@@ -127,9 +133,10 @@ export function createTwilioSyncBackend(cfg: TwilioSyncConfig): SyncBackend {
       await call(() => svc.fetch());
     },
     async grantRead(kind, name, identity) {
-      const flags = { read: true, write: false, manage: false };
-      if (kind === "map") await call(() => svc.syncMaps(name).syncMapPermissions(identity).update(flags));
-      else await call(() => svc.documents(name).documentPermissions(identity).update(flags));
+      await grant(kind, name, identity, { read: true, write: false, manage: false });
+    },
+    async grantReadWrite(kind, name, identity) {
+      await grant(kind, name, identity, { read: true, write: true, manage: false });
     },
   };
 }

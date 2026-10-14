@@ -172,7 +172,96 @@ keep-alive with a 5 s idle recycle. The callers' own retries (SyncStore, worker)
 stale socket costs seconds instead of 30 s. Covered by a unit test against a server that never answers, and by the
 live Sync tests.
 
+### D-22 Print agent uses the Sync SDK, confirmed on Node 22
+*2026-10-14.* SPEC §11.1 asked for this check before relying on `twilio-sync`. Verified on real Node 22.22:
+the SDK connects, opens objects and receives pushes. One catch: it is CommonJS, so an esbuild ESM bundle needs a
+`createRequire` banner, otherwise it dies at start-up with "Dynamic require of events is not supported". CI now
+starts the built bundle (`--version` and a bad invocation) so this cannot regress. No fallback to a polling agent
+API is needed.
+
+### D-23 Print agent and server responsibilities
+*2026-10-14.*
+- The agent claims jobs with the SDK's `mutate` (compare-and-set): a lost race cancels, so two agents never print
+  the same job. Lease 2 min, renewed every 30 s while printing, 3 attempts then failed.
+- `POST /api/agent/token` swaps the printer token for a Sync token for identity `printer:<slug>`, with read+write on
+  that event's print map and printer document only. Everything else is denied (54007, verified live). Printing must
+  be enabled, and an unknown event, a rotated token and printing-off all return the same 401.
+- Print items carry a **signed download link** (`/m/<token>`), so the agent needs no storage credentials.
+- The server settles prints (`lib/pipeline/prints.ts`): counts successes toward `maxPrintsPerPerson`, releases
+  reservations, sends the promo once per printed job (§5.9), and requeues or fails jobs whose lease expired 5 min
+  ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (§17 Q5).
+- The admin command now defaults to `--simulate`, since it works with no printer attached.
+
+### D-24 Attendees choose what to print (user decision)
+*2026-10-14. Changes SPEC §6.1, §9.2 and §11: nothing is printed automatically any more.*
+- Two per-event limits: `maxImagesPerPerson` (X, portraits delivered for free) and `maxPrintsPerPerson` (Y, portraits
+  sent to the printer).
+- After each delivery, one question with three buttons replaces the slideshow question: **Print + show**, **Show
+  only**, **No thanks**. Printing a portrait also puts it on the booth screen. When printing is off or no prints are
+  left, the question is the plain slideshow Yes / No.
+- The buttons carry the job id, so an earlier portrait can still be printed later. SMS: `PRINT` / `YES` / `NO` answer
+  the latest question.
+- `lib/delivery/print-request.ts` checks that it is the person's own delivered job, reserves a print on the session
+  first (so two taps never print twice), then queues it. A failed print may be asked for again.
+- The admin reprint is unchanged.
+- Simulated prints go to `prints/` in the repo root (gitignored).
+
+### D-25 One print, one copy
+*2026-10-14. Found on the real DS620: with the printer off, three attempts left three CUPS jobs, and all three printed
+when it was switched on.*
+- A print is submitted to CUPS once, and its request id is stored on the item (`printerJobId`). After that the agent
+  only waits for that job or cancels it.
+- A printer that is off, paused or out of paper is a reason to wait, not a failure: the agent keeps its lease and
+  claims nothing new until the printer is ready.
+- Done means IPP `job-state = completed` (via `ipptool`). `lpstat -W completed` also lists cancelled jobs.
+- Before any retry or final failure, the CUPS job is cancelled. A job stalled for 10 min while the printer reports
+  ready counts as an error.
+- The server never requeues a `printing` item that has a `printerJobId`, because that copy may already be on paper;
+  the next agent resumes it instead.
+- The admin page already shows the printer status (heartbeat), so staff can see why nothing comes out.
+
+### D-26 Print button on the share page (user decision)
+*2026-10-14.*
+- The share page shows **Print at the booth (N left)** when the event has printing on and the owner still has prints.
+- **Anyone with the link** may use it (the user's choice): it takes one of the *owner's* prints, never more than
+  their quota. The page sends only the share id; the server looks up the job and owner.
+- It never adds the portrait to the booth screen. "Print + show" in the chat is the way to do both.
+- Same rules as the chat print (`requestPrint`): own delivered portrait, one print per portrait, a failed print can
+  be asked for again.
+
+### D-27 Frame clearance line in the generation prompt (user decision)
+*2026-10-14. An addition to PROMPTS.md §E; PROMPTS.md itself is unchanged.*
+- Problem: the image model does not know about the frame, so a logo tab could cover a head or hair.
+- `lib/image/frame-clearance.ts` measures, from the frame PNG, how much of the portrait window its opaque parts
+  cover at the top and bottom (middle 40% of the width, where heads are). Frames are measured automatically, so an
+  uploaded frame gets the same treatment.
+- When a side is covered by 8% or more, one line is added before the final reminder (§E11), with the share rounded
+  up to the next 5% plus a margin:
+  `Frame clearance: A decorative frame will cover {the top N%| the bottom N%| both} of the image after generation.
+  Keep that area free of the subjects: every head, all hair and every face must sit fully outside {…}, with only
+  background there. Scale and position the subjects so nothing important is hidden.`
+- Shipped frames: tab top → top 15%; tab bottom / bottom left → bottom 20%; red borders (their own tilted window,
+  3–5% wedge) → no line. With no frame, or one that covers nothing, the prompt is exactly the PROMPTS.md prompt.
+- The model follows this most of the time, not always. If it is still not good enough, the fallback is to move the
+  photo below the tab in the frame designs.
+
+### D-28 "print" in the chat (user decision; ahead of the §5.10 chat replies)
+*2026-10-14.*
+- A message containing the event language's print word (`print` / `imprimir`) while nothing else awaits an answer
+  replies with the person's printable portraits, newest first: one **Print it** button, or a numbered list.
+  Already-printed ones are marked and can be printed again (D-26). Choosing one prints it **without** adding it to
+  the booth screen (`ps:slide:printonly:<jobId>`).
+- SMS: `PRINT 2` picks the second portrait listed. The session keeps the order shown (`printMenu`).
+- The session keeps up to 10 delivered job ids (`delivered`, a WhatsApp list's limit), so the menu reads only
+  those jobs rather than scanning the jobs map (SPEC §3.4 hot spot).
+- The "send us a selfie" fallback adds "Or reply PRINT…" when the person has prints left and a portrait.
+- Milestone j's AI chat replies (§5.10) will replace the fallback; this keyword handling stays in front of it.
+
 ## Open TODOs after the last milestone
+
+- **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and
+  `Resolution=300x300dpi` are confirmed against the DS620's `lpoptions` (2026-10-14), and a print came out. Still
+  to check on paper: that the borderless scaling flags leave no white edge and nothing is cropped.
 
 - **Fewer settings per page in the admin** (user, 2026-10-13): the event form shows every §4.2 field at once. Split it
   into smaller sections or pages.
@@ -194,7 +283,7 @@ live Sync tests.
 | Q2a Memory profile in Case C | No profile. Only a lead record is written. |
 | Q2b Returning profile without a verified email, at an event that collects leads | Greet them by name, skip the name step, then ask for email and code. |
 | Q3 Framing | Chest up for every style. Cartoon's hard-coded "waist up" is replaced by the shared composition text. `{preserve}` uses the settings text in PROMPTS.md §C. |
-| Q4 Fixed frames | Ship `none` plus one placeholder border, clearly marked as a placeholder, until real 1200×1800 PNGs are supplied. |
+| Q4 Fixed frames | Ship `none` plus one placeholder border, clearly marked as a placeholder, until real 1200×1800 PNGs are supplied. **Superseded 2026-10-14:** the five supplied Twilio frames are the fixed frames; the placeholder was removed. |
 | Q5 Admin reprints | They do not count toward `maxPrintsPerPerson`. They are logged with the admin's name. |
 | Q6 Models | `OPENAI_VISION_MODEL=gpt-6.1-sol`, `OPENAI_CHAT_MODEL=gpt-6-luna`. Both use the Responses API with reasoning effort `none`. |
 | Q7 Shared types | None. The two projects stay independent, with a contract in `PROTOCOL.md` and fixture-based contract tests. |

@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
+import { FIXED_FRAMES } from "@/lib/events/schema";
+import { validateFrame } from "@/lib/images/validate-upload";
 import { applyFrame, MAX_DELIVERY_BYTES, PRINT, toDeliveryJpeg, toPrintPng, transparentWindow } from "@/lib/image/frame";
 
 /** Frame fixture: opaque red border with a transparent window at (100,150) 1000×1400. */
@@ -30,8 +32,11 @@ describe("frame compositing (SPEC §8.3)", () => {
     expect(await px(out, 600, 1700)).toEqual([255, 0, 0]);
   });
 
-  it("works with the shipped placeholder frame", async () => {
-    const out = await applyFrame(await portrait(), readFileSync("assets/frames/placeholder-border.png"));
+  it.each(FIXED_FRAMES.filter((id) => id !== "none"))("shipped frame %s is valid and composites", async (id) => {
+    const png = readFileSync(`assets/frames/${id}.png`);
+    expect(await validateFrame(png)).toMatchObject({ ok: true });
+    const out = await applyFrame(await portrait(), png);
+    expect([(await sharp(out).metadata()).width, (await sharp(out).metadata()).height]).toEqual([1200, 1800]);
     expect(await px(out, 600, 900)).toEqual([0, 0, 255]);
   });
 

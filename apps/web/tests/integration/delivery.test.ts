@@ -140,19 +140,23 @@ describe("delivery (SPEC §6.1)", () => {
     expect(await readStats(w.sync, "ev")).toMatchObject({ approvedByAdmin: 1 });
   });
 
-  it("queues a print only when printing is on and print quota remains (SPEC §4.3)", async () => {
-    const on = await setup({ cfg: { printingEnabled: true, maxPrintsPerPerson: 1 } });
+  it("never prints by itself; offers print + show only while prints remain (D-24)", async () => {
+    const on = await setup({ cfg: { printingEnabled: true, maxPrintsPerPerson: 2 }, to: "+447700900456" });
     await deliver(on.deps, on.event, on.job, on.address);
-    expect(await on.printJob()).toMatchObject({ state: "queued", who: "whatsapp:+44…23", blobPath: expect.stringContaining(".print.png") });
-    expect((await on.session()).counters.printsReserved).toBe(1);
+    expect(await on.printJob()).toBeUndefined();
+    expect((await on.session()).counters.printsReserved).toBe(0);
+    expect(on.sent[1]!.body).toBe(`${catalogs.en.delivery.printQuestion({ printsLeft: 2 })} ${catalogs.en.delivery.printSmsHint}`);
+    expect((await on.session()).pendingSlideshow).toEqual({ jobId: "job_00000001", group: false, print: true });
 
-    const full = await setup({ cfg: { printingEnabled: true, maxPrintsPerPerson: 1 }, session: { counters: { delivered: 1, printed: 1, printsReserved: 0, inFlight: 1 } } });
+    // No prints left (printed + reserved): the plain slideshow question.
+    const full = await setup({ cfg: { printingEnabled: true, maxPrintsPerPerson: 2 }, to: "+447700900456", session: { counters: { delivered: 1, printed: 1, printsReserved: 1, inFlight: 1 } } });
     await deliver(full.deps, full.event, full.job, full.address);
-    expect(await full.printJob()).toBeUndefined();
+    expect(full.sent[1]!.body).toContain("(YES / NO)");
+    expect((await full.session()).pendingSlideshow).toMatchObject({ print: false });
 
-    const off = await setup();
+    const off = await setup({ to: "+447700900456" });
     await deliver(off.deps, off.event, off.job, off.address);
-    expect(await off.printJob()).toBeUndefined();
+    expect(off.sent[1]!.body).toContain("(YES / NO)");
   });
 
   it("asks group photos for everyone's agreement (SPEC §5.8)", async () => {

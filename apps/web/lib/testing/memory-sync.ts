@@ -102,6 +102,10 @@ export class FakeSync implements SyncBackend {
   }
   async ping() {}
   grants: string[] = [];
+  async grantReadWrite(kind: "map" | "document", name: string, identity: string) {
+    await this.grantRead(kind, name, identity);
+    if (!this.grants.includes(`rw:${kind}:${name}:${identity}`)) this.grants.push(`rw:${kind}:${name}:${identity}`);
+  }
   async grantRead(kind: "map" | "document", name: string, identity: string) {
     if (kind === "map" ? !this.maps.has(name) : !this.docs.has(name)) throw new SyncError(kind === "map" ? SyncErrorCode.mapNotFound : SyncErrorCode.documentNotFound, 404, `${name} not found`);
     if (!this.grants.includes(`${kind}:${name}:${identity}`)) this.grants.push(`${kind}:${name}:${identity}`);

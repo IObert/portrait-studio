@@ -17,7 +17,9 @@ const ArgsSchema = z
 export type AgentArgs = z.infer<typeof ArgsSchema>;
 
 export const USAGE = `Usage:
-  node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue>] [--simulate --out ./prints]`;
+  node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue> | --simulate] [--out ./prints]
+
+  --out   Folder that keeps a copy of every print, for manual reprints (default ./prints)`;
 
 export type ParseResult = { ok: true; args: AgentArgs } | { ok: false; error: string };
 

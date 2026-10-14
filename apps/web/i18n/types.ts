@@ -110,6 +110,35 @@ export interface Catalog {
     noKeywords: readonly string[];
     slideshowThanksYes: string;
     slideshowThanksNo: string;
+    /** Combined print + slideshow question, when the person still has prints (D-24). */
+    printQuestion: (p: { printsLeft: number }) => string;
+    printQuestionGroup: (p: { printsLeft: number }) => string;
+    /** Button titles: at most 20 characters (WhatsApp quick replies). */
+    printAndSlideshow: string;
+    slideshowOnly: string;
+    noThanks: string;
+    /** Exact SMS keyword for "print and show". */
+    printKeywords: readonly string[];
+    /** SMS hint listing the keywords for the combined question. */
+    printSmsHint: string;
+    printQueued: (p: { printsLeft: number }) => string;
+    printNoneLeft: string;
+    printAlready: string;
+    printUnavailable: string;
+    /** Print menu (D-28): reply PRINT any time. */
+    printMenuOne: (p: { styleName: string; printsLeft: number }) => string;
+    printMenuMany: (p: { printsLeft: number }) => string;
+    printMenuButton: string;
+    printMenuPrint: string;
+    /** List row: "1. Anime", marked when printed before. At most 24 characters. */
+    printMenuItem: (p: { n: number; styleName: string; printed: boolean }) => string;
+    /** SMS: how to answer the print menu. */
+    printSmsHintOne: string;
+    printSmsHintMany: string;
+    printMenuNone: string;
+    printMenuEmpty: string;
+    /** Added to the selfie prompt when prints are left. */
+    printHint: (p: { printsLeft: number }) => string;
   };
 
   /** Share page (SPEC §6.2). */
@@ -120,6 +149,12 @@ export interface Catalog {
     copied: string;
     download: string;
     gone: string;
+    /** Print button (D-26). */
+    print: (p: { printsLeft: number }) => string;
+    /** Same, for a portrait printed before (another copy). */
+    printAgain: (p: { printsLeft: number }) => string;
+    printing: string;
+    printPending: string;
     /** Taken down by the organizer (D-16). */
     removed: string;
   };

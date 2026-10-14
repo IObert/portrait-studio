@@ -11,6 +11,7 @@ import { getServices } from "../services";
 import { SlugSchema } from "../sync/names";
 import { createTwilioMessagingApi } from "../twilio/messaging-api";
 import { getEnv, requireEnv } from "../env";
+import { signMedia } from "../media-token";
 import { getEventRepo } from "./context";
 import { requireAdmin } from "./guard";
 
@@ -68,9 +69,12 @@ export async function reviewAction(_prev: ReviewState, form: FormData): Promise<
       case "print_remove":
         await removeFromPrintQueue(base, event, jobId, actor);
         break;
-      case "reprint":
-        await reprint(base, event, jobId, actor);
+      case "reprint": {
+        const env = requireEnv(getEnv(), ["MEDIA_SIGNING_SECRET", "PUBLIC_BASE_URL"]);
+        const mediaUrl = (p: string, ttl: number) => new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET, p, ttl)}`, env.PUBLIC_BASE_URL).toString();
+        await reprint({ ...base, mediaUrl }, event, jobId, actor);
         break;
+      }
     }
     revalidatePath(`/admin/events/${slug}/review`);
     return { ok: true, message: "Done" };

@@ -119,10 +119,18 @@ in CI. On WhatsApp, message the booth number first to open the 24-hour window.
 
 ## Print agent
 
+Prints at the booth on a DNP DS620 (4x6), or to a folder with `--simulate`. It is a single self-contained file that
+needs **Node.js 22+** and nothing installed. See [apps/print-agent/README.md](apps/print-agent/README.md) and the
+[protocol](apps/print-agent/PROTOCOL.md).
+
 ```sh
 pnpm --filter print-agent build
-node apps/print-agent/dist/agent.mjs --url http://localhost:3000 --token <token> --simulate --out ./prints
+node apps/print-agent/dist/agent.mjs --url http://localhost:3000 --token <printer token> --simulate --out ./prints
 ```
+
+The admin UI shows this command with the values filled in when the printer token is generated. The agent claims print
+jobs from Twilio Sync with a scoped read/write token, reports a heartbeat and printer status every 15 s, and retries a
+failed print 3 times. The server counts prints and sends the promo.
 
 ## Coming in later milestones
 

@@ -1,10 +1,13 @@
 import "server-only";
 import { z } from "zod";
 import { getEventRepo } from "../admin/context";
+import { SessionSchema } from "../conversation/session";
 import { ShareSchema } from "../delivery/deliver";
+import { canPrintAgain, printsLeft } from "../delivery/print-request";
+import { PrintJobSchema } from "../delivery/print-schema";
 import { getEnv, requireEnv } from "../env";
 import type { PortraitEvent } from "../events/schema";
-import { JobSchema } from "../jobs/schema";
+import { type Job, JobSchema } from "../jobs/schema";
 import { signMedia } from "../media-token";
 import { getServices } from "../services";
 import { eventObjects, Global } from "../sync/names";
@@ -21,6 +24,21 @@ export interface ShareView {
   imageUrl: string;
   styleId: string;
   subjects: number;
+  /** Print button (D-26): null when printing is off; otherwise prints left, whether a print is on its way, and whether it was printed before. */
+  print: { left: number; pending: boolean; printedBefore: boolean } | null;
+}
+
+/** The event and job behind a live share id, for the print button (D-26). */
+export async function shareTarget(rawId: string): Promise<{ event: PortraitEvent; job: Job } | null> {
+  const id = SHARE_ID.safeParse(rawId);
+  if (!id.success) return null;
+  const { sync } = getServices();
+  const share = await sync.map(Global.shares, ShareSchema).get(id.data).catch(() => null);
+  if (!share || Date.now() - Date.parse(share.createdAt) > SEVEN_DAYS_MS) return null;
+  const event = await (await getEventRepo()).get(share.eventSlug);
+  if (!event) return null;
+  const job = await sync.map(eventObjects(event.slug).jobs, JobSchema).get(share.jobId).catch(() => null);
+  return job ? { event, job } : null;
 }
 
 /**
@@ -46,8 +64,22 @@ export async function loadShare(rawId: string): Promise<ShareView | ShareGone> {
   if (!(await blob.get(job.outputBlobs.deliveryJpeg))) return { gone: "unavailable", locale };
   const env = requireEnv(getEnv(), ["MEDIA_SIGNING_SECRET", "PUBLIC_BASE_URL"]);
   const ttl = Math.max(60, Math.floor((SEVEN_DAYS_MS - age) / 1000));
+  let print: ShareView["print"] = null;
+  if (event.config.printingEnabled) {
+    const ev = eventObjects(event.slug);
+    const [session, item] = await Promise.all([
+      sync.map(ev.sessions, SessionSchema).get(job.address).catch(() => null),
+      sync.map(ev.print, PrintJobSchema).get(job.jobId).catch(() => null),
+    ]);
+    print = {
+      left: session ? printsLeft(event, session.counters) : 0,
+      pending: !!item && !canPrintAgain(item),
+      printedBefore: item?.state === "printed",
+    };
+  }
   return {
     event,
+    print,
     imageUrl: new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET, job.outputBlobs.deliveryJpeg, ttl)}`, env.PUBLIC_BASE_URL).toString(),
     styleId: job.style ?? "",
     subjects: job.subjects ?? 1,

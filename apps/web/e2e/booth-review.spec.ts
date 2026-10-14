@@ -37,6 +37,9 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
     for (const [width, height] of [[1280, 720], [1920, 1080], [1080, 1920]] as const) {
       await page.setViewportSize({ width, height });
       await page.goto(BOOTH);
+      // Let the first card finish its drop: the pile is what stays on screen.
+      await expect(page.getByTestId("slide")).toBeVisible();
+      await page.waitForTimeout(1_200);
       for (const t of ["qr", "slide"]) {
         // Wait for the streamed screen before measuring.
         await expect(page.getByTestId(t)).toBeVisible();

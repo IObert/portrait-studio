@@ -93,6 +93,9 @@ export class SyncStore {
   grantRead(kind: "map" | "document", name: string, identity: string) {
     return this.run(name, () => this.backend.grantRead(kind, name, identity));
   }
+  grantReadWrite(kind: "map" | "document", name: string, identity: string) {
+    return this.run(name, () => this.backend.grantReadWrite(kind, name, identity));
+  }
 
   /** @internal Raw access for TypedMap / TypedDocument. */
   get raw() {

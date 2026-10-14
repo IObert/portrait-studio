@@ -75,6 +75,7 @@ async function world(): Promise<World> {
     fetchMedia: async () => new Response(image, { headers: { "content-type": "image/jpeg" } }),
     publicBaseUrl: "https://booth.test",
     slideUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
+    mediaUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
     log,
   };
   const w: World = {
@@ -315,6 +316,130 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await w.say(SMS, "yes please")).not.toContain(catalogs.en.delivery.slideshowThanksYes); // not an exact keyword
     expect(await w.say(SMS, "YES")).toEqual([catalogs.en.delivery.slideshowThanksYes]);
     expect(await w.fake.getItem(ev.slideshow, "job_slide_02")).not.toBeNull();
+  });
+
+  it("print + show: queues the chosen portrait once, within the print quota (D-24)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 1 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const delivered = (id: string, address = "whatsapp:+447700900123") =>
+      JobSchema.parse({
+        jobId: id, address, channel: "whatsapp", style: "anime", background: "gradient", selfieBlob: "s",
+        outputBlobs: { printPng: `events/ev/generated/${id}.print.png`, deliveryJpeg: `events/ev/generated/${id}.jpg` }, shareId: id.padEnd(24, "Q"), state: "delivered", timestamps: {},
+      });
+    for (const j of [delivered("job_print_01"), delivered("job_print_02"), delivered("job_print_99", "whatsapp:+447700900999")]) await w.fake.createItem(ev.jobs, j.jobId, j);
+
+    // Someone else's portrait cannot be printed.
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_99" })).toEqual([catalogs.en.delivery.printUnavailable]);
+
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_01" })).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 0 })]);
+    expect((await w.fake.getItem(ev.print, "job_print_01"))!.data).toMatchObject({ state: "queued", who: "whatsapp:+44…23", url: expect.stringContaining("job_print_01.print.png"), reprint: false });
+    expect((await w.fake.getItem(ev.slideshow, "job_print_01"))!.data).toMatchObject({ blobPath: "events/ev/generated/job_print_01.jpg" });
+
+    // A second tap while it is on its way does not print twice; another portrait finds the quota used.
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_01" })).toEqual([catalogs.en.delivery.printAlready]);
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_02" })).toEqual([catalogs.en.delivery.printNoneLeft]);
+    expect(await w.fake.getItem(ev.print, "job_print_02").catch(() => null)).toBeNull();
+    // Shown on the screen even without a print.
+    expect(await w.fake.getItem(ev.slideshow, "job_print_02")).not.toBeNull();
+    const session = (await w.fake.getItem(ev.sessions, "whatsapp:+447700900123"))!.data as { counters: { printsReserved: number } };
+    expect(session.counters.printsReserved).toBe(1);
+  });
+
+  it("print on SMS: PRINT answers the pending question only when printing was offered", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 2 });
+    await w.say(SMS, "#ev");
+    await w.say(SMS, "AGREE");
+    const ev = eventObjects("ev");
+    const key = "sms:+447700900456";
+    await w.fake.createItem(ev.jobs, "job_print_03", JobSchema.parse({
+      jobId: "job_print_03", address: key, channel: "sms", style: "anime", background: "gradient", selfieBlob: "s",
+      outputBlobs: { printPng: "events/ev/generated/job_print_03.print.png", deliveryJpeg: "events/ev/generated/job_print_03.jpg" }, shareId: "P".repeat(24), state: "delivered", timestamps: {},
+    }));
+    const cur = (await w.fake.getItem(ev.sessions, key))!;
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_print_03", group: false, print: true } });
+    expect(await w.say(SMS, "PRINT")).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 1 })]);
+    expect(await w.fake.getItem(ev.print, "job_print_03")).not.toBeNull();
+  });
+
+  it("a failed print can be asked for again", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 2 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    await w.fake.createItem(ev.jobs, "job_print_04", JobSchema.parse({
+      jobId: "job_print_04", address: "whatsapp:+447700900123", channel: "whatsapp", style: "anime", background: "gradient", selfieBlob: "s",
+      outputBlobs: { printPng: "events/ev/generated/job_print_04.print.png", deliveryJpeg: "events/ev/generated/job_print_04.jpg" }, shareId: "F".repeat(24), state: "delivered", timestamps: {},
+    }));
+    await w.sync.ensureMap(ev.print);
+    await w.fake.createItem(ev.print, "job_print_04", { jobId: "job_print_04", blobPath: "x", who: "w", state: "failed", attempts: 3, leaseUntil: null, error: "jam", reprint: false, timestamps: { queued: "2026-10-13T12:00:00.000Z" } });
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_04" })).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 1 })]);
+    expect((await w.fake.getItem(ev.print, "job_print_04"))!.data).toMatchObject({ state: "queued", attempts: 0 });
+  });
+
+  it("PRINT any time lists the person's own portraits to print (D-28)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const key = "whatsapp:+447700900123";
+    // Nothing delivered yet.
+    expect(await w.say(WA, "can I print?")).toEqual([catalogs.en.delivery.printMenuEmpty]);
+
+    const make = (id: string, style: "anime" | "sketch", address = key) =>
+      JobSchema.parse({
+        jobId: id, address, channel: "whatsapp", style, background: "gradient", selfieBlob: "s",
+        outputBlobs: { printPng: `events/ev/generated/${id}.print.png`, deliveryJpeg: `events/ev/generated/${id}.jpg` }, shareId: id.padEnd(24, "M"), state: "delivered", timestamps: {},
+      });
+    for (const j of [make("job_menu_01", "anime"), make("job_menu_02", "sketch")]) await w.fake.createItem(ev.jobs, j.jobId, j);
+    const cur = (await w.fake.getItem(ev.sessions, key))!;
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), delivered: ["job_menu_01", "job_menu_02"] });
+
+    // Two portraits: a list, newest first.
+    const before = w.sent.length;
+    expect(await w.say(WA, "I'd like to Print another one")).toEqual([catalogs.en.delivery.printMenuMany({ printsLeft: 3 })]);
+    const list = w.content.get(w.sent[before]!.contentSid!)!["twilio/list-picker"] as { items: { id: string; item: string }[] };
+    expect(list.items.map((i) => i.id)).toEqual(["ps:slide:printonly:job_menu_02", "ps:slide:printonly:job_menu_01"]);
+    expect(list.items.map((i) => i.item)).toEqual(["1. Sketch", "2. Anime"]);
+
+    // Picking one prints it without putting it on the screen.
+    expect(await w.say(WA, "", { selection: "ps:slide:printonly:job_menu_01" })).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 2 })]);
+    expect(await w.fake.getItem(ev.print, "job_menu_01")).not.toBeNull();
+    expect(await w.fake.getItem(ev.slideshow, "job_menu_01").catch(() => null)).toBeNull();
+
+    // While it is on its way, the menu offers only the other one.
+    expect(await w.say(WA, "print")).toEqual([catalogs.en.delivery.printMenuOne({ styleName: "Sketch", printsLeft: 2 })]);
+  });
+
+  it("the selfie prompt mentions PRINT only when there is something to print", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 1 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    expect(await w.say(WA, "hello")).toEqual([catalogs.en.selfie.ask]);
+    const ev = eventObjects("ev");
+    const cur = (await w.fake.getItem(ev.sessions, "whatsapp:+447700900123"))!;
+    await w.fake.updateItem(ev.sessions, "whatsapp:+447700900123", { ...(cur.data as object), delivered: ["job_menu_03"] });
+    expect(await w.say(WA, "hello")).toEqual([`${catalogs.en.selfie.ask}\n${catalogs.en.delivery.printHint({ printsLeft: 1 })}`]);
+  });
+
+  it("SMS: PRINT then PRINT 2 picks the second portrait shown", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 2 });
+    await w.say(SMS, "#ev");
+    await w.say(SMS, "AGREE");
+    const ev = eventObjects("ev");
+    const key = "sms:+447700900456";
+    for (const [id, style] of [["job_sms_01", "anime"], ["job_sms_02", "sketch"]] as const)
+      await w.fake.createItem(ev.jobs, id, JobSchema.parse({
+        jobId: id, address: key, channel: "sms", style, background: "gradient", selfieBlob: "s",
+        outputBlobs: { printPng: `events/ev/generated/${id}.print.png`, deliveryJpeg: `events/ev/generated/${id}.jpg` }, shareId: id.padEnd(24, "N"), state: "delivered", timestamps: {},
+      }));
+    const cur = (await w.fake.getItem(ev.sessions, key))!;
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), delivered: ["job_sms_01", "job_sms_02"] });
+    await w.say(SMS, "PRINT");
+    expect(w.sent.at(-1)!.body).toContain("1. Sketch\n2. Anime");
+    expect(await w.say(SMS, "print 2")).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 1 })]);
+    expect(await w.fake.getItem(ev.print, "job_sms_01")).not.toBeNull();
   });
 
   it("logs addresses masked, never in full", async () => {

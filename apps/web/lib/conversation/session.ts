@@ -46,8 +46,12 @@ export const SessionSchema = z.object({
   /** Case A: the returning Memory profile and its first name. */
   memoryProfileId: z.string().nullable().default(null),
   pendingDeletionConfirm: z.boolean().default(false),
-  /** The last delivery's slideshow question, if still unanswered (SPEC §5.8). */
-  pendingSlideshow: z.object({ jobId: z.string(), group: z.boolean() }).nullable().default(null),
+  /** The last delivery's question, if still unanswered (SPEC §5.8); `print` when printing was offered (D-24). */
+  pendingSlideshow: z.object({ jobId: z.string(), group: z.boolean(), print: z.boolean().default(false) }).nullable().default(null),
+  /** The person's delivered portraits, newest last, for the print menu (D-28). At most 10: a WhatsApp list's limit. */
+  delivered: z.array(z.string()).max(10).default([]),
+  /** The last print menu's order, so an SMS "PRINT 2" means what the person saw (D-28). */
+  printMenu: z.array(z.string()).max(10).default([]),
   /** For the WhatsApp 24h window (SPEC §5.11). */
   lastInboundAt: z.iso.datetime().nullable().default(null),
   counters: z

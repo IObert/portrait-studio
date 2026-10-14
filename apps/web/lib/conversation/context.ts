@@ -3,6 +3,7 @@ import { getEventRepo } from "../admin/context";
 import { slideUrl } from "../booth/state";
 import { getEnv, requireEnv } from "../env";
 import { log } from "../log";
+import { signMedia } from "../media-token";
 import { Messenger } from "../messaging/outbound";
 import { getServices } from "../services";
 import { createTwilioMessagingApi } from "../twilio/messaging-api";
@@ -31,6 +32,7 @@ async function build(): Promise<Deps> {
     "TWILIO_VERIFY_SERVICE_SID",
     "TWILIO_MEMORY_STORE_ID",
     "PUBLIC_BASE_URL",
+    "MEDIA_SIGNING_SECRET",
   ]);
   const { sync, blob } = getServices();
   const creds = { accountSid: env.TWILIO_ACCOUNT_SID, apiKeySid: env.TWILIO_API_KEY_SID, apiKeySecret: env.TWILIO_API_KEY_SECRET };
@@ -46,6 +48,7 @@ async function build(): Promise<Deps> {
     fetchMedia: twilioMediaFetch(creds.apiKeySid, creds.apiKeySecret),
     publicBaseUrl: env.PUBLIC_BASE_URL,
     slideUrl,
+    mediaUrl: (blobPath, ttl) => new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET, blobPath, ttl)}`, env.PUBLIC_BASE_URL).toString(),
     log,
   };
 }

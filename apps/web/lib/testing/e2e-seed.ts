@@ -4,6 +4,7 @@
 import sharp from "sharp";
 import { getEventRepo } from "../admin/context";
 import { defaultConfig } from "../events/schema";
+import { newSession } from "../conversation/session";
 import { JobSchema } from "../jobs/schema";
 import { getServices } from "../services";
 import { eventObjects, Global } from "../sync/names";
@@ -13,6 +14,7 @@ export const E2E_SHARE_ID = "e2eShareFixture0000000001";
 export async function seedE2e(): Promise<void> {
   if (process.env.PORTRAIT_E2E_FAKE_SYNC !== "1") return;
   await seedShare();
+  await seedPrintShare();
   await seedBooth();
 }
 
@@ -65,4 +67,29 @@ async function seedShare(): Promise<void> {
   }));
   await sync.ensureMap(Global.shares);
   await sync.raw.createItem(Global.shares, E2E_SHARE_ID, { eventSlug: slug, jobId: "e2e_job_01", createdAt: new Date().toISOString() });
+}
+
+/** Share page with printing on: the owner has one print left (D-26). */
+export const E2E_PRINT_SHARE_ID = "e2ePrintShareFixture000001";
+async function seedPrintShare(): Promise<void> {
+  const { sync, blob } = getServices();
+  const events = await getEventRepo();
+  const slug = "e2e-print";
+  if (await events.get(slug)) return;
+  await events.create(slug, { ...defaultConfig("E2E Print Fair", "+13203780782"), printingEnabled: true, maxPrintsPerPerson: 1 });
+  await events.setState(slug, "live");
+  const jpeg = await sharp({ create: { width: 1200, height: 1800, channels: 3, background: "#0f766e" } }).jpeg().toBuffer();
+  const deliveryJpeg = `events/${slug}/generated/e2e_print_01.jpg`;
+  await blob.put(deliveryJpeg, jpeg, "image/jpeg");
+  const ev = eventObjects(slug);
+  for (const m of [ev.jobs, ev.sessions]) await sync.ensureMap(m);
+  const address = "whatsapp:+10000000001";
+  await sync.map(ev.jobs, JobSchema).put("e2e_print_01", JobSchema.parse({
+    jobId: "e2e_print_01", address, channel: "whatsapp", style: "anime", background: "gradient",
+    selfieBlob: `events/${slug}/selfies/x.jpg`, outputBlobs: { printPng: `events/${slug}/generated/e2e_print_01.print.png`, deliveryJpeg },
+    shareId: E2E_PRINT_SHARE_ID, state: "delivered", timestamps: { delivered: new Date().toISOString() },
+  }));
+  await sync.raw.createItem(ev.sessions, address, { ...newSession("en", new Date()), step: "ready", optedIn: true, counters: { delivered: 1, printed: 0, printsReserved: 0, inFlight: 0 } });
+  await sync.ensureMap(Global.shares);
+  await sync.raw.createItem(Global.shares, E2E_PRINT_SHARE_ID, { eventSlug: slug, jobId: "e2e_print_01", createdAt: new Date().toISOString() });
 }
