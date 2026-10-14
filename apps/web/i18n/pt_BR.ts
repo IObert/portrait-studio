@@ -113,6 +113,9 @@ export const pt_BR = {
     copied: "Copiado!",
     download: "Baixar",
     gone: "Este retrato não está mais disponível.",
+    print: ({ printsLeft }) => `Imprimir na cabine (${printsLeft} restantes)`,
+    printing: "Enviando para a impressora…",
+    printDone: "Impresso ou a caminho da impressora",
     removed: "Este retrato foi removido pelo organizador do evento.",
   },
 

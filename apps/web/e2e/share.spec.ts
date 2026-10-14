@@ -52,3 +52,27 @@ test.describe("share page (SPEC §6.2)", () => {
     expect((await request.get(`${baseURL}${path.slice(0, -2)}xx`)).status()).toBe(404);
   });
 });
+
+test.describe("print from the share page (D-26)", () => {
+  const PRINT_SHARE = "/s/e2ePrintShareFixture000001";
+
+  test("anyone with the link can print once; the quota is the owner's; it is not added to the screen", async ({ browser, baseURL }) => {
+    const anon = await browser.newContext({ httpCredentials: undefined });
+    const page = await anon.newPage();
+    await page.goto(`${baseURL}${PRINT_SHARE}`);
+    await page.getByRole("button", { name: "Print at the booth (1 left)" }).click();
+    await expect(page.getByRole("status")).toHaveText("It's on its way to the printer! Pick it up at the booth. Prints left: 0.");
+    await expect(page.getByTestId("share-print-done")).toBeVisible();
+    // After a reload it stays marked, and there is no second print button.
+    await page.reload();
+    await expect(page.getByTestId("share-print-done")).toBeVisible();
+    await expect(page.getByTestId("share-print")).toHaveCount(0);
+    await anon.close();
+  });
+
+  test("events without printing show no print button", async ({ page, baseURL }) => {
+    await page.goto(`${baseURL}/s/e2eShareFixture0000000001`);
+    await expect(page.getByRole("heading", { name: /E2E Summit/ })).toBeVisible();
+    await expect(page.getByTestId("share-print")).toHaveCount(0);
+  });
+});

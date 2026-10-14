@@ -220,6 +220,15 @@ when it was switched on.*
   the next agent resumes it instead.
 - The admin page already shows the printer status (heartbeat), so staff can see why nothing comes out.
 
+### D-26 Print button on the share page (user decision)
+*2026-10-14.*
+- The share page shows **Print at the booth (N left)** when the event has printing on and the owner still has prints.
+- **Anyone with the link** may use it (the user's choice): it takes one of the *owner's* prints, never more than
+  their quota. The page sends only the share id; the server looks up the job and owner.
+- It never adds the portrait to the booth screen. "Print + show" in the chat is the way to do both.
+- Same rules as the chat print (`requestPrint`): own delivered portrait, one print per portrait, a failed print can
+  be asked for again.
+
 ## Open TODOs after the last milestone
 
 - **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and

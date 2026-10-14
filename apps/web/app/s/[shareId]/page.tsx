@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { catalogs } from "@/i18n";
 import { loadShare } from "@/lib/share/load";
+import { PrintButton } from "./print-button";
 import { ShareButtons } from "./share-buttons";
 
 /** OpenGraph preview for a pasted link (SPEC §6.2). */
@@ -23,7 +24,8 @@ export async function generateMetadata(props: PageProps<"/s/[shareId]">): Promis
 
 async function Share({ params }: { params: Promise<{ shareId: string }> }) {
   await connection();
-  const view = await loadShare((await params).shareId);
+  const { shareId } = await params;
+  const view = await loadShare(shareId);
   if ("gone" in view) {
     const c = catalogs[view.locale];
     return (
@@ -44,6 +46,14 @@ async function Share({ params }: { params: Promise<{ shareId: string }> }) {
         // Only plain strings cross to the client (the catalog also holds functions).
         labels={{ share: c.share.share, copyText: c.share.copyText, copied: c.share.copied, download: c.share.download }}
       />
+      {view.print && (view.print.left > 0 || view.print.already) && (
+        <PrintButton
+          shareId={shareId}
+          left={view.print.left}
+          already={view.print.already}
+          labels={{ print: c.share.print({ printsLeft: view.print.left }), printing: c.share.printing, printDone: c.share.printDone }}
+        />
+      )}
     </div>
   );
 }

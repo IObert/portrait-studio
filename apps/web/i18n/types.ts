@@ -135,6 +135,10 @@ export interface Catalog {
     copied: string;
     download: string;
     gone: string;
+    /** Print button (D-26). */
+    print: (p: { printsLeft: number }) => string;
+    printing: string;
+    printDone: string;
     /** Taken down by the organizer (D-16). */
     removed: string;
   };

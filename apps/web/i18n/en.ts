@@ -113,6 +113,9 @@ export const en = {
     copied: "Copied!",
     download: "Download",
     gone: "This portrait is no longer available.",
+    print: ({ printsLeft }) => `Print at the booth (${printsLeft} left)`,
+    printing: "Sending to the printer…",
+    printDone: "Printed or on its way to the printer",
     removed: "This portrait was removed by the event organizer.",
   },
 
