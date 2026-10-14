@@ -108,6 +108,7 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
     await deps.sync.map(ev.print, PrintJobSchema, { ttlSeconds: SEVEN_DAYS }).create(job.jobId, {
       jobId: job.jobId,
       blobPath: job.outputBlobs.printPng,
+      url: deps.mediaUrl(job.outputBlobs.printPng, SEVEN_DAYS),
       who: mask(address),
       state: "queued",
       attempts: 0,

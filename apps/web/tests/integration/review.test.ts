@@ -80,7 +80,7 @@ describe("admin review (SPEC §10.3)", () => {
     const blob = new FakeBlob();
     for (const p of ["s", "events/ev/generated/job_00000001.print.png", "events/ev/generated/job_00000001.jpg"]) await blob.put(p, Buffer.from("x"), "image/jpeg");
     await w.fake.createItem(w.ev.slideshow, "job_00000001", { blobPath: "x.jpg", addedAt: new Date().toISOString() });
-    await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {} });
+    await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {} });
 
     expect(await removePortrait({ sync: w.sync, blob, log: w.log }, w.event, "job_00000001", "Ana")).toEqual({ printing: false });
     expect((await w.getJob()).state).toBe("removed_by_admin");
@@ -93,7 +93,7 @@ describe("admin review (SPEC §10.3)", () => {
 
   it("remove reports a print already in progress, and still takes the portrait down", async () => {
     const w = await setup({ printingEnabled: true }, { state: "delivered" });
-    await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", who: "x", state: "printing", attempts: 1, leaseUntil: null, error: null, reprint: false, timestamps: {} });
+    await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "printing", attempts: 1, leaseUntil: null, error: null, reprint: false, timestamps: {} });
     expect(await removePortrait({ sync: w.sync, blob: new FakeBlob(), log: w.log }, w.event, "job_00000001", undefined)).toEqual({ printing: true });
     expect((await w.getJob()).state).toBe("removed_by_admin");
   });
@@ -105,7 +105,7 @@ describe("admin review (SPEC §10.3)", () => {
 
   it("removes a queued print and releases the quota reservation, but not a printing one", async () => {
     const w = await setup({ printingEnabled: true }, { state: "delivered" });
-    const item = { jobId: "job_00000001", blobPath: "p.png", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {} };
+    const item = { jobId: "job_00000001", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {} };
     await w.fake.createItem(w.ev.print, "job_00000001", item);
     await removeFromPrintQueue({ sync: w.sync, log: w.log }, w.event, "job_00000001", undefined);
     expect(await w.fake.getItem(w.ev.print, "job_00000001")).toBeNull();
@@ -118,14 +118,14 @@ describe("admin review (SPEC §10.3)", () => {
   it("reprint queues a print marked as a reprint, without touching the quota (§17 Q5)", async () => {
     const w = await setup({ printingEnabled: true }, { state: "delivered" });
     const before = await w.counters();
-    await reprint({ sync: w.sync, log: w.log }, w.event, "job_00000001", "Ana");
+    await reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001", "Ana");
     expect((await w.fake.getItem(w.ev.print, "job_00000001"))!.data).toMatchObject({ state: "queued", reprint: true });
     expect(await w.counters()).toEqual(before);
-    await expect(reprint({ sync: w.sync, log: w.log }, w.event, "job_00000001", "Ana")).rejects.toThrow(/already pending/);
+    await expect(reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001", "Ana")).rejects.toThrow(/already pending/);
   });
 
   it("refuses reprints when printing is off", async () => {
     const w = await setup({ printingEnabled: false }, { state: "delivered" });
-    await expect(reprint({ sync: w.sync, log: w.log }, w.event, "job_00000001", undefined)).rejects.toThrow(/Printing is off/);
+    await expect(reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001", undefined)).rejects.toThrow(/Printing is off/);
   });
 });

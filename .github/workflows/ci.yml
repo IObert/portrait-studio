@@ -51,6 +51,16 @@ jobs:
       - run: pnpm --filter @portrait-studio/print-agent test
       - run: pnpm --filter @portrait-studio/print-agent build
       - run: node apps/print-agent/dist/agent.mjs --help
+      # The bundle must actually start on Node 22 (twilio-sync is CommonJS).
+      - run: node apps/print-agent/dist/agent.mjs --version
+      - name: Bundle rejects a bad invocation instead of crashing
+        run: |
+          set +e
+          out=$(node apps/print-agent/dist/agent.mjs --url https://example.test --token tooshort 2>&1)
+          code=$?
+          echo "$out"
+          [ "$code" = "2" ] || { echo "expected exit 2, got $code"; exit 1; }
+          echo "$out" | grep -q -- "--token" || { echo "missing argument error"; exit 1; }
 
   e2e:
     name: Playwright

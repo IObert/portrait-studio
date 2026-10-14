@@ -41,4 +41,6 @@ export interface SyncBackend {
    * this service enforces). Idempotent. Used for the booth screen (D-17).
    */
   grantRead(kind: "map" | "document", name: string, identity: string): Promise<void>;
+  /** Read + write (no manage) for one identity on one object: the print agent (PROTOCOL.md §2). */
+  grantReadWrite(kind: "map" | "document", name: string, identity: string): Promise<void>;
 }

@@ -172,7 +172,31 @@ keep-alive with a 5 s idle recycle. The callers' own retries (SyncStore, worker)
 stale socket costs seconds instead of 30 s. Covered by a unit test against a server that never answers, and by the
 live Sync tests.
 
+### D-22 Print agent uses the Sync SDK, confirmed on Node 22
+*2026-10-14.* SPEC §11.1 asked for this check before relying on `twilio-sync`. Verified on real Node 22.22:
+the SDK connects, opens objects and receives pushes. One catch: it is CommonJS, so an esbuild ESM bundle needs a
+`createRequire` banner, otherwise it dies at start-up with "Dynamic require of events is not supported". CI now
+starts the built bundle (`--version` and a bad invocation) so this cannot regress. No fallback to a polling agent
+API is needed.
+
+### D-23 Print agent and server responsibilities
+*2026-10-14.*
+- The agent claims jobs with the SDK's `mutate` (compare-and-set): a lost race cancels, so two agents never print
+  the same job. Lease 2 min, renewed every 30 s while printing, 3 attempts then failed.
+- `POST /api/agent/token` swaps the printer token for a Sync token for identity `printer:<slug>`, with read+write on
+  that event's print map and printer document only. Everything else is denied (54007, verified live). Printing must
+  be enabled, and an unknown event, a rotated token and printing-off all return the same 401.
+- Print items carry a **signed download link** (`/m/<token>`), so the agent needs no storage credentials.
+- The server settles prints (`lib/pipeline/prints.ts`): counts successes toward `maxPrintsPerPerson`, releases
+  reservations, sends the promo once per printed job (§5.9), and requeues or fails jobs whose lease expired 5 min
+  ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (§17 Q5).
+- The admin command now defaults to `--simulate`, since it works with no printer attached.
+
 ## Open TODOs after the last milestone
+
+- **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy`,
+  `Resolution=300x300dpi` plus the borderless scaling flags are taken from the spec and **not yet verified on a
+  printer**. Run `lpoptions -p <queue> -l` (the agent logs it at start-up) and correct `apps/print-agent/src/cups.ts`.
 
 - **Fewer settings per page in the admin** (user, 2026-10-13): the event form shows every §4.2 field at once. Split it
   into smaller sections or pages.

@@ -10,6 +10,7 @@ const { log } = await import("../lib/log");
 const { getEnv } = await import("../lib/env");
 const { buildWorkerDeps } = await import("../lib/pipeline/context");
 const { workOnce } = await import("../lib/pipeline/worker");
+const { settlePrints } = await import("../lib/pipeline/prints");
 
 const controller = new AbortController();
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
@@ -45,5 +46,23 @@ async function lane(n: number) {
   }
 }
 
-await Promise.all(Array.from({ length: concurrency }, (_, i) => lane(i)));
+const { signMedia } = await import("../lib/media-token");
+const printMediaUrl = (blobPath: string, ttl: number) => {
+  const env = getEnv();
+  return new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET!, blobPath, ttl)}`, env.PUBLIC_BASE_URL).toString();
+};
+
+/** Print lifecycle on the server side: count prints, send promos, release stuck jobs (SPEC §11.2, §5.9). */
+async function printLane() {
+  while (!controller.signal.aborted) {
+    try {
+      await settlePrints({ sync: deps.sync, events: deps.events, messenger: deps.messenger, log, mediaUrl: printMediaUrl });
+    } catch (err) {
+      log.error({ lane: "prints", err: (err as Error).message }, "print settlement failed");
+    }
+    await new Promise((r) => setTimeout(r, 3_000));
+  }
+}
+
+await Promise.all([...Array.from({ length: concurrency }, (_, i) => lane(i)), printLane()]);
 log.info("worker stopped");

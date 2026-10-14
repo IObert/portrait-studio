@@ -8,7 +8,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/agent.mjs --banner:js=\"// Portrait Studio print agent. Run: node agent.mjs --help\"",
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --minify --outfile=dist/agent.mjs --banner:js=\"// Portrait Studio print agent. Run: node agent.mjs --help\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\"",
     "start": "node dist/agent.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -23,5 +23,8 @@
     "typescript-eslint": "^8.71.1",
     "vitest": "^5.0.3",
     "zod": "^4.6.5"
+  },
+  "dependencies": {
+    "twilio-sync": "^4.0.1"
   }
 }

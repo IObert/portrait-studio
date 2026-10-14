@@ -1,9 +1,16 @@
+import path from "node:path";
+import { AgentUnauthorized, AGENT_VERSION, runAgent } from "./agent.js";
 import { parseAgentArgs, USAGE } from "./args.js";
 import { log } from "./log.js";
+import { cupsPrinter, simulatedPrinter } from "./printer.js";
 
 const argv = process.argv.slice(2);
 if (argv.includes("--help") || argv.includes("-h")) {
   console.log(USAGE);
+  process.exit(0);
+}
+if (argv.includes("--version")) {
+  console.log(AGENT_VERSION);
   process.exit(0);
 }
 
@@ -12,9 +19,35 @@ if (!result.ok) {
   console.error(`${result.error}\n\n${USAGE}`);
   process.exit(2);
 }
-
 const { args } = result;
-log("info", `Portrait Studio print agent starting (server ${new URL(args.url).origin})`);
-log("info", args.simulate ? `Simulator mode: prints go to ${args.out}` : `Printer queue: ${args.printer}`);
-// Token exchange, job claiming and printing are implemented in milestone i (§11).
-log("warn", "Printing is not implemented yet; exiting.");
+
+const major = Number(process.versions.node.split(".")[0]);
+if (major < 22) {
+  console.error(`Node.js 22 or newer is required (this is ${process.version}).`);
+  process.exit(2);
+}
+
+// parseAgentArgs guarantees --printer unless --simulate.
+const printer = args.simulate || !args.printer ? simulatedPrinter(args.out) : cupsPrinter(args.printer, path.join(args.out, ".tmp"));
+log("info", `Portrait Studio print agent ${AGENT_VERSION} (server ${new URL(args.url).origin})`);
+log("info", args.simulate ? `Simulator mode: prints are written to ${path.resolve(args.out)}` : `Printer queue: ${args.printer}`);
+
+const controller = new AbortController();
+for (const sig of ["SIGINT", "SIGTERM"] as const) {
+  process.once(sig, () => {
+    log("info", "Stopping…");
+    controller.abort();
+  });
+}
+
+try {
+  await runAgent({ url: args.url, token: args.token, printer, signal: controller.signal });
+  log("info", "Stopped.");
+} catch (err) {
+  if (err instanceof AgentUnauthorized) {
+    log("error", err.message);
+    process.exit(3);
+  }
+  log("error", `Unexpected error: ${(err as Error).message}`);
+  process.exit(1);
+}
