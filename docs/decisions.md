@@ -229,6 +229,22 @@ when it was switched on.*
 - Same rules as the chat print (`requestPrint`): own delivered portrait, one print per portrait, a failed print can
   be asked for again.
 
+### D-27 Frame clearance line in the generation prompt (user decision)
+*2026-10-14. An addition to PROMPTS.md §E; PROMPTS.md itself is unchanged.*
+- Problem: the image model does not know about the frame, so a logo tab could cover a head or hair.
+- `lib/image/frame-clearance.ts` measures, from the frame PNG, how much of the portrait window its opaque parts
+  cover at the top and bottom (middle 40% of the width, where heads are). Frames are measured automatically, so an
+  uploaded frame gets the same treatment.
+- When a side is covered by 8% or more, one line is added before the final reminder (§E11), with the share rounded
+  up to the next 5% plus a margin:
+  `Frame clearance: A decorative frame will cover {the top N%| the bottom N%| both} of the image after generation.
+  Keep that area free of the subjects: every head, all hair and every face must sit fully outside {…}, with only
+  background there. Scale and position the subjects so nothing important is hidden.`
+- Shipped frames: tab top → top 15%; tab bottom / bottom left → bottom 20%; red borders (their own tilted window,
+  3–5% wedge) → no line. With no frame, or one that covers nothing, the prompt is exactly the PROMPTS.md prompt.
+- The model follows this most of the time, not always. If it is still not good enough, the fallback is to move the
+  photo below the tab in the frame designs.
+
 ## Open TODOs after the last milestone
 
 - **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and

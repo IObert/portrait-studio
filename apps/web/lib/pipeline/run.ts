@@ -5,6 +5,7 @@ import { BlobPaths } from "../blob/paths";
 import type { PortraitEvent } from "../events/schema";
 import { compositeOnBackground } from "../image/composite";
 import { applyFrame, toDeliveryJpeg, toPrintPng } from "../image/frame";
+import { frameClearance } from "../image/frame-clearance";
 import type { Job } from "../jobs/schema";
 import { buildPrompt } from "../prompts/build";
 import { GenerationRefused, generatePortrait } from "./generate";
@@ -64,8 +65,17 @@ export async function runPipeline(deps: PipelineDeps, event: PortraitEvent, job:
   const jpeg = await loadSelfie(deps, job);
   const scene = { subjects: job.subjects, pet: job.pet };
 
+  // The frame is needed before generation now: the prompt keeps people clear of what it covers (D-27).
+  const framePng =
+    event.config.frame === "none"
+      ? null
+      : event.config.frame === "uploaded"
+        ? await deps.blob.get(event.uploads.frame?.blobPath ?? "")
+        : await deps.loadFixedFrame(event.config.frame);
+  if (event.config.frame !== "none" && !framePng) throw new Error("Selected frame is missing");
+
   // 4. Prompt.
-  const prompt = buildPrompt(job.style, job.background, scene);
+  const prompt = buildPrompt(job.style, job.background, scene, framePng ? await frameClearance(framePng) : undefined);
 
   // 5. Generate.
   const uploaded = job.background === "uploaded";
@@ -85,13 +95,6 @@ export async function runPipeline(deps: PipelineDeps, event: PortraitEvent, job:
     if (!bg) throw new Error("Uploaded background is missing");
     image = await compositeOnBackground(generated, bg);
   }
-  const framePng =
-    event.config.frame === "none"
-      ? null
-      : event.config.frame === "uploaded"
-        ? await deps.blob.get(event.uploads.frame?.blobPath ?? "")
-        : await deps.loadFixedFrame(event.config.frame);
-  if (event.config.frame !== "none" && !framePng) throw new Error("Selected frame is missing");
   if (framePng) image = await applyFrame(image, framePng);
 
   const printPng = await toPrintPng(image);
