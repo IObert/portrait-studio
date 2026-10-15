@@ -3,7 +3,7 @@ import { getEnv } from "../env";
 import { log } from "../log";
 import { listSenders, type Sender } from "../twilio/senders";
 import { en } from "@/i18n/en";
-import { BACKGROUND_IDS, FRAME_IDS, type PortraitEvent } from "../events/schema";
+import { BACKGROUND_IDS, KINGS_BACKGROUNDS, FRAME_IDS, type PortraitEvent } from "../events/schema";
 import { STYLE_IDS } from "../prompts/styles";
 import type { Option } from "@/app/admin/_components/event-form";
 
@@ -23,7 +23,7 @@ export function formOptions(uploads: PortraitEvent["uploads"] = { frame: null, b
   const backgrounds: Option[] = BACKGROUND_IDS.map((id) =>
     id === "uploaded"
       ? { id, label: "Uploaded background", disabled: !uploads.background, hint: uploads.background ? undefined : "upload first" }
-      : { id, label: en.backgrounds[id].name },
+      : { id, label: en.backgrounds[id].name, laKings: (KINGS_BACKGROUNDS as readonly string[]).includes(id) },
   );
   const frames: Option[] = FRAME_IDS.map((id) => ({
     id,

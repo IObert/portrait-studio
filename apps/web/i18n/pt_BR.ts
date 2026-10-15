@@ -15,6 +15,8 @@ export const pt_BR = {
     "solid-white": { name: "Branco", aliases: ["fundo branco"] },
     "solid-black": { name: "Preto", aliases: ["fundo preto"] },
     original: { name: "Original", aliases: ["manter", "mesmo"] },
+    "ice-rink": { name: "Rinque de gelo", aliases: ["rinque", "gelo", "hockey", "hóquei"] },
+    "crypto-arena": { name: "Crypto.com Arena", aliases: ["arena", "crypto", "crypto.com"] },
   },
 
   qrPrefill: ({ eventName }) => `Oi! Estou no ${eventName} e quero experimentar o Portrait Studio 🎨`,

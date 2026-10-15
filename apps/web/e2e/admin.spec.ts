@@ -52,6 +52,32 @@ test.describe.serial("admin events", () => {
     await expect(page.getByRole("heading", { name: eventName })).toBeVisible();
   });
 
+  test("LA Kings promotion: its two scenes appear, preselected, only with the toggle on (D-36)", async ({ page }) => {
+    await page.goto(`/admin/events/${slug}`);
+    const rink = page.locator('input[name="backgrounds"][value="ice-rink"]');
+    const arena = page.locator('input[name="backgrounds"][value="crypto-arena"]');
+    await expect(rink).toHaveCount(0);
+    await expect(arena).toHaveCount(0);
+    // The toggle never mentions the jersey.
+    await expect(page.getByText(/jersey/i)).toHaveCount(0);
+    await page.getByLabel("LA Kings promotion").check();
+    await expect(rink).toBeChecked();
+    await expect(arena).toBeChecked();
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("LA Kings promotion")).toBeChecked();
+    await expect(rink).toBeChecked();
+    // Off again: the scenes leave the form and are not saved.
+    await page.getByLabel("LA Kings promotion").uncheck();
+    await expect(rink).toHaveCount(0);
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("LA Kings promotion")).not.toBeChecked();
+    await expect(rink).toHaveCount(0);
+  });
+
   test("edits settings; renaming keeps the same event", async ({ page }) => {
     await page.goto(`/admin/events/${slug}`);
     await page.getByLabel("Name", { exact: true }).fill(`${eventName} (renamed)`);

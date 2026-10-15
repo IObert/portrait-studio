@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { BACKGROUND_IDS } from "@/lib/events/schema";
+import { BACKGROUND_IDS, KINGS_BACKGROUNDS } from "@/lib/events/schema";
+
+// Without the LA Kings promotion, its scenes cannot be chosen (D-36).
+const PLAIN_BACKGROUNDS = BACKGROUND_IDS.filter((b) => !(KINGS_BACKGROUNDS as readonly string[]).includes(b));
 import { buildPrompt } from "@/lib/prompts/build";
 import { STYLE_IDS } from "@/lib/prompts/styles";
 
 describe("prompt builder (SPEC §9.3)", () => {
   // One snapshot per style × background (SPEC §9.3, §16).
   for (const style of STYLE_IDS)
-    for (const bg of BACKGROUND_IDS)
+    for (const bg of PLAIN_BACKGROUNDS)
       it(`${style} × ${bg}`, () => {
         expect(buildPrompt(style, bg, { subjects: 1, pet: null })).toMatchSnapshot();
       });
@@ -34,7 +37,7 @@ describe("prompt builder (SPEC §9.3)", () => {
   });
 
   it("never includes out-of-scope blocks", () => {
-    const all = STYLE_IDS.flatMap((s) => BACKGROUND_IDS.map((b) => buildPrompt(s, b, { subjects: 2, pet: "cat" }))).join("\n");
+    const all = STYLE_IDS.flatMap((s) => PLAIN_BACKGROUNDS.map((b) => buildPrompt(s, b, { subjects: 2, pet: "cat" }))).join("\n");
     for (const banned of ["STYLE LOCK", "CARICATURE", "Override from reviewer", "landscape", "Clothing:", "REMINDER: The art style"]) expect(all).not.toContain(banned);
   });
 });

@@ -23,6 +23,12 @@ async function loadFixedFrame(id: string): Promise<Buffer | null> {
   return readFile(path.join(appDir(), "assets/frames", `${id}.png`));
 }
 
+/** Brand reference images, shipped in apps/web/assets/<brand key>/ (D-36). Only known file names. */
+async function loadBrandAsset(brandKey: string, file: string): Promise<Buffer> {
+  if (!/^[a-z0-9-]+$/.test(brandKey) || !/^[A-Za-z0-9._-]+\.png$/.test(file)) throw new Error("Invalid brand asset");
+  return readFile(path.join(appDir(), "assets", brandKey, file));
+}
+
 /** Vision models that do not accept reasoning effort "none" (verified 2026-10-12, docs/decisions.md D-14). */
 const NO_EFFORT_NONE = /^gpt-6(\.\d+)?-(sol|astra)/;
 
@@ -48,6 +54,7 @@ export async function buildWorkerDeps(workerId: string): Promise<WorkerDeps> {
       imageModel: env.OPENAI_IMAGE_MODEL,
       vision: { model: env.OPENAI_VISION_MODEL, effort: NO_EFFORT_NONE.test(env.OPENAI_VISION_MODEL) ? "low" : "none" },
       loadFixedFrame,
+      loadBrandAsset,
     },
     log,
     workerId,

@@ -7,6 +7,7 @@ import { BlobPaths } from "../blob/paths";
 import { generatePrinterToken } from "../auth/printer-token";
 import { deleteEvent } from "../events/delete";
 import { eventIdCandidate, eventIdFromName } from "../events/event-id";
+import { kingsBackgrounds } from "../events/kings";
 import { EventNotFound, InvalidTransition, SlugTaken } from "../events/repo";
 import {
   BACKGROUND_IDS,
@@ -71,10 +72,12 @@ function echo(form: FormData): ActionState["values"] {
       language: pick(str("language"), LOCALES, "en"),
       leadChannel: pick(str("leadChannel"), ["whatsapp", "sms"] as const, "whatsapp"),
       qrSender: str("qrSender"),
+      qrText: str("qrText"),
       styles: form.getAll("styles").map(String).filter((v) => (STYLE_IDS as readonly string[]).includes(v)) as EventConfigInput["styles"],
       backgrounds: form.getAll("backgrounds").map(String).filter((v) => (BACKGROUND_IDS as readonly string[]).includes(v)) as EventConfigInput["backgrounds"],
       uploadedBackgroundName: str("uploadedBackgroundName"),
       frame: pick(str("frame"), FRAME_IDS, "none"),
+      laKings: bool("laKings"),
       leadCollection: bool("leadCollection"),
       emailPromoCode: str("emailPromoCode"),
       emailShowSnippet: bool("emailShowSnippet"),
@@ -94,15 +97,18 @@ function parseConfig(form: FormData): EventConfigInput {
   const num = (k: string) => Number(form.get(k) ?? Number.NaN);
   const list = <T extends readonly string[]>(k: string, allowed: T) =>
     form.getAll(k).map(String).filter((v): v is T[number] => (allowed as readonly string[]).includes(v));
+  const laKings = bool("laKings");
   return EventConfigInputSchema.parse({
     name: String(form.get("name") ?? ""),
     language: z.enum(LOCALES).parse(form.get("language")),
     leadChannel: z.enum(["whatsapp", "sms"]).parse(form.get("leadChannel")),
     qrSender: String(form.get("qrSender") ?? "").trim(),
+    qrText: String(form.get("qrText") ?? "").trim(),
     styles: list("styles", STYLE_IDS),
-    backgrounds: list("backgrounds", BACKGROUND_IDS),
+    backgrounds: kingsBackgrounds(list("backgrounds", BACKGROUND_IDS), laKings),
     uploadedBackgroundName: String(form.get("uploadedBackgroundName") ?? ""),
     frame: z.enum(FRAME_IDS).parse(form.get("frame")),
+    laKings,
     leadCollection: bool("leadCollection"),
     emailPromoCode: String(form.get("emailPromoCode") ?? "").trim(),
     emailShowSnippet: bool("emailShowSnippet"),
