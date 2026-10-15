@@ -9,3 +9,5 @@
 !.env.example
 .local
 prints
+# leads exports hold personal data (leads:export)
+exports

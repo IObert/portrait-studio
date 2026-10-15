@@ -246,6 +246,17 @@ deploy_app "$WORKER_APP" "$WORKER_REPLICAS" "$WORKER_REPLICAS" none /repo/apps/w
 FQDN="$(az containerapp show --name "$WEB_APP" --resource-group "$AZURE_RESOURCE_GROUP" \
   --query properties.configuration.ingress.fqdn --output tsv)"
 
+# First deploy: the URL only exists once the web app does. Twilio webhooks, share links and
+# print downloads all need it, so set it on both apps now instead of asking for a second run.
+if [[ -z "${PUBLIC_BASE_URL:-}" && -n "$FQDN" ]]; then
+  log "Setting PUBLIC_BASE_URL=https://$FQDN on both apps"
+  for app in "$WEB_APP" "$WORKER_APP"; do
+    az containerapp update --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" \
+      --set-env-vars "PUBLIC_BASE_URL=https://$FQDN" --output none
+  done
+  PUBLIC_BASE_URL="https://$FQDN"
+fi
+
 cat <<EOF
 
 Deployment complete ($IMAGE_TAG)
@@ -253,8 +264,7 @@ Deployment complete ($IMAGE_TAG)
   Health:            https://$FQDN/healthz
   Twilio inbound:    https://$FQDN/api/twilio/inbound
 
-Set PUBLIC_BASE_URL=https://$FQDN (or your custom domain) in $ENV_FILE if it is not set yet,
-then re-run this script.
+PUBLIC_BASE_URL is $PUBLIC_BASE_URL. Add it to $ENV_FILE so later runs keep it.
 
 Logs:
   az containerapp logs show -g $AZURE_RESOURCE_GROUP -n $WEB_APP --follow
