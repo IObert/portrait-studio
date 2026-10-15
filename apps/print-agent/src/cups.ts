@@ -4,19 +4,28 @@
  */
 
 /**
- * `lp` arguments for one borderless 4x6 print. Option names come from SPEC
- * §11.2 and must be checked on a real DS620 with `lpoptions -p <queue> -l`;
- * the agent logs that output at start-up (PROTOCOL.md §5).
+ * DS620 driver options for one 4x6 print (SPEC §11.2), checked on a real DS620
+ * with the DNP-DS620 PPD (`lpoptions -p <queue> -l`). The print command sends
+ * them, and `doctor` sets them as the queue defaults (PROTOCOL.md §5).
  */
+export const DS620_OPTIONS = {
+  PageSize: "dnp6x4",
+  Cutter: "Normal",
+  Finish: "Glossy",
+  Resolution: "300x300dpi",
+} as const;
+
+/** CUPS queue names: no leading dash, or lp would read it as an option (argument injection). */
+export function isSafeQueueName(queue: string): boolean {
+  return /^[A-Za-z0-9_.][A-Za-z0-9_.-]{0,126}$/.test(queue);
+}
+
+/** `lp` arguments for one borderless 4x6 print. */
 export function lpArgs(queue: string, file: string): string[] {
-  // No leading dash: lp would read it as an option (argument injection).
-  if (!/^[A-Za-z0-9_.][A-Za-z0-9_.-]{0,126}$/.test(queue)) throw new Error("Invalid CUPS queue name");
+  if (!isSafeQueueName(queue)) throw new Error("Invalid CUPS queue name");
   return [
     "-d", queue,
-    "-o", "PageSize=dnp6x4",
-    "-o", "Cutter=Normal",
-    "-o", "Finish=Glossy",
-    "-o", "Resolution=300x300dpi",
+    ...Object.entries(DS620_OPTIONS).flatMap(([k, v]) => ["-o", `${k}=${v}`]),
     // Borderless: fill the page, no margins, keep portrait orientation.
     "-o", "fit-to-page",
     "-o", "print-scaling=fill",

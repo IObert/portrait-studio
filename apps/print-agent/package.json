@@ -10,6 +10,8 @@
   "scripts": {
     "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --minify --outfile=dist/agent.mjs --banner:js=\"// Portrait Studio print agent. Run: node agent.mjs --help\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\"",
     "start": "node dist/agent.mjs",
+    "printer:doctor": "pnpm build && node dist/agent.mjs doctor",
+    "printer:fix": "pnpm build && node dist/agent.mjs doctor --fix",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

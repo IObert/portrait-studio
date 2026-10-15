@@ -19,7 +19,10 @@ export type AgentArgs = z.infer<typeof ArgsSchema>;
 export const USAGE = `Usage:
   node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue> | --simulate] [--out ./prints]
 
-  --out   Folder that keeps a copy of every print, for manual reprints (default ./prints)`;
+  node agent.mjs doctor [--printer <CUPS queue>] [--fix]
+
+  --out   Folder that keeps a copy of every print, for manual reprints (default ./prints)
+  doctor  Checks the DS620 queue: driver, enabled, and print defaults. --fix repairs it.`;
 
 export type ParseResult = { ok: true; args: AgentArgs } | { ok: false; error: string };
 
@@ -48,4 +51,16 @@ export function parseAgentArgs(argv: string[]): ParseResult {
     };
   }
   return { ok: true, args: parsed.data };
+}
+
+export type DoctorParseResult = { ok: true; args: { queue?: string; fix: boolean } } | { ok: false; error: string };
+
+/** `doctor [--printer <queue>] [--fix]`; without --printer it finds the DS620 queue. */
+export function parseDoctorArgs(argv: string[]): DoctorParseResult {
+  try {
+    const { values } = parseArgs({ args: argv, strict: true, options: { printer: { type: "string" }, fix: { type: "boolean" } } });
+    return { ok: true, args: { ...(values.printer ? { queue: values.printer } : {}), fix: values.fix ?? false } };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
 }
