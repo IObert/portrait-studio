@@ -117,19 +117,14 @@ test.describe.serial("admin events", () => {
 });
 
 test.describe("stats (SPEC §10.5)", () => {
-  test("shows the counters and printer state; the leads CSV needs admin auth", async ({ page, browser, baseURL, request }) => {
+  test("shows the counters and printer state; leads cannot be downloaded", async ({ page, baseURL, request }) => {
     await page.goto("/admin/events/e2e-share/stats");
     await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
     await expect(page.getByTestId("last-reset")).toHaveText("Never reset");
     await expect(page.getByText("No print agent has connected yet.")).toBeVisible();
 
-    const csv = await request.get(`${baseURL}/admin/events/e2e-share/leads.csv`);
-    expect(csv.status()).toBe(200);
-    expect(csv.headers()["content-type"]).toContain("text/csv");
-    expect((await csv.text()).split("\r\n")[0]).toBe("first_name,last_name,email,phone,whatsapp,opted_in_at,method");
-
-    const anon = await browser.newContext({ httpCredentials: undefined });
-    expect((await anon.request.get(`${baseURL}/admin/events/e2e-share/leads.csv`)).status()).toBe(401);
-    await anon.close();
+    // Leads are exported only with the leads:export script (user decision, D-31).
+    await expect(page.getByRole("link", { name: /csv/i })).toHaveCount(0);
+    expect((await request.get(`${baseURL}/admin/events/e2e-share/leads.csv`)).status()).toBe(404);
   });
 });

@@ -284,9 +284,12 @@ when it was switched on.*
 *2026-10-15.*
 - `/admin/events/<slug>/stats`: the §10.5 counters, average delivery time, per style and background, the print
   agent's status (offline after 45 s without a heartbeat), and `lastResetAt`.
-- `/admin/events/<slug>/leads.csv`: leads joined with Conversation Memory; agree-only leads and deleted profiles give
-  empty contact fields. Cells that a spreadsheet would run as a formula are prefixed with `'` (phone numbers are
-  exempt). Admin auth is re-checked in the route.
+- **Leads export is a script only** (user decision; changes SPEC §10.5's CSV export in the admin UI): `pnpm --filter
+  web leads:export [--event <slug>] [--out <file>]`. Without `--event` it lists the events and asks for a number.
+  Leads are joined with Conversation Memory; agree-only leads and deleted profiles give empty contact fields. Cells
+  that a spreadsheet would run as a formula are prefixed with `'` (phone numbers are exempt). It writes to
+  `exports/` at the repo root (gitignored, folder `0700`) unless `--out` is given; the file is `0600`, never
+  overwrites an existing one, and `leads-*.csv` is gitignored anywhere as a second guard. The web app has no download.
 - `pnpm --filter web stats:reset --event <slug>` deletes the counters and writes `lastResetAt` to
   `ev_<slug>_stats_meta` (deleted with the event). The run is logged.
 

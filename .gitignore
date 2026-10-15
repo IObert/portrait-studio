@@ -24,6 +24,10 @@ playwright/.cache/
 .local/
 prints/
 
+# leads exports hold personal data (pnpm --filter web leads:export writes to exports/)
+exports/
+leads-*.csv
+
 # misc
 .DS_Store
 *.pem

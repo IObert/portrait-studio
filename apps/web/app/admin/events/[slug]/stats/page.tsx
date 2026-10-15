@@ -98,15 +98,9 @@ async function Stats({ params }: { params: Promise<{ slug: string }> }) {
           {backgrounds.map((id) => <Row key={id} label={id === "uploaded" ? "Uploaded background" : en.backgrounds[id].name} value={n(`background:${id}`)} />)}
         </Card>
       </div>
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Leads</h2>
-        <p className="text-sm text-zinc-600">Names, email and phone from Conversation Memory, with opt-in time and method. Contains personal data.</p>
-        <a href={`/admin/events/${slug.data}/leads.csv`} className="inline-block rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white" download>
-          Download leads CSV
-        </a>
-      </section>
       <p className="text-xs text-zinc-500">
-        Reset the counters with <code>pnpm --filter web stats:reset --event {slug.data}</code>.
+        Reset the counters with <code>pnpm --filter web stats:reset --event {slug.data}</code>. Export leads with{" "}
+        <code>pnpm --filter web leads:export --event {slug.data}</code>.
       </p>
     </div>
   );
