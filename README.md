@@ -125,7 +125,7 @@ needs **Node.js 22+** and nothing installed. See [apps/print-agent/README.md](ap
 ```sh
 pnpm --filter print-agent build
 node apps/print-agent/dist/agent.mjs --url http://localhost:3000 --token <printer token> --simulate --out ./prints
-node apps/print-agent/dist/agent.mjs doctor --fix   # set up the DS620 queue: driver and print defaults
+pnpm --filter @portrait-studio/print-agent printer:fix   # set up the DS620 queue: driver and print defaults
 ```
 
 The admin UI shows this command with the values filled in when the printer token is generated. The agent claims print

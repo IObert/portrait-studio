@@ -33,6 +33,15 @@ node agent.mjs doctor          # check only, changes nothing
 node agent.mjs doctor --fix    # repair what it can
 ```
 
+From the repo, the same as package scripts (they build the agent first):
+
+```sh
+pnpm --filter @portrait-studio/print-agent printer:doctor   # check
+pnpm --filter @portrait-studio/print-agent printer:fix      # repair
+```
+
+(Not `pnpm doctor`: that is pnpm's own built-in command.)
+
 It finds the DS620 queue (or pass `--printer <queue>`) and checks:
 
 - **Driver.** macOS often sets the DS620 up with the *Generic PostScript Printer* driver, which prints wrong sizes.
