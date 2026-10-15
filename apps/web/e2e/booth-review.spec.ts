@@ -23,14 +23,14 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
     expect(await page.getByTestId("slide").evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(1200);
   });
 
-  test("the QR code opens WhatsApp with the localized prefill and event code (SPEC §5.2)", async ({ page }) => {
+  test("the QR code opens WhatsApp with the QR message naming the event (SPEC §5.2, D-37)", async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto(BOOTH);
     const png = await page.getByTestId("qr").screenshot();
     const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     const code = jsQR(new Uint8ClampedArray(data), info.width, info.height);
     expect(code, "QR must decode").not.toBeNull();
-    expect(decodeURIComponent(code!.data)).toBe("https://wa.me/13203780782?text=Hi! I'm at E2E Booth and want to try Portrait Studio 🎨");
+    expect(decodeURIComponent(code!.data)).toBe("https://wa.me/13203780782?text=Send this message to get your portrait from Twilio at E2E Booth");
   });
 
   test("CTA, QR and slide stay visible on landscape and portrait screens", async ({ page }) => {

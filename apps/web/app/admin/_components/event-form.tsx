@@ -23,8 +23,8 @@ interface Props {
   styles: Option[];
   backgrounds: Option[];
   frames: Option[];
-  /** Messaging Service senders; empty if the lookup failed (falls back to free entry). */
-  senders: { e164: string; sms: boolean; whatsapp: boolean }[];
+  /** Messaging Service senders, one per number and channel; empty if the lookup failed (falls back to free entry). */
+  senders: { e164: string; channel: "whatsapp" | "sms"; rcs?: boolean }[];
   submitLabel: string;
   /** Edit page only: widgets with their own actions, shown inside the section they belong to. */
   slots?: { uploads: React.ReactNode; printAgent: React.ReactNode };
@@ -145,7 +145,7 @@ function swapDefaultCopy(form: HTMLFormElement | null, locale: string) {
   const copy = DEFAULT_COPY[locale as keyof typeof DEFAULT_COPY];
   if (!form || !copy) return;
   const all = Object.values(DEFAULT_COPY);
-  for (const [name, key] of [["shareText", "shareText"], ["promoText", "promo"], ["ctaHeadline", "ctaHeadline"]] as const) {
+  for (const [name, key] of [["shareText", "shareText"], ["promoText", "promo"], ["ctaHeadline", "ctaHeadline"], ["qrText", "qrText"]] as const) {
     const el = form.elements.namedItem(name) as HTMLTextAreaElement | HTMLInputElement | null;
     if (el && (el.value === "" || all.some((c) => c[key] === el.value))) el.value = copy[key];
   }
@@ -155,6 +155,78 @@ function swapDefaultCopy(form: HTMLFormElement | null, locale: string) {
     const defaults = all.map((c) => c.ctaSteps[i]).filter(Boolean);
     if (copy.ctaSteps[i] && (el.value === "" || defaults.includes(el.value))) el.value = copy.ctaSteps[i]!;
   });
+}
+
+function ChannelIcon({ channel }: { channel: "whatsapp" | "sms" | "rcs" }) {
+  if (channel === "whatsapp")
+    return (
+      <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#25D366]" fill="currentColor" aria-hidden>
+        <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm5.7 14.2c-.2.7-1.4 1.3-2 1.4-.5.1-1.2.1-1.9-.1-.4-.1-1-.3-1.7-.6-3-1.3-4.9-4.3-5-4.5-.2-.2-1.2-1.6-1.2-3s.8-2.2 1-2.5c.3-.3.6-.4.8-.4h.6c.2 0 .4 0 .6.5l.9 2.1c.1.2.1.4 0 .6l-.4.6-.4.5c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.5.1.7-.1l.9-1.1c.2-.3.4-.2.7-.1l2 1c.3.1.5.2.6.3.1.2.1.8-.2 1.5Z" />
+      </svg>
+    );
+  if (channel === "rcs")
+    return (
+      <span className="rounded bg-[#1a73e8] px-1 text-[10px] font-bold leading-4 text-white" title="RCS when the phone supports it, otherwise SMS">
+        RCS
+      </span>
+    );
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" strokeLinejoin="round" />
+      <path d="M7.5 10h9M7.5 13h6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const pretty = (e164: string) => e164.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, "+1 $1 $2 $3");
+
+/**
+ * Where the QR code leads (D-37): one choice of number and channel from the
+ * Messaging Service, so the two can never disagree. Submits qrSender and
+ * leadChannel. Free entry only if the senders could not be loaded.
+ */
+function QrSender({ senders, channel, number }: { senders: Props["senders"]; channel: "whatsapp" | "sms"; number: string }) {
+  const keyOf = (s: { e164: string; channel: string }) => `${s.channel}:${s.e164}`;
+  const initial = senders.find((s) => s.e164 === number && s.channel === channel) ?? senders[0];
+  const [picked, setPicked] = useState(initial ? keyOf(initial) : "");
+  const current = senders.find((s) => keyOf(s) === picked);
+  if (senders.length === 0) {
+    return (
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div>
+          <label className={field.label} htmlFor="leadChannel">QR code channel</label>
+          <select id="leadChannel" name="leadChannel" defaultValue={channel} className={field.input}>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="sms">SMS</option>
+          </select>
+        </div>
+        <div>
+          <label className={field.label} htmlFor="qrSender">QR sender number</label>
+          <input id="qrSender" name="qrSender" defaultValue={number} required placeholder="+13203780782" className={`${field.input} font-mono`} />
+          <p className={`${field.hint} text-pause`}>Could not load the Messaging Service senders; enter the number by hand.</p>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <fieldset>
+      <legend className={field.label}>QR code leads to</legend>
+      <input type="hidden" name="qrSender" value={current?.e164 ?? ""} />
+      <input type="hidden" name="leadChannel" value={current?.channel ?? "whatsapp"} />
+      <div className="mt-2 divide-y divide-line overflow-hidden rounded-lg border border-line">
+        {senders.map((s) => (
+          <label key={keyOf(s)} className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm has-checked:bg-signal/8 hover:bg-mist/60">
+            <input type="radio" name="qrChoice" value={keyOf(s)} checked={picked === keyOf(s)} onChange={() => setPicked(keyOf(s))} className="accent-signal" />
+            <ChannelIcon channel={s.channel} />
+            <span className="font-medium">{s.channel === "whatsapp" ? "WhatsApp" : "SMS"}</span>
+            {s.rcs && <ChannelIcon channel="rcs" />}
+            <span className="ml-auto font-mono text-slate">{pretty(s.e164)}</span>
+          </label>
+        ))}
+      </div>
+      <p className={field.hint}>Numbers in the Messaging Service, once per channel they can be messaged on.</p>
+    </fieldset>
+  );
 }
 
 const LANGUAGE_HINT = "Messages, the booth screen and the share page use this language.";
@@ -217,31 +289,16 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
             <p className={`${field.hint} pl-9`}>Empty steps are left out. Save to get room for another, up to five.</p>
           </fieldset>
         </div>
-        <div className="grid gap-5 border-t border-line pt-5 sm:grid-cols-2">
+        <div className="space-y-5 border-t border-line pt-5">
+          <QrSender senders={senders} channel={config.leadChannel} number={config.qrSender} />
+          <FieldError state={state} name="qrSender" />
           <div>
-            <label className={field.label} htmlFor="leadChannel">QR code channel</label>
-            <select id="leadChannel" name="leadChannel" defaultValue={config.leadChannel} className={field.input}>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="sms">SMS</option>
-            </select>
-          </div>
-          <div>
-            <label className={field.label} htmlFor="qrSender">QR sender number</label>
-            {senders.length > 0 ? (
-              <select id="qrSender" name="qrSender" defaultValue={config.qrSender || senders[0]!.e164} className={`${field.input} font-mono`}>
-                {senders.map((s) => (
-                  <option key={s.e164} value={s.e164}>
-                    {s.e164} ({[s.whatsapp && "WhatsApp", s.sms && "SMS"].filter(Boolean).join(" + ") || "no messaging"})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <>
-                <input id="qrSender" name="qrSender" defaultValue={config.qrSender} required placeholder="+13203780782" className={`${field.input} font-mono`} />
-                <p className={`${field.hint} text-pause`}>Could not load the Messaging Service senders; enter the number by hand.</p>
-              </>
-            )}
-            <FieldError state={state} name="qrSender" />
+            <label className={field.label} htmlFor="qrText">QR message</label>
+            <input id="qrText" name="qrText" defaultValue={config.qrText || DEFAULT_COPY[config.language].qrText} maxLength={200} className={field.input} />
+            <p className={field.hint}>
+              What the attendee&rsquo;s phone fills in after scanning. Keep <code>{"{event}"}</code>: it becomes the event name and tells the booth which event they&rsquo;re at.
+            </p>
+            <FieldError state={state} name="qrText" />
           </div>
         </div>
       </Panel>

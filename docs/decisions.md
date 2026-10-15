@@ -348,6 +348,21 @@ lock), for one brand.*
 - **Scenes** are AI mode: the model re-renders them in the chosen style. The two backgrounds were made from the
   user's sample portraits with one image-edit call each (person and frame removed, photoreal), approved by the user.
 
+### D-37 One QR choice of channel and number, and a QR message (user decision)
+*2026-10-15.*
+- The admin picks **one** entry: a number on one channel, from the Messaging Service (`TWILIO_MESSAGING_SERVICE_SID`).
+  Each number appears once per channel it can be messaged on: WhatsApp when it is an ONLINE WhatsApp sender, SMS
+  when it has the SMS capability. Picking an entry sets `leadChannel` and `qrSender` together, so they cannot
+  disagree. Entries show a WhatsApp or SMS icon. If the senders cannot be loaded, both fields fall back to free entry.
+- **RCS** is not a separate entry: an RCS sender is an agent, not a number, and has no QR link of its own. Twilio
+  sends RCS first and falls back to SMS when an RCS sender is in the service's pool, so the SMS entries get an RCS
+  badge then. Checked live: this service has no RCS sender today.
+- **QR message** (`qrText`): what the phone fills in after scanning. Default per language: "Send this message to get
+  your portrait from Twilio at {event}" / "Envie esta mensagem para ganhar seu retrato da Twilio no {event}", swapped
+  with the language while unedited. It must keep `{event}`, which becomes the event name: that is how the first
+  message is matched (D-35). Links: `https://wa.me/<number>?text=<message>` and `sms:+<number>?&body=<message>`.
+- New events also start with the booth headline and three steps as real values (previously placeholders).
+
 ## Open TODOs after the last milestone
 
 - **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and

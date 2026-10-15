@@ -1,3 +1,4 @@
+import { DEFAULT_COPY, withEventName } from "../events/schema";
 import "server-only";
 import QRCode from "qrcode";
 import { z } from "zod";
@@ -33,7 +34,8 @@ export interface BoothSlide {
 
 /** Link the QR code opens (SPEC §5.2): WhatsApp or SMS, prefilled with a message naming the event. */
 export function qrTarget(event: PortraitEvent): string {
-  const text = catalogs[event.config.language].qrPrefill({ eventName: event.config.name });
+  // The admin's message (D-37), or the language's default; always naming the event (D-35).
+  const text = withEventName(event.config.qrText || DEFAULT_COPY[event.config.language].qrText, event.config.name);
   const number = event.config.qrSender.replace(/^\+/, "");
   if (event.config.leadChannel === "whatsapp") return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
   // `sms:<n>?&body=` works on both iOS and Android (SPEC §5.2).
