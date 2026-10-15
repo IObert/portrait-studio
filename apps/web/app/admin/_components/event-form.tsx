@@ -348,7 +348,7 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
         <div className="grid gap-5 border-t border-line pt-5 sm:grid-cols-2">
           <div>
             <label className={field.label} htmlFor="maxImagesPerPerson">Portraits per person</label>
-            <input id="maxImagesPerPerson" name="maxImagesPerPerson" type="number" min={1} max={20} defaultValue={config.maxImagesPerPerson} className={`${field.input} max-w-28`} />
+            <input id="maxImagesPerPerson" name="maxImagesPerPerson" type="number" min={1} max={99} defaultValue={config.maxImagesPerPerson} className={`${field.input} max-w-28`} />
             <p className={field.hint}>Digital portraits each attendee can make.</p>
             <FieldError state={state} name="maxImagesPerPerson" />
           </div>
@@ -364,7 +364,7 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
         <Toggle name="printingEnabled" label="Printing enabled" description="Attendees can ask for a print of their portraits." defaultChecked={config.printingEnabled}>
           <div>
             <label className={field.label} htmlFor="maxPrintsPerPerson">Prints per person</label>
-            <input id="maxPrintsPerPerson" name="maxPrintsPerPerson" type="number" min={0} max={20} defaultValue={config.maxPrintsPerPerson} className={`${field.input} max-w-28`} />
+            <input id="maxPrintsPerPerson" name="maxPrintsPerPerson" type="number" min={0} max={99} defaultValue={config.maxPrintsPerPerson} className={`${field.input} max-w-28`} />
             <p className={field.hint}>Attendees pick which of their portraits to print.</p>
             <FieldError state={state} name="maxPrintsPerPerson" />
           </div>

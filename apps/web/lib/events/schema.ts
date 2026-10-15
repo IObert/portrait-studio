@@ -74,9 +74,9 @@ export const EventConfigInputSchema = z
      */
     emailPromoCode: text(40).default(""),
     emailShowSnippet: z.boolean().default(false),
-    maxImagesPerPerson: z.number().int().min(1).max(20),
+    maxImagesPerPerson: z.number().int().min(1).max(99),
     printingEnabled: z.boolean(),
-    maxPrintsPerPerson: z.number().int().min(0).max(20),
+    maxPrintsPerPerson: z.number().int().min(0).max(99),
     promo: z.object({ enabled: z.boolean(), text: text(600) }),
     shareText: text(280),
     ctaText: z.object({ headline: text(80), steps: z.array(text(120)).max(5) }),
