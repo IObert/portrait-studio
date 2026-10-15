@@ -77,7 +77,6 @@ after 7 days. Outside the WhatsApp 24-hour window, delivery uses the approved `d
 - `/admin/events/<code>/review`:
   - **Flagged** tab: selfie, output and the AI's reason, with **Approve & send** (not counted toward quota) and **Discard**.
   - **Delivered** tab: remove from the slideshow, remove from the print queue, reprint (not counted toward quota).
-  - Each action can log an optional admin name.
 - `/booth/<code>` (basic auth): a full-screen kiosk page.
   - **live**: the CTA, the QR code for the event's lead channel (prefilled with the event code) and the consented slideshow.
   - **break** and **ended** get their own screens.

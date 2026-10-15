@@ -101,14 +101,18 @@ test.describe.serial("admin events", () => {
   });
 
   test("deletes only after typing the slug", async ({ page }) => {
-    await page.goto(`/admin/events/${slug}`);
-    const del = page.getByRole("button", { name: "Delete event" });
+    await page.goto("/admin/events");
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.getByRole("row", { name: /E2E Event/ }).getByRole("button", { name: "Delete" }).click();
+    const dialog = page.getByRole("dialog");
+    const del = dialog.getByRole("button", { name: "Delete event" });
     await expect(del).toBeDisabled();
-    await page.getByLabel(/to confirm/).fill("wrong");
+    await dialog.getByLabel(/to confirm/).fill("wrong");
     await expect(del).toBeDisabled();
-    await page.getByLabel(/to confirm/).fill(slug);
+    await dialog.getByLabel(/to confirm/).fill(slug);
     await del.click();
-    await expect(page).toHaveURL(/\/admin\/events\?deleted=1$/);
+    await expect(page).toHaveURL(/\/admin\?deleted=1$/);
+    await expect(page.getByText("Event deleted")).toBeVisible();
     await expect(page.getByRole("link", { name: /E2E Event/ })).toHaveCount(0);
     // notFound() after streaming keeps status 200 by design (Next.js docs); the 404 UI renders.
     await page.goto(`/admin/events/${slug}`);

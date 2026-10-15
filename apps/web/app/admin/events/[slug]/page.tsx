@@ -9,7 +9,7 @@ import { SAS_TTL_SECONDS } from "@/lib/blob/store";
 import { getServices } from "@/lib/services";
 import { SlugSchema } from "@/lib/sync/names";
 import { EventForm } from "../../_components/event-form";
-import { AssetUpload, DeleteEvent, PrinterToken, StateControls } from "../../_components/controls";
+import { AssetUpload, PrinterToken, StateControls } from "../../_components/controls";
 import { StateBadge } from "../../_components/state-badge";
 
 async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
@@ -32,7 +32,7 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
   return (
     <div className="space-y-10">
       <div className="space-y-3">
-        <Link href="/admin/events" className="text-sm text-zinc-500 hover:text-zinc-800">
+        <Link href="/admin" className="text-sm text-zinc-500 hover:text-zinc-800">
           ← Events
         </Link>
         <div className="flex items-center gap-3">
@@ -63,11 +63,6 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Print agent</h2>
         <PrinterToken slug={slug} appUrl={appUrl} hasToken={!!event.printerTokenHash} />
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-red-800">Delete event</h2>
-        <DeleteEvent slug={slug} />
       </section>
     </div>
   );

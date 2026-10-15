@@ -39,9 +39,6 @@ export interface ActionState {
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
-/** Admin name typed with an action, logged for accountability (SPEC §10.3). */
-const ActorSchema = z.string().trim().max(60).optional();
-
 function fieldErrors(err: z.ZodError): Record<string, string> {
   const out: Record<string, string> = {};
   for (const i of err.issues) out[i.path.join(".") || "form"] = i.message;
@@ -128,11 +125,11 @@ export async function createEventAction(_prev: ActionState, form: FormData): Pro
     if (Object.keys(uploadErrors).length) return { errors: uploadErrors, values: echo(form) };
     const events = await getEventRepo();
     await events.create(slug, config);
-    log.info({ event: "event_created", slug, actor: actorOf(form) }, "event created");
+    log.info({ event: "event_created", slug }, "event created");
   } catch (err) {
     return { ...fail(err, "Could not create the event"), values: echo(form) };
   }
-  revalidatePath("/admin/events");
+  revalidatePath("/admin");
   redirect(`/admin/events/${slug}`);
 }
 
@@ -146,9 +143,9 @@ export async function updateEventAction(_prev: ActionState, form: FormData): Pro
     const uploadErrors = crossCheckUploads(config, current.uploads);
     if (Object.keys(uploadErrors).length) return { errors: uploadErrors, values: echo(form) };
     await events.updateConfig(slug, config);
-    log.info({ event: "event_updated", slug, actor: actorOf(form) }, "event updated");
+    log.info({ event: "event_updated", slug }, "event updated");
     revalidatePath(`/admin/events/${slug}`);
-    revalidatePath("/admin/events");
+    revalidatePath("/admin");
     return { ok: true, message: "Saved", values: { slug, config } };
   } catch (err) {
     return { ...fail(err, "Could not save the event"), values: echo(form) };
@@ -164,9 +161,9 @@ export async function setStateAction(_prev: ActionState, form: FormData): Promis
     const updated = await events.setState(slug, to);
     // Ending removes the event's bindings (SPEC §4.1); attendees then get the ended reply by code only.
     if (updated.state === "ended") await getDeleteHooks().removeBindings(slug);
-    log.info({ event: "event_state_changed", slug, state: updated.state, actor: actorOf(form) }, "event state changed");
+    log.info({ event: "event_state_changed", slug, state: updated.state }, "event state changed");
     revalidatePath(`/admin/events/${slug}`);
-    revalidatePath("/admin/events");
+    revalidatePath("/admin");
     return { ok: true, message: `Event is now ${updated.state}` };
   } catch (err) {
     return fail(err, "Could not change the event state");
@@ -206,7 +203,7 @@ export async function uploadAssetAction(_prev: ActionState, form: FormData): Pro
       height: checked.height,
       uploadedAt: new Date().toISOString(),
     });
-    log.info({ event: "event_asset_uploaded", slug, kind, actor: actorOf(form) }, "event asset uploaded");
+    log.info({ event: "event_asset_uploaded", slug, kind }, "event asset uploaded");
     revalidatePath(`/admin/events/${slug}`);
     return { ok: true, message: `${kind === "frame" ? "Frame" : "Background"} uploaded` };
   } catch (err) {
@@ -229,7 +226,7 @@ export async function removeAssetAction(_prev: ActionState, form: FormData): Pro
       return { message: "Disable the uploaded background before removing it" };
     if (asset) await getServices().blob.delete(asset.blobPath);
     await events.setUpload(slug, kind, null);
-    log.info({ event: "event_asset_removed", slug, kind, actor: actorOf(form) }, "event asset removed");
+    log.info({ event: "event_asset_removed", slug, kind }, "event asset removed");
     revalidatePath(`/admin/events/${slug}`);
     return { ok: true, message: "Removed" };
   } catch (err) {
@@ -245,7 +242,7 @@ export async function rotatePrinterTokenAction(_prev: ActionState, form: FormDat
     await events.require(slug);
     const { token, hash } = generatePrinterToken(slug);
     await events.setPrinterTokenHash(slug, hash);
-    log.info({ event: "printer_token_rotated", slug, actor: actorOf(form) }, "printer token rotated");
+    log.info({ event: "printer_token_rotated", slug }, "printer token rotated");
     revalidatePath(`/admin/events/${slug}`);
     // Shown once; only the hash is stored.
     return { ok: true, token };
@@ -263,15 +260,11 @@ export async function deleteEventAction(_prev: ActionState, form: FormData): Pro
       return { errors: { confirm: "Type the event code exactly to confirm" } };
     const events = await getEventRepo();
     const { sync, blob } = getServices();
-    // The audit line carries slug and timestamp only, no admin name (SPEC §4.4).
+    // The audit line carries slug and timestamp only (SPEC §4.4).
     await deleteEvent({ sync, blob, events, hooks: getDeleteHooks(), audit: log }, slug);
   } catch (err) {
     return fail(err, "Could not delete the event");
   }
-  revalidatePath("/admin/events");
-  redirect("/admin/events?deleted=1");
-}
-
-function actorOf(form: FormData): string | undefined {
-  return ActorSchema.parse(String(form.get("actor") ?? "").trim() || undefined);
+  revalidatePath("/admin");
+  redirect("/admin?deleted=1");
 }

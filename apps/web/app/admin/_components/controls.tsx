@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useId, useRef, useState } from "react";
 import {
   type ActionState,
   deleteEventAction,
@@ -138,26 +138,45 @@ export function PrinterToken({ slug, appUrl, hasToken }: { slug: string; appUrl:
   );
 }
 
-export function DeleteEvent({ slug }: { slug: string }) {
+/** Row action on the event list: opens a dialog that asks for the event code (SPEC §4.4). */
+export function DeleteEvent({ slug, name }: { slug: string; name: string }) {
   const [state, action, pending] = useActionState(deleteEventAction, {});
   const [typed, setTyped] = useState("");
+  const dialog = useRef<HTMLDialogElement>(null);
+  const inputId = useId();
   return (
-    <form action={action} className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4">
-      <input type="hidden" name="slug" value={slug} />
-      <p className="text-sm text-red-900">
-        Deletes the event and all its data immediately: sessions, jobs, leads, stats, the print queue, every selfie and
-        generated image, and the uploaded frame and background. This cannot be undone.
-      </p>
-      <label className="block text-sm text-red-900" htmlFor="confirm">
-        Type <code className="font-mono font-semibold">{slug}</code> to confirm
-      </label>
-      <div className="flex items-center gap-3">
-        <input id="confirm" name="confirm" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" className="w-64 rounded-md border border-red-300 px-3 py-1.5 font-mono text-sm" />
-        <button disabled={pending || typed !== slug} className={`${btn} bg-red-700 text-white hover:bg-red-600`}>
-          {pending ? "Deleting…" : "Delete event"}
-        </button>
-      </div>
-      <Status state={state} />
-    </form>
+    <>
+      <button type="button" onClick={() => dialog.current?.showModal()} className="text-sm text-red-700 hover:underline">
+        Delete
+      </button>
+      <dialog
+        ref={dialog}
+        onClose={() => setTyped("")}
+        aria-label={`Delete ${name}`}
+        className="m-auto w-full max-w-md rounded-lg p-0 text-left backdrop:bg-black/40"
+      >
+        <form action={action} className="space-y-3 bg-red-50 p-5">
+          <input type="hidden" name="slug" value={slug} />
+          <h2 className="font-semibold text-red-900">Delete {name}?</h2>
+          <p className="text-sm text-red-900">
+            Deletes the event and all its data immediately: sessions, jobs, leads, stats, the print queue, every selfie and
+            generated image, and the uploaded frame and background. This cannot be undone.
+          </p>
+          <label className="block text-sm text-red-900" htmlFor={inputId}>
+            Type <code className="font-mono font-semibold">{slug}</code> to confirm
+          </label>
+          <input id={inputId} name="confirm" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" className="w-full rounded-md border border-red-300 px-3 py-1.5 font-mono text-sm" />
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => dialog.current?.close()} className={`${btn} bg-zinc-200 text-zinc-800 hover:bg-zinc-300`}>
+              Cancel
+            </button>
+            <button disabled={pending || typed !== slug} className={`${btn} bg-red-700 text-white hover:bg-red-600`}>
+              {pending ? "Deleting…" : "Delete event"}
+            </button>
+          </div>
+          <Status state={state} />
+        </form>
+      </dialog>
+    </>
   );
 }

@@ -208,7 +208,6 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
       </fieldset>
 
       <div className="flex items-center gap-4 border-t border-zinc-200 pt-6">
-        <input name="actor" placeholder="Your name (optional, logged)" maxLength={60} className="w-64 rounded-md border border-zinc-300 px-3 py-2 text-sm" />
         <button type="submit" disabled={pending} className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50">
           {pending ? "Saving…" : submitLabel}
         </button>

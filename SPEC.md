@@ -577,7 +577,6 @@ delivered → removed_by_admin (slideshow/print removal only)
   - Remove from slideshow.
   - Remove from the print queue, if the job is not printed yet.
   - Reprint. This counts against print quota; ask whether admin reprints should be exempt.
-- **Optional name field.** An admin can type their name when they act. It is logged with the action, so there is some accountability even though basic auth is shared.
 
 ### 10.4 Booth screen `/booth/[slug]`
 - A full-screen, kiosk-friendly page that updates live. Subscribe to Sync with a read-only token for the event's objects, or use server-sent events from the web app.

@@ -7,10 +7,10 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
     <div className="min-h-full bg-zinc-50 text-zinc-900">
       <header className="border-b border-zinc-200 bg-white">
         <nav className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-3">
-          <Link href="/admin/events" className="font-semibold">
+          <Link href="/admin" className="font-semibold">
             Portrait Studio
           </Link>
-          <Link href="/admin/events" className="text-sm text-zinc-600 hover:text-zinc-900">
+          <Link href="/admin" className="text-sm text-zinc-600 hover:text-zinc-900">
             Events
           </Link>
         </nav>

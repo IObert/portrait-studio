@@ -43,34 +43,34 @@ async function setup(cfg: Partial<EventConfigInput> = {}, jobOver: Partial<Job> 
 describe("admin review (SPEC §10.3)", () => {
   it("approve & send delivers a flagged image without counting quota, and logs the admin", async () => {
     const w = await setup();
-    expect(await approveFlagged({ sync: w.sync, delivery: w.delivery, log: w.log }, w.event, "job_00000001", "Marius")).toBe("sent");
+    expect(await approveFlagged({ sync: w.sync, delivery: w.delivery, log: w.log }, w.event, "job_00000001")).toBe("sent");
     const job = await w.getJob();
     expect(job.state).toBe("delivered");
     expect(job.timestamps.approved_by_admin).toBeDefined();
     expect(w.sent[0]!.mediaUrl).toBeDefined();
     expect((await w.counters()).delivered).toBe(1); // unchanged (SPEC §4.3)
-    expect(w.log.info).toHaveBeenCalledWith(expect.objectContaining({ event: "review_action", action: "approve", actor: "Marius" }), expect.any(String));
+    expect(w.log.info).toHaveBeenCalledWith(expect.objectContaining({ event: "review_action", action: "approve" }), expect.any(String));
   });
 
   it("refuses to approve or discard anything that is not flagged", async () => {
     const w = await setup({}, { state: "delivered" });
-    await expect(approveFlagged({ sync: w.sync, delivery: w.delivery, log: w.log }, w.event, "job_00000001", undefined)).rejects.toBeInstanceOf(ReviewError);
-    await expect(discardFlagged({ sync: w.sync, log: w.log }, w.event, "job_00000001", undefined)).rejects.toBeInstanceOf(ReviewError);
+    await expect(approveFlagged({ sync: w.sync, delivery: w.delivery, log: w.log }, w.event, "job_00000001")).rejects.toBeInstanceOf(ReviewError);
+    await expect(discardFlagged({ sync: w.sync, log: w.log }, w.event, "job_00000001")).rejects.toBeInstanceOf(ReviewError);
     expect(w.sent).toEqual([]);
   });
 
   it("approving twice sends once", async () => {
     const w = await setup();
     const deps = { sync: w.sync, delivery: w.delivery, log: w.log };
-    await approveFlagged(deps, w.event, "job_00000001", undefined);
+    await approveFlagged(deps, w.event, "job_00000001");
     const n = w.sent.length;
-    await expect(approveFlagged(deps, w.event, "job_00000001", undefined)).rejects.toBeInstanceOf(ReviewError);
+    await expect(approveFlagged(deps, w.event, "job_00000001")).rejects.toBeInstanceOf(ReviewError);
     expect(w.sent.length).toBe(n);
   });
 
   it("discard ends the job as rejected with the admin's reason, and sends nothing", async () => {
     const w = await setup();
-    await discardFlagged({ sync: w.sync, log: w.log }, w.event, "job_00000001", "Ana");
+    await discardFlagged({ sync: w.sync, log: w.log }, w.event, "job_00000001");
     expect(await w.getJob()).toMatchObject({ state: "rejected", error: "discarded_by_admin" });
     expect(w.sent).toEqual([]);
   });
@@ -82,50 +82,50 @@ describe("admin review (SPEC §10.3)", () => {
     await w.fake.createItem(w.ev.slideshow, "job_00000001", { blobPath: "x.jpg", addedAt: new Date().toISOString() });
     await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {} });
 
-    expect(await removePortrait({ sync: w.sync, blob, log: w.log }, w.event, "job_00000001", "Ana")).toEqual({ printing: false });
+    expect(await removePortrait({ sync: w.sync, blob, log: w.log }, w.event, "job_00000001")).toEqual({ printing: false });
     expect((await w.getJob()).state).toBe("removed_by_admin");
     expect(blob.blobs.size).toBe(0); // selfie, print PNG and delivery JPEG gone immediately
     expect(await w.fake.getItem(w.ev.slideshow, "job_00000001")).toBeNull();
     expect(await w.fake.getItem(w.ev.print, "job_00000001")).toBeNull();
     expect((await w.counters()).printsReserved).toBe(0);
-    expect(w.log.info).toHaveBeenCalledWith(expect.objectContaining({ action: "portrait_remove", actor: "Ana", filesDeleted: 3 }), expect.any(String));
+    expect(w.log.info).toHaveBeenCalledWith(expect.objectContaining({ action: "portrait_remove", filesDeleted: 3 }), expect.any(String));
   });
 
   it("remove reports a print already in progress, and still takes the portrait down", async () => {
     const w = await setup({ printingEnabled: true }, { state: "delivered" });
     await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "printing", attempts: 1, leaseUntil: null, error: null, reprint: false, timestamps: {} });
-    expect(await removePortrait({ sync: w.sync, blob: new FakeBlob(), log: w.log }, w.event, "job_00000001", undefined)).toEqual({ printing: true });
+    expect(await removePortrait({ sync: w.sync, blob: new FakeBlob(), log: w.log }, w.event, "job_00000001")).toEqual({ printing: true });
     expect((await w.getJob()).state).toBe("removed_by_admin");
   });
 
   it("only delivered portraits can be removed", async () => {
     const w = await setup(); // flagged
-    await expect(removePortrait({ sync: w.sync, blob: new FakeBlob(), log: w.log }, w.event, "job_00000001", undefined)).rejects.toBeInstanceOf(ReviewError);
+    await expect(removePortrait({ sync: w.sync, blob: new FakeBlob(), log: w.log }, w.event, "job_00000001")).rejects.toBeInstanceOf(ReviewError);
   });
 
   it("removes a queued print and releases the quota reservation, but not a printing one", async () => {
     const w = await setup({ printingEnabled: true }, { state: "delivered" });
     const item = { jobId: "job_00000001", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {} };
     await w.fake.createItem(w.ev.print, "job_00000001", item);
-    await removeFromPrintQueue({ sync: w.sync, log: w.log }, w.event, "job_00000001", undefined);
+    await removeFromPrintQueue({ sync: w.sync, log: w.log }, w.event, "job_00000001");
     expect(await w.fake.getItem(w.ev.print, "job_00000001")).toBeNull();
     expect((await w.counters()).printsReserved).toBe(0);
 
     await w.fake.createItem(w.ev.print, "job_00000001", { ...item, state: "printing" });
-    await expect(removeFromPrintQueue({ sync: w.sync, log: w.log }, w.event, "job_00000001", undefined)).rejects.toThrow(/printing/);
+    await expect(removeFromPrintQueue({ sync: w.sync, log: w.log }, w.event, "job_00000001")).rejects.toThrow(/printing/);
   });
 
   it("reprint queues a print marked as a reprint, without touching the quota (§17 Q5)", async () => {
     const w = await setup({ printingEnabled: true }, { state: "delivered" });
     const before = await w.counters();
-    await reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001", "Ana");
+    await reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001");
     expect((await w.fake.getItem(w.ev.print, "job_00000001"))!.data).toMatchObject({ state: "queued", reprint: true });
     expect(await w.counters()).toEqual(before);
-    await expect(reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001", "Ana")).rejects.toThrow(/already pending/);
+    await expect(reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001")).rejects.toThrow(/already pending/);
   });
 
   it("refuses reprints when printing is off", async () => {
     const w = await setup({ printingEnabled: false }, { state: "delivered" });
-    await expect(reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001", undefined)).rejects.toThrow(/Printing is off/);
+    await expect(reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001")).rejects.toThrow(/Printing is off/);
   });
 });
