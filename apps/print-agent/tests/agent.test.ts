@@ -50,3 +50,22 @@ describe("claiming against a queue (PROTOCOL.md §3)", () => {
     expect(q.items.get("job_1")).toMatchObject({ state: "claimed", attempts: 1 });
   });
 });
+
+describe("dead connection watch", () => {
+  it("is dead only after a minute without one successful heartbeat", async () => {
+    const { connectionWatch, DEAD_CONNECTION_MS } = await import("../src/agent.js");
+    let t = 0;
+    const w = connectionWatch(() => t);
+    t = 30_000;
+    w.beat(false);
+    expect(w.dead()).toBe(false);
+    t = 50_000;
+    w.beat(true); // one success resets it
+    t = 50_000 + DEAD_CONNECTION_MS;
+    w.beat(false);
+    expect(w.dead()).toBe(false);
+    t += 1;
+    expect(w.dead()).toBe(true);
+    expect(w.silentFor()).toBe(DEAD_CONNECTION_MS + 1);
+  });
+});

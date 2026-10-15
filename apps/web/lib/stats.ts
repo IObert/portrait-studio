@@ -46,3 +46,32 @@ export async function readStats(sync: SyncStore, slug: string): Promise<Record<s
   }
   return out;
 }
+
+/**
+ * When the counters were last zeroed (SPEC §10.5). Its own map, not a counter
+ * shard: the shards hold only `{n}` counters.
+ */
+const ResetSchema = z.object({ at: z.iso.datetime() });
+const resetMap = (slug: string) => eventObjects(slug).statsMeta;
+
+export async function readLastReset(sync: SyncStore, slug: string): Promise<string | null> {
+  return (await sync.map(resetMap(slug), ResetSchema).get("lastResetAt"))?.at ?? null;
+}
+
+/**
+ * Zeroes every counter of an event and records `lastResetAt` (SPEC §10.5,
+ * `stats:reset`). Counters are deleted rather than set to 0, so the page
+ * shows only what was counted since. Returns how many counters were cleared.
+ */
+export async function resetStats(sync: SyncStore, slug: string, now = new Date()): Promise<number> {
+  let n = 0;
+  for (const map of eventObjects(slug).allStats()) {
+    const keys: string[] = [];
+    for await (const [k] of sync.map(map, Counter).entries()) keys.push(k);
+    for (const k of keys) await sync.map(map, Counter).delete(k);
+    n += keys.length;
+  }
+  await sync.ensureMap(resetMap(slug));
+  await sync.map(resetMap(slug), ResetSchema).put("lastResetAt", { at: now.toISOString() });
+  return n;
+}

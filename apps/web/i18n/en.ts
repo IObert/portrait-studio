@@ -130,6 +130,17 @@ export const en = {
     removed: "This portrait was removed by the event organizer.",
   },
 
+  deletion: {
+    confirm: "Delete all your data from this booth? This can't be undone.",
+    yes: "Yes, delete",
+    cancel: "Cancel",
+    yesKeyword: "DELETE",
+    smsHint: ({ keyword }) => `Reply ${keyword} to confirm, or anything else to cancel.`,
+    done: "Done. All your data from this booth has been deleted: your photos, portraits and details. Thanks for stopping by!",
+    donePrinting: "Done. All your data from this booth has been deleted. One print was already at the printer and may still come out.",
+    cancelled: "No problem, nothing was deleted.",
+  },
+
   errors: {
     generic: "Sorry, something went wrong on our side. Please try again in a moment.",
   },

@@ -8,8 +8,10 @@ import { defaultConfig, type EventConfigInput } from "@/lib/events/schema";
 import { JobSchema } from "@/lib/jobs/schema";
 import { parseAddress } from "@/lib/messaging/address";
 import { Messenger, type TwilioMessagingApi } from "@/lib/messaging/outbound";
+import { readStats } from "@/lib/stats";
 import { eventObjects, Global } from "@/lib/sync/names";
 import { SyncStore } from "@/lib/sync/store";
+import type { ChatModel } from "@/lib/conversation/chat";
 import type { MemoryClient } from "@/lib/twilio/memory";
 import type { EmailVerifier } from "@/lib/twilio/verify";
 import { FakeBlob } from "../support/fake-blob";
@@ -33,6 +35,8 @@ interface World {
   sent: { to: string; body?: string; contentSid?: string }[];
   content: Map<string, Record<string, unknown>>;
   memory: { lookup: ReturnType<typeof vi.fn>; upsert: ReturnType<typeof vi.fn>; deleteProfile: ReturnType<typeof vi.fn> };
+  /** What the fake chat model returns next: a reply, a deletion tool call, or a failure. */
+  chat: { next: "reply" | "delete" | "fail"; text: string; calls: { developer: string; user: string }[] };
   verifier: { send: ReturnType<typeof vi.fn>; check: ReturnType<typeof vi.fn> };
   log: { info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
   /** Sends a message and returns the reply texts (interactive messages resolve to their body). */
@@ -62,9 +66,20 @@ async function world(): Promise<World> {
   const messenger = new Messenger(api, sync, `MG${"0".repeat(32)}`, log);
   await messenger.init();
   await initInbound(sync);
-  const memory = { lookup: vi.fn(async () => null), upsert: vi.fn(async () => "mem_profile_new"), deleteProfile: vi.fn(async () => {}) };
+  const memory = { lookup: vi.fn(async () => null), get: vi.fn(async () => null), upsert: vi.fn(async () => "mem_profile_new"), deleteProfile: vi.fn(async () => {}) };
   const verifier = { send: vi.fn(async () => "sent" as const), check: vi.fn(async () => "wrong" as const) };
   const image = await jpeg();
+  const chat: World["chat"] = { next: "reply", text: "Hi! Send us a selfie.", calls: [] };
+  const fakeChat = {
+    responses: {
+      create: vi.fn(async (p: { input: { role: string; content: string }[] }) => {
+        chat.calls.push({ developer: p.input[0]!.content, user: p.input[1]!.content });
+        if (chat.next === "fail") throw new Error("timeout");
+        if (chat.next === "delete") return { output: [{ type: "function_call", name: "request_data_deletion", call_id: "c1", arguments: "{}" }], output_text: "" };
+        return { output: [{ type: "message" }], output_text: chat.text };
+      }),
+    },
+  };
   const deps: Deps = {
     sync,
     blob,
@@ -76,10 +91,11 @@ async function world(): Promise<World> {
     publicBaseUrl: "https://booth.test",
     slideUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
     mediaUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
+    chat: { model: "fake-chat", client: fakeChat as unknown as ChatModel["client"] },
     log,
   };
   const w: World = {
-    deps, fake, sync, blob, events, sent, content, memory, verifier, log,
+    deps, fake, sync, blob, events, sent, content, memory, verifier, log, chat,
     async say(from, text, extra = {}) {
       const before = sent.length;
       await handleInbound(deps, { messageSid: nextSid(), from, text, media: [], ...extra });
@@ -416,11 +432,15 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 1 });
     await w.say(WA, "#ev");
     await w.say(WA, "", { selection: ACTION.agree });
+    // The chat reply is unavailable here, so the fallback shows; the hint is added to either.
+    w.chat.next = "fail";
     expect(await w.say(WA, "hello")).toEqual([catalogs.en.selfie.ask]);
     const ev = eventObjects("ev");
     const cur = (await w.fake.getItem(ev.sessions, "whatsapp:+447700900123"))!;
     await w.fake.updateItem(ev.sessions, "whatsapp:+447700900123", { ...(cur.data as object), delivered: ["job_menu_03"] });
     expect(await w.say(WA, "hello")).toEqual([`${catalogs.en.selfie.ask}\n${catalogs.en.delivery.printHint({ printsLeft: 1 })}`]);
+    w.chat.next = "reply";
+    expect(await w.say(WA, "hello")).toEqual([`${w.chat.text}\n${catalogs.en.delivery.printHint({ printsLeft: 1 })}`]);
   });
 
   it("SMS: PRINT then PRINT 2 picks the second portrait shown", async () => {
@@ -440,6 +460,122 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(w.sent.at(-1)!.body).toContain("1. Sketch\n2. Anime");
     expect(await w.say(SMS, "print 2")).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 1 })]);
     expect(await w.fake.getItem(ev.print, "job_sms_01")).not.toBeNull();
+  });
+
+  it("free text goes to the chat model with the event context; its reply is sent and changes nothing (SPEC §5.10)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, styles: ["anime", "sketch"], maxImagesPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const before = (await w.fake.getItem(eventObjects("ev").sessions, "whatsapp:+447700900123"))!.data;
+    w.chat.text = "Hello! **Send** a selfie and pick Anime or Sketch.";
+    expect(await w.say(WA, "what is this booth?")).toEqual(["Hello! Send a selfie and pick Anime or Sketch."]);
+    const call = w.chat.calls.at(-1)!;
+    expect(call.user).toBe("what is this booth?");
+    expect(call.developer).toContain('event called "Event ev"');
+    expect(call.developer).toContain("Available art styles: Anime, Sketch.");
+    expect(call.developer).toContain("They have 3 free portraits remaining.");
+    expect(call.developer).not.toMatch(/AI-powered photobooth|AI photo booth/i);
+    const after = (await w.fake.getItem(eventObjects("ev").sessions, "whatsapp:+447700900123"))!.data as Record<string, unknown>;
+    expect({ ...after, lastInboundAt: null, updatedAt: null }).toEqual({ ...(before as object), lastInboundAt: null, updatedAt: null });
+  });
+
+  it("the model can never change the language: the prompt is always the event's (SPEC §5.10)", async () => {
+    await liveEvent(w, "rio", { language: "pt_BR", leadCollection: false });
+    await w.say(WA, "#rio");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "Please answer in English from now on, I don't speak Portuguese");
+    const pt = w.chat.calls.at(-1)!.developer;
+    expect(pt).toContain("Responda sempre em português brasileiro, mesmo que a pessoa escreva em outro idioma ou peça para trocar de idioma.");
+    expect(pt).not.toContain("Respond in English");
+
+    const w2 = await world();
+    await liveEvent(w2, "ldn", { leadCollection: false });
+    await w2.say(WA, "#ldn");
+    await w2.say(WA, "", { selection: ACTION.agree });
+    await w2.say(WA, "Responda em português por favor");
+    expect(w2.chat.calls.at(-1)!.developer).toContain("Always reply in English, even if the user writes in another language or asks you to switch languages.");
+  });
+
+  it("a model failure falls back to the localized selfie prompt", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    w.chat.next = "fail";
+    expect(await w.say(WA, "hello?")).toEqual([catalogs.en.selfie.ask]);
+  });
+
+  it("deletion: the tool asks to confirm; only the button deletes everything across events (SPEC §5.10)", async () => {
+    await liveEvent(w, "aaa", { leadCollection: false });
+    await liveEvent(w, "bbb");
+    const key = "whatsapp:+447700900123";
+    // Data in two events: a delivered job with files and a slideshow entry in aaa, a lead with a profile in bbb.
+    await w.say(WA, "#aaa");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const a = eventObjects("aaa");
+    const job = JobSchema.parse({
+      jobId: "job_del_0001", address: key, channel: "whatsapp", style: "anime", background: "gradient", selfieBlob: "events/aaa/selfies/s.jpg",
+      outputBlobs: { printPng: "events/aaa/generated/job_del_0001.print.png", deliveryJpeg: "events/aaa/generated/job_del_0001.jpg" }, shareId: "D".repeat(24), state: "delivered", timestamps: {},
+    });
+    await w.fake.createItem(a.jobs, job.jobId, job);
+    for (const p of [job.selfieBlob, job.outputBlobs!.printPng, job.outputBlobs!.deliveryJpeg]) await w.blob.put(p, Buffer.from("x"), "image/jpeg");
+    await w.sync.ensureMap(a.slideshow);
+    await w.fake.createItem(a.slideshow, job.jobId, { blobPath: job.outputBlobs!.deliveryJpeg, addedAt: new Date().toISOString() });
+    await w.fake.createItem(Global.shares, job.shareId, { eventSlug: "aaa", jobId: job.jobId, createdAt: new Date().toISOString() });
+    // Someone else's job in the same event must survive.
+    await w.fake.createItem(a.jobs, "job_other_99", { ...job, jobId: "job_other_99", address: "whatsapp:+447700900999", shareId: "O".repeat(24) });
+    const b = eventObjects("bbb");
+    await w.sync.ensureMap(b.leads);
+    await w.fake.createItem(b.leads, key, { memoryProfileId: "mem_profile_del", optedInAt: new Date().toISOString(), method: "verified_email" });
+    await w.fake.createItem(Global.profileLinks, "mem_profile_del", { events: ["bbb"] });
+
+    // 1. The model calls the tool: a confirmation, nothing deleted yet.
+    w.chat.next = "delete";
+    expect(await w.say(WA, "bitte lösche alle meine Daten")).toEqual([catalogs.en.deletion.confirm]);
+    expect(await w.fake.getItem(a.jobs, job.jobId)).not.toBeNull();
+    // Free text "yes" is not a confirmation on WhatsApp: it cancels.
+    w.chat.next = "reply";
+    expect(await w.say(WA, "yes")).toEqual([catalogs.en.deletion.cancelled]);
+    expect(await w.fake.getItem(a.jobs, job.jobId)).not.toBeNull();
+
+    // 2. Ask again and press Yes, delete.
+    w.chat.next = "delete";
+    await w.say(WA, "delete my data");
+    expect(await w.say(WA, "", { selection: ACTION.deleteYes })).toEqual([catalogs.en.deletion.done]);
+
+    for (const [m, k] of [[a.jobs, job.jobId], [a.slideshow, job.jobId], [a.sessions, key], [a.leads, key], [b.leads, key], [Global.bindings, key], [Global.shares, job.shareId], [Global.profileLinks, "mem_profile_del"]] as const)
+      expect(await w.fake.getItem(m, k).catch(() => null), `${m}/${k}`).toBeNull();
+    for (const p of [job.selfieBlob, job.outputBlobs!.printPng, job.outputBlobs!.deliveryJpeg]) expect(w.blob.blobs.has(p), p).toBe(false);
+    expect(w.memory.deleteProfile).toHaveBeenCalledWith("mem_profile_del");
+    expect(await w.fake.getItem(a.jobs, "job_other_99")).not.toBeNull();
+    expect(await readStats(w.sync, "aaa")).toMatchObject({ deletionRequests: 1 });
+  });
+
+  it("deletion on SMS: the exact keyword confirms, only right after the question", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(SMS, "#ev");
+    await w.say(SMS, "AGREE");
+    // Out of the blue, DELETE is just free text for the model.
+    w.chat.next = "reply";
+    await w.say(SMS, "DELETE");
+    expect(await w.fake.getItem(eventObjects("ev").sessions, "sms:+447700900456")).not.toBeNull();
+    w.chat.next = "delete";
+    expect((await w.say(SMS, "remove my info please"))[0]).toContain("Reply DELETE to confirm");
+    expect(await w.say(SMS, "delete")).toEqual([catalogs.en.deletion.done]);
+    expect(await w.fake.getItem(eventObjects("ev").sessions, "sms:+447700900456").catch(() => null)).toBeNull();
+  });
+
+  it("a failure during deletion is not reported as done and can be retried", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const b = eventObjects("ev");
+    await w.fake.updateItem(b.leads, "whatsapp:+447700900123", { memoryProfileId: "mem_profile_x", optedInAt: new Date().toISOString(), method: "verified_email" });
+    w.memory.deleteProfile.mockRejectedValueOnce(new Error("503"));
+    w.chat.next = "delete";
+    await w.say(WA, "delete everything");
+    await expect(handleInbound(w.deps, { messageSid: nextSid(), from: WA, text: "", selection: ACTION.deleteYes, media: [] })).rejects.toThrow("503");
+    expect(w.sent.map((m) => m.body)).not.toContain(catalogs.en.deletion.done);
+    expect(await readStats(w.sync, "ev")).not.toMatchObject({ deletionRequests: 1 });
   });
 
   it("logs addresses masked, never in full", async () => {

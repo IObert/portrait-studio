@@ -115,3 +115,16 @@ test.describe.serial("admin events", () => {
     await expect(page.getByText(/could not be found|404/i).first()).toBeVisible();
   });
 });
+
+test.describe("stats (SPEC §10.5)", () => {
+  test("shows the counters and printer state; leads cannot be downloaded", async ({ page, baseURL, request }) => {
+    await page.goto("/admin/events/e2e-share/stats");
+    await expect(page.getByRole("heading", { name: "Stats" })).toBeVisible();
+    await expect(page.getByTestId("last-reset")).toHaveText("Never reset");
+    await expect(page.getByText("No print agent has connected yet.")).toBeVisible();
+
+    // Leads are exported only with the leads:export script (user decision, D-31).
+    await expect(page.getByRole("link", { name: /csv/i })).toHaveCount(0);
+    expect((await request.get(`${baseURL}/admin/events/e2e-share/leads.csv`)).status()).toBe(404);
+  });
+});

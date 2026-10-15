@@ -25,6 +25,8 @@ export interface MemoryClient {
   lookup(idType: "phone" | "whatsapp" | "email", value: string): Promise<MemoryProfile | null>;
   /** Identity-resolving upsert: creates or merges into the matching profile. Returns its id. */
   upsert(contact: ContactTraits): Promise<string>;
+  /** Profile by id, or null if it is gone (deleted here or by another activation, D-12). */
+  get(profileId: string): Promise<MemoryProfile | null>;
   /**
    * Deletes the whole profile: traits, identifiers, observations (SPEC §4.4,
    * §5.10; D-12). Irreversible. A profile that is already gone is not an error.
@@ -90,6 +92,7 @@ export function createMemoryClient(cfg: { storeId: string; username: string; pas
   }
 
   return {
+    get,
     async lookup(idType, value) {
       const r = LookupSchema.parse(await call("POST", `/v1/Stores/${store}/Profiles/Lookup`, { idType, value }));
       const id = r.profiles[0];
