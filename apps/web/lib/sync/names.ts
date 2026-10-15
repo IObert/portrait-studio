@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-/** Event slug: URL-safe, also the QR event code (SPEC §4.2). */
+/** Internal event ID: URL-safe, derived from the name, never shown to attendees (D-35). */
 export const SlugSchema = z
   .string()
   .regex(/^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/, "lowercase letters, digits and dashes; 1–40 chars");

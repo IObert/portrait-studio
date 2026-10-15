@@ -77,6 +77,7 @@ export class EventRepo {
       config,
       uploads: { frame: null, background: null },
       printerTokenHash: null,
+      printerToken: null,
       printerTokenCreatedAt: null,
       createdAt: ts,
       updatedAt: ts,
@@ -118,8 +119,8 @@ export class EventRepo {
     return this.mutate(slug, (e) => ({ ...e, uploads: { ...e.uploads, [kind]: asset } }));
   }
 
-  setPrinterTokenHash(slug: string, hash: string) {
-    return this.mutate(slug, (e) => ({ ...e, printerTokenHash: hash, printerTokenCreatedAt: this.now().toISOString() }));
+  setPrinterToken(slug: string, token: string, hash: string) {
+    return this.mutate(slug, (e) => ({ ...e, printerToken: token, printerTokenHash: hash, printerTokenCreatedAt: this.now().toISOString() }));
   }
 
   remove(slug: string) {

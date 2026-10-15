@@ -50,3 +50,10 @@ export async function listForReview(slug: string): Promise<{ flagged: ReviewItem
     (b.job.timestamps.delivered ?? b.job.timestamps.flagged ?? "").localeCompare(a.job.timestamps.delivered ?? a.job.timestamps.flagged ?? "");
   return { flagged: flagged.sort(newest), delivered: delivered.sort(newest) };
 }
+
+/** Flagged jobs waiting for review: the badge on the Review tab. Reads job states only, no image URLs. */
+export async function countFlagged(slug: string): Promise<number> {
+  let n = 0;
+  for await (const [, job] of getServices().sync.map(eventObjects(slug).jobs, JobSchema).entries()) if (job.state === "flagged") n++;
+  return n;
+}

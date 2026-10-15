@@ -1,34 +1,51 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { en } from "@/i18n/en";
-import { getEventRepo } from "@/lib/admin/context";
-import { requireAdmin } from "@/lib/admin/guard";
+import { loadAdminEvent } from "@/lib/admin/event-load";
 import { listForReview, type ReviewItem } from "@/lib/review/list";
-import { SlugSchema } from "@/lib/sync/names";
 import { ReviewButtons } from "../../../_components/review-buttons";
+import { ReviewSkeleton } from "../../../_components/skeletons";
+import { Empty, Notice } from "../../../_components/ui";
 
-function Thumb({ url, label }: { url: string | null; label: string }) {
+function Thumb({ url, label, size = "md" }: { url: string | null; label: string; size?: "md" | "lg" }) {
   return (
-    <div className="flex h-48 w-32 shrink-0 items-center justify-center overflow-hidden rounded bg-zinc-100">
-      {url ? (
-        // eslint-disable-next-line @next/next/no-img-element -- short-lived SAS URL
-        <img src={url} alt={label} className="h-full w-full object-cover" />
-      ) : (
-        <span className="text-xs text-zinc-400">{label}: gone</span>
-      )}
+    <figure className="shrink-0 space-y-1.5">
+      <div className={`flex aspect-2/3 items-center justify-center overflow-hidden rounded-lg bg-mist ${size === "lg" ? "w-36" : "w-28"}`}>
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- short-lived SAS URL
+          <img src={url} alt={label} className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-xs text-slate">{label}: gone</span>
+        )}
+      </div>
+      <figcaption className="text-xs text-slate">{label}</figcaption>
+    </figure>
+  );
+}
+
+/** Style, background, people and who, as separate facts rather than one dotted string. */
+function Meta({ item }: { item: ReviewItem }) {
+  const bg = !item.job.background ? "?" : item.job.background === "uploaded" ? "Custom background" : en.backgrounds[item.job.background].name;
+  const facts = [
+    item.job.style ? en.styles[item.job.style].name : "Unknown style",
+    bg,
+    `${item.job.subjects ?? "?"} ${item.job.subjects === 1 ? "person" : "people"}`,
+  ];
+  return (
+    <div className="space-y-1.5">
+      <ul className="flex flex-wrap gap-1.5">
+        {facts.map((f) => (
+          <li key={f} className="rounded-md bg-mist px-2 py-0.5 text-xs text-ink">
+            {f}
+          </li>
+        ))}
+      </ul>
+      <p className="font-mono text-xs text-slate">{item.who}</p>
     </div>
   );
 }
 
-function Meta({ item }: { item: ReviewItem }) {
-  const bg = !item.job.background ? "?" : item.job.background === "uploaded" ? "Uploaded" : en.backgrounds[item.job.background].name;
-  return (
-    <p className="text-xs text-zinc-500">
-      {item.job.style ? en.styles[item.job.style].name : "?"} · {bg} · {item.job.subjects ?? "?"} {item.job.subjects === 1 ? "person" : "people"} · {item.who}
-    </p>
-  );
-}
+const PRINT_LABEL: Record<string, string> = { queued: "Queued to print", printing: "Printing", printed: "Printed", failed: "Print failed" };
 
 const NOTICES: Record<string, string> = {
   removed: "Removed. The share link no longer works and the files are deleted.",
@@ -36,91 +53,96 @@ const NOTICES: Record<string, string> = {
 };
 
 async function Review({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ tab?: string; notice?: string }> }) {
-  await requireAdmin();
-  const slug = SlugSchema.safeParse((await params).slug);
-  if (!slug.success) notFound();
-  const event = await (await getEventRepo()).get(slug.data);
-  if (!event) notFound();
+  const event = await loadAdminEvent((await params).slug);
+  const slug = event.slug;
   const sp = await searchParams;
   const tab = sp.tab === "delivered" ? "delivered" : "flagged";
   const notice = sp.notice ? NOTICES[sp.notice] : undefined;
-  const { flagged, delivered } = await listForReview(slug.data);
+  const { flagged, delivered } = await listForReview(slug);
   const tabLink = (t: string, label: string, n: number) => (
-    <Link href={`/admin/events/${slug.data}/review?tab=${t}`} className={`rounded-md px-3 py-1.5 text-sm font-medium ${tab === t ? "bg-zinc-900 text-white" : "bg-zinc-200 text-zinc-800"}`}>
-      {label} ({n})
+    <Link
+      href={`/admin/events/${slug}/review?tab=${t}`}
+      aria-current={tab === t ? "page" : undefined}
+      className={`rounded-md px-3 py-1.5 text-sm font-medium ${tab === t ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-slate hover:text-ink"}`}
+    >
+      {label} <span className="tabular-nums text-slate">({n})</span>
     </Link>
   );
 
   return (
     <div className="space-y-6">
-      <Link href={`/admin/events/${slug.data}`} className="text-sm text-zinc-500 hover:text-zinc-800">
-        ← {event.config.name}
-      </Link>
-      <h1 className="text-2xl font-semibold">Review</h1>
-      {notice && (
-        <p role="status" className="rounded-md bg-green-50 px-4 py-2 text-sm text-green-800">
-          {notice}
-        </p>
-      )}
-      <nav className="flex gap-2">
-        {tabLink("flagged", "Flagged", flagged.length)}
-        {tabLink("delivered", "Delivered", delivered.length)}
-      </nav>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display text-2xl font-semibold tracking-tight">Review</h2>
+            <p className="mt-0.5 text-sm text-slate">
+              {tab === "flagged" ? "Portraits the AI check held back. Approve to send them, or discard." : "Portraits attendees received. Remove one to take it off the screen and break its share link."}
+            </p>
+          </div>
+          <nav className="flex gap-1 rounded-lg bg-mist p-1 ring-1 ring-line">
+            {tabLink("flagged", "Flagged", flagged.length)}
+            {tabLink("delivered", "Delivered", delivered.length)}
+          </nav>
+        </div>
+        {notice && <Notice>{notice}</Notice>}
 
-      {tab === "flagged" ? (
-        flagged.length === 0 ? (
-          <p className="text-zinc-600">Nothing flagged.</p>
+        {tab === "flagged" ? (
+          flagged.length === 0 ? (
+            <Empty title="Nothing flagged.">New flags appear here when the AI check is unsure about a portrait.</Empty>
+          ) : (
+            <ul className="space-y-4">
+              {flagged.map((item) => (
+                <li key={item.job.jobId} className="flex flex-col gap-5 rounded-xl border border-line bg-white p-5 sm:flex-row" data-testid="flagged-item">
+                  <div className="flex gap-3">
+                    <Thumb url={item.selfieUrl} label="Selfie" />
+                    <Thumb url={item.outputUrl} label="Output" size="lg" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-4">
+                    <Meta item={item} />
+                    <div className="rounded-lg border-l-2 border-pause bg-pause/5 px-3 py-2 text-sm">
+                      <p className="font-medium text-pause">Why it was flagged</p>
+                      <p className="mt-0.5">{item.job.aiReview?.reason || "No reason given."}</p>
+                    </div>
+                    <ReviewButtons slug={slug} jobId={item.job.jobId} actions={[{ action: "approve", label: "Approve & send" }, { action: "discard", label: "Discard" }]} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : delivered.length === 0 ? (
+          <Empty title="Nothing delivered yet.">Portraits show up here as soon as they reach an attendee.</Empty>
         ) : (
-          <ul className="space-y-4">
-            {flagged.map((item) => (
-              <li key={item.job.jobId} className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4" data-testid="flagged-item">
-                <Thumb url={item.selfieUrl} label="Selfie" />
-                <Thumb url={item.outputUrl} label="Output" />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Meta item={item} />
-                  <p className="text-sm">
-                    <span className="font-medium">AI review:</span> {item.job.aiReview?.reason || "no reason given"}
-                  </p>
-                  <ReviewButtons slug={slug.data} jobId={item.job.jobId} actions={[{ action: "approve", label: "Approve & send" }, { action: "discard", label: "Discard" }]} />
-                </div>
-              </li>
-            ))}
+          <ul className="grid gap-4 md:grid-cols-2">
+            {delivered.map((item) => {
+              const printPending = item.print && (item.print.state === "queued" || item.print.state === "failed");
+              const actions = [
+                ...(event.config.printingEnabled ? [{ action: "reprint" as const, label: "Reprint" }] : []),
+                ...(printPending ? [{ action: "print_remove" as const, label: "Remove from print queue" }] : []),
+                { action: "remove" as const, label: "Remove" },
+              ];
+              return (
+                <li key={item.job.jobId} className="flex gap-4 rounded-xl border border-line bg-white p-4" data-testid="delivered-item">
+                  <Thumb url={item.outputUrl} label="Portrait" />
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <Meta item={item} />
+                    <ul className="space-y-0.5 text-sm text-slate">
+                      <li>{item.inSlideshow ? "On the booth screen" : "Not on the booth screen"}</li>
+                      <li>{item.print ? `${PRINT_LABEL[item.print.state] ?? item.print.state}${item.print.reprint ? " (reprint)" : ""}` : "Not printed"}</li>
+                    </ul>
+                    {/* Always mounted: the result message must survive the last action disappearing. */}
+                    <ReviewButtons slug={slug} jobId={item.job.jobId} actions={actions} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
-        )
-      ) : delivered.length === 0 ? (
-        <p className="text-zinc-600">Nothing delivered yet.</p>
-      ) : (
-        <ul className="grid gap-4 md:grid-cols-2">
-          {delivered.map((item) => {
-            const printPending = item.print && (item.print.state === "queued" || item.print.state === "failed");
-            const actions = [
-              { action: "remove" as const, label: "Remove" },
-              ...(printPending ? [{ action: "print_remove" as const, label: "Remove from print queue" }] : []),
-              ...(event.config.printingEnabled ? [{ action: "reprint" as const, label: "Reprint" }] : []),
-            ];
-            return (
-              <li key={item.job.jobId} className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4" data-testid="delivered-item">
-                <Thumb url={item.outputUrl} label="Portrait" />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <Meta item={item} />
-                  <p className="text-xs text-zinc-600">
-                    Slideshow: {item.inSlideshow ? "yes" : "no"} · Print: {item.print ? `${item.print.state}${item.print.reprint ? " (reprint)" : ""}` : "none"}
-                  </p>
-                  {/* Always mounted: the result message must survive the last action disappearing. */}
-                  <ReviewButtons slug={slug.data} jobId={item.job.jobId} actions={actions} />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+        )}
     </div>
   );
 }
 
 export default function ReviewPage(props: PageProps<"/admin/events/[slug]/review">) {
   return (
-    <Suspense fallback={<p className="text-zinc-500">Loading review…</p>}>
+    <Suspense fallback={<ReviewSkeleton />}>
       <Review params={props.params} searchParams={props.searchParams as Promise<{ tab?: string; notice?: string }>} />
     </Suspense>
   );

@@ -216,7 +216,7 @@ Use one Sync Service per deployment. Sync limits:
 | `maxImagesPerPerson` | How many delivered portraits each person may get |
 | `printingEnabled` | On or off |
 | `maxPrintsPerPerson` | Total prints each person may get for this event, across all their images. It is not copies per image. Only used when printing is on. |
-| `printerToken` | Generated and rotated in the admin UI. Only its hash is stored. The token is shown once. |
+| `printerToken` | Generated and rotated in the admin UI. Kept visible there, so it can be typed in on the printer laptop (D-33). |
 | `promo` | `{enabled, text}`. Only possible when printing is on (§5.9). |
 | `shareText` | The suggested caption on the share page, in the event's language |
 | `ctaText` | Headline and steps for the booth screen |
@@ -566,7 +566,7 @@ delivered → removed_by_admin (slideshow/print removal only)
 - Create and edit events (all the fields in §4.2), with zod validation.
 - State buttons: Go live, Break, End, Back to draft.
 - Upload the frame and background, with previews.
-- Generate or rotate the printer token. It is shown once, together with a ready-to-copy agent command (§11.1).
+- Generate or rotate the printer token. It stays visible, together with a ready-to-copy agent command (§11.1, D-33).
 - Delete an event, confirmed by typing its slug (§4.4).
 
 ### 10.3 Admin: review (per event)

@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/*
+ * Tokens: Twilio's brand palette. Red is the accent (primary actions, the active
+ * tab, selection, focus); ink and white carry everything else; mist/line/slate are
+ * quiet greys between them. State colours (live, break) never double as decoration.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-ink: #000d25;
+  --color-ink-2: #12203d;
+  --color-mist: #f3f4f7;
+  --color-line: #e1e3ea;
+  --color-slate: #5e6a85;
+  --color-signal: #ef223a;
+  --color-signal-2: #d01a30;
+  --color-danger: #b4122a;
+  --color-go: #0f7b4b;
+  --color-pause: #a35a00;
+
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* One fixed light palette: native controls (selects, options, dialogs) must not follow the OS into dark mode. */
+:root {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: var(--color-mist);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
+
+/* Switch: a styled checkbox, so forms, labels and tests keep working as checkboxes. */
+.switch {
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background: #c9cdd8;
+  transition: background 150ms ease;
+  cursor: pointer;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 13 37 / 0.25);
+  transition: transform 150ms ease;
+}
+.switch:checked {
+  background: var(--color-signal);
+}
+.switch:checked::after {
+  transform: translateX(1rem);
+}
+.switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The one ambient motion in the admin: a live event breathes. */
+.live-dot {
+  animation: live-dot 2s ease-in-out infinite;
+}
+@keyframes live-dot {
+  50% {
+    box-shadow: 0 0 0 4px rgb(15 123 75 / 0.18);
+  }
 }
 
 /* Booth slideshow: card stack (app/booth/[slug]/slide-stack.tsx). */
@@ -42,6 +101,13 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch::after {
+    transition: none;
+  }
+  .live-dot {
+    animation: none;
+  }
   .booth-card {
     transform: none;
     transition: none;

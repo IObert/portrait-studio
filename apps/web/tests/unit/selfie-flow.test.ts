@@ -8,7 +8,7 @@ const now = new Date("2026-10-13T12:00:00Z");
 const c = catalogs.en;
 const event = (over: Partial<EventConfigInput> = {}): PortraitEvent => ({
   slug: "ev", state: "live", config: { ...defaultConfig("SIGNAL London", "+13203780782"), ...over },
-  uploads: { frame: null, background: null }, printerTokenHash: null, printerTokenCreatedAt: null,
+  uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null, printerTokenCreatedAt: null,
   createdAt: now.toISOString(), updatedAt: now.toISOString(),
 });
 const ready = (over: Partial<Session> = {}): Session => ({ ...newSession("en", now), step: "ready", optedIn: true, ...over });

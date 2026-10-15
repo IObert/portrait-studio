@@ -9,39 +9,37 @@ export interface Binding {
 /** Result of mapping a message to an event (SPEC §5.2). */
 export type Route =
   | { kind: "event"; event: PortraitEvent; bind: boolean }
-  /** Bound or coded event is on break or ended: reply with that state's message. */
+  /** Bound or named event is on break or ended: reply with that state's message. */
   | { kind: "not-live"; event: PortraitEvent }
   | { kind: "pick"; live: PortraitEvent[] }
   | { kind: "none" };
 
 /**
- * Finds the event a message names (SPEC §5.2): its code or its full name, as
- * whole words, case- and accent-insensitive. No hashtag needed. A full-name
- * match beats a code match, and the longest name wins (so "SIGNAL London"
- * beats "London").
+ * Finds the event a message names (SPEC §5.2): its full name, as whole
+ * words, case- and accent-insensitive. No hashtag needed. The internal ID is
+ * never matched: attendees never see it (D-35). The longest name wins (so
+ * "SIGNAL London" beats "London").
  */
-export function findCode(text: string, events: readonly PortraitEvent[]): PortraitEvent | undefined {
+export function findEvent(text: string, events: readonly PortraitEvent[]): PortraitEvent | undefined {
   const hay = ` ${normalize(text).replace(/#/g, " ").replace(/\s+/g, " ")} `;
   const has = (needle: string) => {
     const n = normalize(needle).replace(/#/g, " ").replace(/\s+/g, " ").trim();
     return n.length >= 2 && hay.includes(` ${n} `);
   };
-  const byName = events.filter((e) => has(e.config.name)).sort((a, b) => b.config.name.length - a.config.name.length);
-  if (byName[0]) return byName[0];
-  return events.find((e) => has(e.slug));
+  return events.filter((e) => has(e.config.name)).sort((a, b) => b.config.name.length - a.config.name.length)[0];
 }
 
 /**
- * Event routing (SPEC §5.2). Draft events are invisible. A code for a live
- * event binds (or re-binds) the address; a code for a non-live event gets that
- * state's reply.
+ * Event routing (SPEC §5.2). Draft events are invisible. Naming a live event
+ * binds (or re-binds) the address; naming a non-live event gets that state's
+ * reply.
  */
 export function route(text: string, events: readonly PortraitEvent[], binding: Binding | null): Route {
   const visible = events.filter((e) => e.state !== "draft");
   const live = visible.filter((e) => e.state === "live");
 
-  const coded = findCode(text, visible);
-  if (coded) return coded.state === "live" ? { kind: "event", event: coded, bind: binding?.eventSlug !== coded.slug } : { kind: "not-live", event: coded };
+  const named = findEvent(text, visible);
+  if (named) return named.state === "live" ? { kind: "event", event: named, bind: binding?.eventSlug !== named.slug } : { kind: "not-live", event: named };
 
   const bound = binding && visible.find((e) => e.slug === binding.eventSlug);
   if (bound) return bound.state === "live" ? { kind: "event", event: bound, bind: false } : { kind: "not-live", event: bound };
@@ -61,5 +59,5 @@ export function resolvePick(answer: { selection?: string; text: string }, live: 
   const t = normalize(answer.text);
   const n = Number.parseInt(t, 10);
   if (String(n) === t && n >= 1 && n <= live.length) return live[n - 1];
-  return live.find((e) => normalize(e.config.name) === t) ?? findCode(answer.text, live);
+  return live.find((e) => normalize(e.config.name) === t) ?? findEvent(answer.text, live);
 }

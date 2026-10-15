@@ -1,5 +1,6 @@
-import { createEventAction } from "@/lib/admin/actions";
+import Link from "next/link";
 import { Suspense } from "react";
+import { createEventAction } from "@/lib/admin/actions";
 import { requireAdmin } from "@/lib/admin/guard";
 import { formOptions, senderOptions } from "@/lib/admin/options";
 import { defaultConfig } from "@/lib/events/schema";
@@ -14,10 +15,15 @@ async function NewEventForm() {
 
 export default function NewEventPage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">New event</h1>
-      <p className="text-sm text-zinc-600">New events start as drafts. Uploads and the printer token are set after creating it.</p>
-      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-8 space-y-2">
+        <Link href="/admin" className="text-sm text-slate hover:text-ink">
+          Events
+        </Link>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">New event</h1>
+        <p className="text-slate">New events start as drafts, so nothing is public until you go live.</p>
+      </div>
+      <Suspense fallback={<p className="text-slate">Loading…</p>}>
         <NewEventForm />
       </Suspense>
     </div>

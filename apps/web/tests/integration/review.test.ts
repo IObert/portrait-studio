@@ -22,7 +22,7 @@ async function setup(cfg: Partial<EventConfigInput> = {}, jobOver: Partial<Job> 
   await messenger.init();
   const event: PortraitEvent = {
     slug: "ev", state: "live", config: { ...defaultConfig("Ev", "+13203780782"), ...cfg },
-    uploads: { frame: null, background: null }, printerTokenHash: null, printerTokenCreatedAt: null,
+    uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null, printerTokenCreatedAt: null,
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
   const ev = eventObjects("ev");

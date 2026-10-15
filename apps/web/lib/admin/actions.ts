@@ -6,6 +6,7 @@ import { z } from "zod";
 import { BlobPaths } from "../blob/paths";
 import { generatePrinterToken } from "../auth/printer-token";
 import { deleteEvent } from "../events/delete";
+import { eventIdCandidate, eventIdFromName } from "../events/event-id";
 import { EventNotFound, InvalidTransition, SlugTaken } from "../events/repo";
 import {
   BACKGROUND_IDS,
@@ -21,7 +22,9 @@ import { getServices } from "../services";
 import { SlugSchema } from "../sync/names";
 import { STYLE_IDS } from "../prompts/styles";
 import { requireAdmin } from "./guard";
+import { revalidateEvent } from "./revalidate";
 import { getDeleteHooks, getEventRepo } from "./context";
+
 
 export interface ActionState {
   ok?: boolean;
@@ -117,14 +120,23 @@ function parseConfig(form: FormData): EventConfigInput {
 
 export async function createEventAction(_prev: ActionState, form: FormData): Promise<ActionState> {
   await requireAdmin();
-  let slug: string;
+  let slug = "";
   try {
-    slug = SlugSchema.parse(String(form.get("slug") ?? "").trim().toLowerCase());
     const config = parseConfig(form);
     const uploadErrors = crossCheckUploads(config, { frame: null, background: null });
     if (Object.keys(uploadErrors).length) return { errors: uploadErrors, values: echo(form) };
     const events = await getEventRepo();
-    await events.create(slug, config);
+    // The ID comes from the name and is never shown (D-35); a taken one gets -2, -3, …
+    const base = eventIdFromName(config.name);
+    for (let n = 1; !slug; n++) {
+      if (n > 50) throw new Error("Too many events with this name");
+      try {
+        await events.create(eventIdCandidate(base, n), config);
+        slug = eventIdCandidate(base, n);
+      } catch (err) {
+        if (!(err instanceof SlugTaken)) throw err;
+      }
+    }
     log.info({ event: "event_created", slug }, "event created");
   } catch (err) {
     return { ...fail(err, "Could not create the event"), values: echo(form) };
@@ -144,7 +156,7 @@ export async function updateEventAction(_prev: ActionState, form: FormData): Pro
     if (Object.keys(uploadErrors).length) return { errors: uploadErrors, values: echo(form) };
     await events.updateConfig(slug, config);
     log.info({ event: "event_updated", slug }, "event updated");
-    revalidatePath(`/admin/events/${slug}`);
+    revalidateEvent(slug);
     revalidatePath("/admin");
     return { ok: true, message: "Saved", values: { slug, config } };
   } catch (err) {
@@ -162,7 +174,7 @@ export async function setStateAction(_prev: ActionState, form: FormData): Promis
     // Ending removes the event's bindings (SPEC §4.1); attendees then get the ended reply by code only.
     if (updated.state === "ended") await getDeleteHooks().removeBindings(slug);
     log.info({ event: "event_state_changed", slug, state: updated.state }, "event state changed");
-    revalidatePath(`/admin/events/${slug}`);
+    revalidateEvent(slug);
     revalidatePath("/admin");
     return { ok: true, message: `Event is now ${updated.state}` };
   } catch (err) {
@@ -204,7 +216,7 @@ export async function uploadAssetAction(_prev: ActionState, form: FormData): Pro
       uploadedAt: new Date().toISOString(),
     });
     log.info({ event: "event_asset_uploaded", slug, kind }, "event asset uploaded");
-    revalidatePath(`/admin/events/${slug}`);
+    revalidateEvent(slug);
     return { ok: true, message: `${kind === "frame" ? "Frame" : "Background"} uploaded` };
   } catch (err) {
     return fail(err, "Could not upload the file");
@@ -227,7 +239,7 @@ export async function removeAssetAction(_prev: ActionState, form: FormData): Pro
     if (asset) await getServices().blob.delete(asset.blobPath);
     await events.setUpload(slug, kind, null);
     log.info({ event: "event_asset_removed", slug, kind }, "event asset removed");
-    revalidatePath(`/admin/events/${slug}`);
+    revalidateEvent(slug);
     return { ok: true, message: "Removed" };
   } catch (err) {
     return fail(err, "Could not remove the file");
@@ -241,10 +253,9 @@ export async function rotatePrinterTokenAction(_prev: ActionState, form: FormDat
     const events = await getEventRepo();
     await events.require(slug);
     const { token, hash } = generatePrinterToken(slug);
-    await events.setPrinterTokenHash(slug, hash);
+    await events.setPrinterToken(slug, token, hash);
     log.info({ event: "printer_token_rotated", slug }, "printer token rotated");
-    revalidatePath(`/admin/events/${slug}`);
-    // Shown once; only the hash is stored.
+    revalidateEvent(slug);
     return { ok: true, token };
   } catch (err) {
     return fail(err, "Could not generate a token");
@@ -255,10 +266,11 @@ export async function deleteEventAction(_prev: ActionState, form: FormData): Pro
   await requireAdmin();
   try {
     const slug = SlugSchema.parse(form.get("slug"));
-    // Destructive: the admin must type the slug to confirm (SPEC §4.4).
-    if (String(form.get("confirm") ?? "").trim() !== slug)
-      return { errors: { confirm: "Type the event code exactly to confirm" } };
     const events = await getEventRepo();
+    // Destructive: the admin must type the event's name to confirm (SPEC §4.4, D-35).
+    const event = await events.require(slug);
+    if (String(form.get("confirm") ?? "").trim() !== event.config.name.trim())
+      return { errors: { confirm: "Type the event name exactly to confirm" } };
     const { sync, blob } = getServices();
     // The audit line carries slug and timestamp only (SPEC §4.4).
     await deleteEvent({ sync, blob, events, hooks: getDeleteHooks(), audit: log }, slug);

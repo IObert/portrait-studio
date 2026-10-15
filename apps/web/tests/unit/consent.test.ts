@@ -12,7 +12,7 @@ const event = (leadCollection: boolean): PortraitEvent => ({
   state: "live",
   config: { ...defaultConfig("SIGNAL London", "+13203780782"), leadCollection },
   uploads: { frame: null, background: null },
-  printerTokenHash: null,
+  printerTokenHash: null, printerToken: null,
   printerTokenCreatedAt: null,
   createdAt: now.toISOString(),
   updatedAt: now.toISOString(),

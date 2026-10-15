@@ -299,6 +299,36 @@ with no error event.* Each heartbeat is limited to 15 s; with no successful hear
 session and starts a fresh one with a new token. A print at the printer keeps its printer job id and is resumed
 (D-25), so this cannot duplicate prints.
 
+### D-33 Short printer token, kept visible in the admin (user decision)
+*2026-10-15. Changes SPEC §4.2 and §10.1 ("shown once, hash only").*
+- The web app runs in the cloud and the print agent on a laptop next to the printer, so the token is often typed by
+  hand. It is now `<event id>.XXXX-XXXX-XXXX-XXXX`: 16 Crockford base32 characters (80 random bits, no I, L, O or U).
+  Only guessable online, one request at a time.
+- Typing is forgiving: case, spaces, missing dashes and the look-alikes O→0, I/L→1 are normalised before the
+  constant-time hash comparison.
+- The token is stored on the event (`printerToken`) next to its hash, and the event page always shows it with the
+  server URL and the full agent command, each with a copy button. Anyone who can read the event can read the token;
+  that is the same audience that can already change the event.
+- Tokens from before D-33 (`pst_<id>_<43 chars>`) still verify until rotated; they cannot be shown, so the page offers
+  to rotate them.
+
+### D-34 Share caption and promo defaults, with an `{event}` placeholder (user decision)
+*2026-10-15.*
+- New events start with a suggested share caption and post-print promo (en and pt_BR in `DEFAULT_COPY`). `{event}`
+  is replaced by the event name when the text is used, so renaming an event keeps the copy right.
+- On the new-event form, switching the language swaps in that language's suggestions unless the admin edited them.
+- New-event limits: 10 portraits and 6 prints per person. Existing events keep their values.
+
+### D-35 The event ID is generated from the name and never shown (user decision)
+*2026-10-15. Changes SPEC §4.2 (the admin no longer types an event code) and §5.2 (only the name is matched).*
+- The slug stays as the internal ID: Sync object names, blob paths, URLs, the printer token and the scripts' `--event`
+  all use it. The admin never types it and attendees never see it.
+- On create it is derived from the name (`lib/events/event-id.ts`): lowercase, accents removed, anything else a dash,
+  at most 36 characters; a name with nothing usable becomes `event`. A taken ID gets `-2`, `-3`, … (race-safe: the
+  repo's create fails on an existing key). Renaming an event keeps its ID.
+- Chat routing matches the event **name** only; the ID is never matched. The QR message already names the event.
+- Deleting an event asks for its name, not its ID.
+
 ## Open TODOs after the last milestone
 
 - **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and

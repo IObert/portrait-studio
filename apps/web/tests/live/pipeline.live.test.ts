@@ -33,7 +33,7 @@ describe.skipIf(!live)("pipeline (live AI)", () => {
       state: "live",
       config: { ...defaultConfig("Live pipeline", "+13203780782"), backgrounds: ["uploaded"], uploadedBackgroundName: "Stage", frame: "twilio-tab-bottom" },
       uploads: { frame: null, background: { blobPath: "assets/events/ev/background.jpg", contentType: "image/jpeg", width: 1024, height: 1536, uploadedAt: new Date().toISOString() } },
-      printerTokenHash: null,
+      printerTokenHash: null, printerToken: null,
       printerTokenCreatedAt: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

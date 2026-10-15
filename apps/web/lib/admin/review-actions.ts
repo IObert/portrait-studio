@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { log } from "../log";
@@ -14,6 +13,8 @@ import { getEnv, requireEnv } from "../env";
 import { signMedia } from "../media-token";
 import { getEventRepo } from "./context";
 import { requireAdmin } from "./guard";
+import { revalidateEvent } from "./revalidate";
+
 
 export interface ReviewState {
   ok?: boolean;
@@ -51,7 +52,7 @@ export async function reviewAction(_prev: ReviewState, form: FormData): Promise<
         );
         await messenger.init();
         const r = await approveFlagged({ ...base, delivery: deliveryDeps(sync, messenger) }, event, jobId);
-        revalidatePath(`/admin/events/${slug}/review`);
+        revalidateEvent(slug);
         return { ok: true, message: r === "sent" ? "Approved and sent" : "Approved; the attendee is outside the WhatsApp window and no delivery template is set up" };
       }
       case "discard":
@@ -61,7 +62,7 @@ export async function reviewAction(_prev: ReviewState, form: FormData): Promise<
         const { blob } = getServices();
         const r = await removePortrait({ ...base, blob }, event, jobId);
         // The card leaves the list, so confirm at page level.
-        revalidatePath(`/admin/events/${slug}/review`);
+        revalidateEvent(slug);
         redirect(`/admin/events/${slug}/review?tab=delivered&notice=${r.printing ? "removed-printing" : "removed"}`);
       }
       case "print_remove":
@@ -74,7 +75,7 @@ export async function reviewAction(_prev: ReviewState, form: FormData): Promise<
         break;
       }
     }
-    revalidatePath(`/admin/events/${slug}/review`);
+    revalidateEvent(slug);
     return { ok: true, message: "Done" };
   } catch (err) {
     // redirect() works by throwing; let it through.

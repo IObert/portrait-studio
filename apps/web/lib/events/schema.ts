@@ -86,8 +86,13 @@ export const EventSchema = z.object({
     frame: UploadedAssetSchema.nullable(),
     background: UploadedAssetSchema.nullable(),
   }),
-  /** SHA-256 of the printer token; the token itself is shown once and never stored (SPEC §4.2). */
+  /** SHA-256 of the printer token; the agent API compares against this only (SPEC §4.2). */
   printerTokenHash: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+  /**
+   * The token itself, so the admin page can keep showing it (user decision, D-33).
+   * Null for tokens issued before D-33: those were shown once and can only be rotated.
+   */
+  printerToken: z.string().max(80).nullable().default(null),
   printerTokenCreatedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -106,7 +111,23 @@ export function crossCheckUploads(config: EventConfigInput, uploads: PortraitEve
   return errors;
 }
 
-/** Defaults for a new event: everything enabled, safe limits, printing off. */
+/** Placeholder in the share caption and promo text, replaced by the event name when sent (D-34). */
+export const EVENT_NAME_TOKEN = "{event}";
+export const withEventName = (text: string, eventName: string) => text.replaceAll(EVENT_NAME_TOKEN, eventName);
+
+/** Suggested share caption and promo per language; the admin can change both (D-34). */
+export const DEFAULT_COPY: Record<Locale, { shareText: string; promo: string }> = {
+  en: {
+    shareText: "Made at {event}, and on my phone moments later via Twilio Messaging.",
+    promo: "Your print is ready! Pick it up at the Twilio booth. Thanks for visiting Portrait Studio, built on Twilio Messaging.",
+  },
+  pt_BR: {
+    shareText: "Feito no {event} e no meu celular segundos depois, via Twilio Messaging.",
+    promo: "Sua impressão está pronta! Retire no estande da Twilio. Obrigado por visitar o Portrait Studio, feito com Twilio Messaging.",
+  },
+};
+
+/** Defaults for a new event: everything enabled, generous limits, printing off. */
 export function defaultConfig(name: string, qrSender: string): EventConfigInput {
   return {
     name,
@@ -120,11 +141,11 @@ export function defaultConfig(name: string, qrSender: string): EventConfigInput 
     leadCollection: true,
     emailPromoCode: "",
     emailShowSnippet: false,
-    maxImagesPerPerson: 3,
+    maxImagesPerPerson: 10,
     printingEnabled: false,
-    maxPrintsPerPerson: 1,
-    promo: { enabled: false, text: "" },
-    shareText: "",
+    maxPrintsPerPerson: 6,
+    promo: { enabled: false, text: DEFAULT_COPY.en.promo },
+    shareText: DEFAULT_COPY.en.shareText,
     ctaText: { headline: "", steps: [] },
   };
 }

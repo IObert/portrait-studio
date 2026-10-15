@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 import { checkBasicAuth } from "@/lib/auth/basic";
-import { generatePrinterToken, slugFromToken, verifyPrinterToken } from "@/lib/auth/printer-token";
+import { generatePrinterToken, hashToken, normalizeToken, slugFromToken, verifyPrinterToken } from "@/lib/auth/printer-token";
 import { deleteEvent } from "@/lib/events/delete";
 import { canTransition, EventRepo, InvalidTransition, SlugTaken } from "@/lib/events/repo";
 import { crossCheckUploads, defaultConfig, EventConfigInputSchema } from "@/lib/events/schema";
@@ -78,7 +78,7 @@ describe("EventRepo", () => {
     await Promise.all([
       events.setState("ev", "live"),
       events.updateConfig("ev", { ...cfg(), name: "New name" }),
-      events.setPrinterTokenHash("ev", "a".repeat(64)),
+      events.setPrinterToken("ev", "ev.AAAA-AAAA-AAAA-AAAA", "a".repeat(64)),
     ]);
     const e = await events.require("ev");
     expect(e.state).toBe("live");
@@ -129,18 +129,30 @@ describe("deleteEvent", () => {
 });
 
 describe("printer token", () => {
-  it("is shown once, stored as a hash and verified in constant time", () => {
+  it("is short, typeable and verified in constant time against its hash (D-33)", () => {
     const { token, hash } = generatePrinterToken("sp-london");
-    expect(token).toMatch(/^pst_sp-london_[A-Za-z0-9_-]{43}$/);
+    expect(token).toMatch(/^sp-london\.[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/);
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
-    expect(hash).not.toContain(token.slice(-43));
     expect(slugFromToken(token)).toBe("sp-london");
     expect(verifyPrinterToken(token, hash)).toBe(true);
     // Always change the last character (it may already be "A").
     const tampered = token.slice(0, -1) + (token.endsWith("A") ? "B" : "A");
     expect(verifyPrinterToken(tampered, hash)).toBe(false);
     expect(verifyPrinterToken(token, null)).toBe(false);
+    expect(slugFromToken("../etc.AAAA-AAAA-AAAA-AAAA")).toBeNull();
     expect(slugFromToken("pst_../etc_" + "a".repeat(43))).toBeNull();
+  });
+  it("forgives case, spacing, missing dashes and look-alike letters when typed", () => {
+    const hash = hashToken("sp-london.K7QM-2XH0-9RTB-W41Z");
+    for (const typed of ["sp-london.k7qm-2xh0-9rtb-w41z", " sp-london.K7QM2XH09RTBW41Z ", "SP-LONDON.K7QM 2XHO 9RTB W4lZ", "sp-london.K7QM-2XHO-9RTB-W4IZ"])
+      expect(verifyPrinterToken(typed, hash), typed).toBe(true);
+    expect(normalizeToken("sp-london.K7QM-2XH0-9RTB")).toBeNull();
+    expect(normalizeToken("sp-london.K7QM-2XH0-9RTB-W4UZ")).toBeNull();
+  });
+  it("still accepts a token issued before D-33 until it is rotated", () => {
+    const legacy = "pst_sp-london_" + "a".repeat(43);
+    expect(slugFromToken(legacy)).toBe("sp-london");
+    expect(verifyPrinterToken(legacy, hashToken(legacy))).toBe(true);
   });
   it("rotating produces a different token", () => {
     expect(generatePrinterToken("a").token).not.toBe(generatePrinterToken("a").token);

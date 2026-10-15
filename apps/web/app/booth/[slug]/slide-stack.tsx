@@ -79,7 +79,7 @@ export function SlideStack({ slides }: { slides: BoothSlide[] }) {
   // A 2:3 box that fits the column on any screen: as tall as it can be, unless the column is too narrow
   // (portrait screens), then as wide as the column. Container units read the parent's size.
   // 94%: room for the tilted cards below the top one.
-  const box = "aspect-[2/3] h-[min(94cqh,141cqw)]";
+  const box = "aspect-2/3 h-[min(94cqh,141cqw)]";
   return (
     <div className="flex h-full w-full items-center justify-center [container-type:size]">
       {cards.length === 0 ? (
