@@ -17,8 +17,8 @@ FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/
 COPY apps/print-agent/package.json apps/print-agent/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter @portrait-studio/web...
+# No BuildKit cache mount: `az acr build` uses the classic builder, which rejects --mount.
+RUN pnpm install --frozen-lockfile --filter @portrait-studio/web...
 
 FROM deps AS build
 COPY apps/web apps/web
