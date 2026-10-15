@@ -159,6 +159,20 @@ export interface Catalog {
     removed: string;
   };
 
+  /** Data deletion (SPEC §5.10). */
+  deletion: {
+    confirm: string;
+    yes: string;
+    cancel: string;
+    /** Exact SMS keyword for "Yes, delete". */
+    yesKeyword: string;
+    smsHint: (p: { keyword: string }) => string;
+    done: string;
+    /** Deleted, but a print was already at the printer. */
+    donePrinting: string;
+    cancelled: string;
+  };
+
   errors: {
     /** Something failed on our side while handling a message. */
     generic: string;

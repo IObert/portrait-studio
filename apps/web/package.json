@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "spike:transparent": "node --conditions=react-server --import tsx scripts/spike-transparent.ts"
+    "spike:transparent": "node --conditions=react-server --import tsx scripts/spike-transparent.ts",
+    "stats:reset": "node --conditions=react-server --import tsx scripts/stats-reset.ts"
   },
   "dependencies": {
     "@azure/storage-blob": "^12.34.0",

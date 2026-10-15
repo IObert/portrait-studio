@@ -25,7 +25,7 @@ describe("removeBindings", () => {
 describe("unlinkProfiles (shared Memory store, D-12)", () => {
   it("deletes profiles linked to no other event and keeps shared ones", async () => {
     const { fake, sync } = await setup();
-    const memory = { lookup: vi.fn(), upsert: vi.fn(), deleteProfile: vi.fn(async () => {}) };
+    const memory = { lookup: vi.fn(), get: vi.fn(), upsert: vi.fn(), deleteProfile: vi.fn(async () => {}) };
     await fake.createItem(eventObjects("ev").leads, "whatsapp:+1", { memoryProfileId: "mem_only_ev", optedInAt: "x", method: "verified_email" });
     await fake.createItem(eventObjects("ev").leads, "whatsapp:+2", { memoryProfileId: "mem_both", optedInAt: "x", method: "returning" });
     await fake.createItem(eventObjects("ev").leads, "whatsapp:+3", { memoryProfileId: null, optedInAt: "x", method: "agree_only" });
@@ -43,7 +43,7 @@ describe("unlinkProfiles (shared Memory store, D-12)", () => {
     const fake = new FakeSync();
     const sync = new SyncStore(fake, { warn: vi.fn() });
     await sync.ensureMap(Global.profileLinks);
-    expect(await unlinkProfiles(sync, { lookup: vi.fn(), upsert: vi.fn(), deleteProfile: vi.fn() }, "ev")).toEqual({ unlinked: 0, deleted: 0 });
+    expect(await unlinkProfiles(sync, { lookup: vi.fn(), get: vi.fn(), upsert: vi.fn(), deleteProfile: vi.fn() }, "ev")).toEqual({ unlinked: 0, deleted: 0 });
   });
 });
 
@@ -51,7 +51,7 @@ describe("fresh deployment (no global maps yet)", () => {
   it("delete and End clean-up succeed before any attendee has messaged", async () => {
     const sync = new SyncStore(new FakeSync(), { warn: vi.fn() });
     await expect(removeBindings(sync, "ev")).resolves.toBe(0);
-    await expect(unlinkProfiles(sync, { lookup: vi.fn(), upsert: vi.fn(), deleteProfile: vi.fn() }, "ev")).resolves.toEqual({ unlinked: 0, deleted: 0 });
+    await expect(unlinkProfiles(sync, { lookup: vi.fn(), get: vi.fn(), upsert: vi.fn(), deleteProfile: vi.fn() }, "ev")).resolves.toEqual({ unlinked: 0, deleted: 0 });
   });
 });
 

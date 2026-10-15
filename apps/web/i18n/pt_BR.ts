@@ -130,6 +130,17 @@ export const pt_BR = {
     removed: "Este retrato foi removido pelo organizador do evento.",
   },
 
+  deletion: {
+    confirm: "Apagar todos os seus dados desta cabine? Isso não pode ser desfeito.",
+    yes: "Sim, apagar",
+    cancel: "Cancelar",
+    yesKeyword: "APAGAR",
+    smsHint: ({ keyword }) => `Responda ${keyword} para confirmar, ou qualquer outra coisa para cancelar.`,
+    done: "Pronto. Todos os seus dados desta cabine foram apagados: suas fotos, retratos e informações. Obrigado pela visita!",
+    donePrinting: "Pronto. Todos os seus dados desta cabine foram apagados. Uma impressão já estava na impressora e ainda pode sair.",
+    cancelled: "Tudo bem, nada foi apagado.",
+  },
+
   errors: {
     generic: "Desculpe, algo deu errado do nosso lado. Tente de novo em instantes.",
   },

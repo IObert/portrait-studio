@@ -25,7 +25,10 @@ import { advanceConsent, beginConsent, type ConsentEffect } from "./consent";
 import { verificationEmailSubstitutions } from "./email-substitutions";
 import { downloadSelfie, isImage, type MediaFetch } from "./media";
 import { resolvePick, route } from "./routing";
-import { afterOptIn, handleSelfieFlow, type SelfieEffect } from "./selfie";
+import { type ChatModel, chatReply } from "./chat";
+import { ACTION } from "./consent";
+import { deleteAddressData } from "./deletion";
+import { afterOptIn, handleSelfieFlow, quotaLeft, type SelfieEffect } from "./selfie";
 import { newSession, type Session, SessionSchema } from "./session";
 
 /** Sync TTLs (docs/decisions.md D-05): 7 days for attendee data, 24h for dedup (SPEC §3.4). */
@@ -66,6 +69,8 @@ export interface Deps {
   slideUrl: (blobPath: string) => string;
   /** Signed link for the print agent to download a print PNG (D-24). */
   mediaUrl: (blobPath: string, ttlSeconds: number) => string;
+  /** Chat model for free-text replies (SPEC §5.10). Without it, free text gets the selfie prompt. */
+  chat?: ChatModel;
   log: { info(o: object, m: string): void; warn(o: object, m: string): void; error(o: object, m: string): void };
   now?: () => Date;
 }
@@ -234,11 +239,13 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
 type SlideshowEffect = { type: "slideshow"; jobId: string; answer: "print" | "printonly" | "yes" | "no" };
 /** "print" typed any time: list the person's portraits to print (D-28). */
 type PrintMenuEffect = { type: "print-menu" };
+/** "Yes, delete" confirmed (SPEC §5.10). */
+type DeleteEffect = { type: "delete-data" };
 
 interface Outcome {
   session: Session;
   messages: OutboundMessage[];
-  effects: (ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect)[];
+  effects: (ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect | DeleteEffect)[];
 }
 
 async function decide(
@@ -287,6 +294,20 @@ async function decide(
     return { session: r.session, messages: r.messages, effects: [] };
   }
 
+  // Deletion confirmation (SPEC §5.10), before anything else. The button payload always counts (it
+  // can only come from the confirmation); on SMS the exact keyword counts only right after the question.
+  const smsYes = input.channel === "sms" && session.pendingDeletionConfirm && normalize(input.text) === normalize(c.deletion.yesKeyword);
+  if (input.selection === ACTION.deleteYes || smsYes) {
+    return { session: { ...session, pendingDeletionConfirm: false }, messages: [], effects: [{ type: "delete-data" }] };
+  }
+  if (session.pendingDeletionConfirm) {
+    session = { ...session, pendingDeletionConfirm: false };
+    // Cancel, or any other text, cancels. A photo is handled as usual.
+    if (input.selection === ACTION.deleteCancel || imageCount === 0) return { session, messages: [{ kind: "text", body: c.deletion.cancelled }], effects: [] };
+  } else if (input.selection === ACTION.deleteCancel) {
+    return { session, messages: [{ kind: "text", body: c.deletion.cancelled }], effects: [] };
+  }
+
   // Answer to the print / slideshow question (SPEC §5.8, D-24), before anything else.
   // A print reply is sent by the effect, once the print is (or is not) queued.
   if (imageCount === 0) {
@@ -306,11 +327,22 @@ async function decide(
     return { session, messages: [], effects: [{ type: "print-menu" }] };
   }
   const r = handleSelfieFlow(session, event, c, { text: input.text, selection: input.selection, images: imageCount, selfieBlob, newJobId: newJobId() });
-  // Free text with no active step: chat reply arrives in milestone j (SPEC §5.10).
+  // Free text with no active step: the chat model answers, or asks to confirm a deletion (SPEC §5.10).
   if (!r.handled) {
+    const outcome = deps.chat && input.text.trim() ? await chatReply(deps.chat, event.config.language, chatContext(event, c, session), input.text) : ({ kind: "unavailable" } as const);
+    if (outcome.kind === "deletion-requested") {
+      const body = c.deletion.confirm;
+      return {
+        session: { ...session, pendingDeletionConfirm: true },
+        messages: [{ kind: "buttons", body, buttons: [{ id: ACTION.deleteYes, title: c.deletion.yes }, { id: ACTION.deleteCancel, title: c.deletion.cancel }], smsBody: `${body} ${c.deletion.smsHint({ keyword: c.deletion.yesKeyword })}` }],
+        effects: [],
+      };
+    }
     const left = printsLeft(event, session.counters);
-    const body = left > 0 && session.delivered.length > 0 ? `${c.selfie.ask}\n${c.delivery.printHint({ printsLeft: left })}` : c.selfie.ask;
-    return { session, messages: [{ kind: "text", body }], effects: [] };
+    const hint = left > 0 && session.delivered.length > 0 ? `\n${c.delivery.printHint({ printsLeft: left })}` : "";
+    // The model's reply, or the localized selfie prompt if it is unavailable. It never changes state.
+    const body = outcome.kind === "reply" ? outcome.text : c.selfie.ask;
+    return { session, messages: [{ kind: "text", body: `${body}${hint}` }], effects: [] };
   }
   return { session: r.session, messages: r.messages, effects: r.effects };
 }
@@ -332,7 +364,7 @@ async function lookupProfile(deps: Deps, from: Address) {
 /** Runs one effect; may return a reply that depends on its outcome. */
 async function runEffect(
   deps: Deps,
-  effect: ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect,
+  effect: ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect | DeleteEffect,
   ctx: { event: PortraitEvent; key: string; address: Address; now: Date; session: Session },
 ): Promise<OutboundMessage | void> {
   const { sync } = deps;
@@ -430,9 +462,19 @@ async function runEffect(
     }
     case "print-menu":
       return printMenu(deps, ctx);
+    case "delete-data": {
+      const r = await deleteAddressData(deps, ctx.key, ctx.event.slug);
+      const d = catalogs[ctx.event.config.language].deletion;
+      return { kind: "text", body: r.printing > 0 ? d.donePrinting : d.done };
+    }
     default:
       return;
   }
+}
+
+/** What the chat model may know (SPEC §5.10): event name, enabled styles, remaining portraits. */
+function chatContext(event: PortraitEvent, c: Catalog, session: Session) {
+  return { eventName: event.config.name, styleNames: event.config.styles.map((id) => c.styles[id].name), remaining: Math.max(0, quotaLeft(session, event)) };
 }
 
 /** Matches the event language's print keyword as a word anywhere in the message. */

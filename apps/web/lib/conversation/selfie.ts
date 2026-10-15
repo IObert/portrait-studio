@@ -82,7 +82,7 @@ export function backgroundMenu(event: PortraitEvent, c: Catalog): OutboundMessag
   return menu(backgroundOptions(event, c), c.menus.backgroundBody, c.menus.backgroundButton, c);
 }
 
-function quotaLeft(session: Session, event: PortraitEvent): number {
+export function quotaLeft(session: Session, event: PortraitEvent): number {
   // In-flight jobs count so that parallel selfies cannot exceed the quota.
   return event.config.maxImagesPerPerson - session.counters.delivered - session.counters.inFlight;
 }

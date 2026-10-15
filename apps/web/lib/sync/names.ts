@@ -49,7 +49,9 @@ export function eventObjects(slug: Slug) {
     stats,
     allStats,
     /** Every map of the event (the printer document is separate). */
-    allMaps: () => [`${p}sessions`, `${p}jobs`, `${p}print`, `${p}leads`, `${p}slideshow`, ...allStats()],
+    /** `lastResetAt` of the counters (SPEC §10.5). */
+    statsMeta: `${p}stats_meta`,
+    allMaps: () => [`${p}sessions`, `${p}jobs`, `${p}print`, `${p}leads`, `${p}slideshow`, `${p}stats_meta`, ...allStats()],
   };
 }
 

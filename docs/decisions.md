@@ -257,6 +257,45 @@ when it was switched on.*
 - The "send us a selfie" fallback adds "Or reply PRINT…" when the person has prints left and a portrait.
 - Milestone j's AI chat replies (§5.10) will replace the fallback; this keyword handling stays in front of it.
 
+### D-29 Chat replies (SPEC §5.10)
+*2026-10-15.*
+- Free text (opted in, no active step) goes to the chat model (`OPENAI_CHAT_MODEL`, effort `none`) with PROMPTS.md
+  §G1 / §G2 word for word, except: "AI-powered photobooth" / "cabine de fotos com IA" → "Portrait Studio" (user
+  decision), G2's admin-written extra instructions left out (user decision: no new setting), and a language rule
+  appended. Context: event name, enabled styles, remaining portraits, the message.
+- The reply is sent as is (Markdown stripped, at most 600 characters) and never changes state. Any model failure or a
+  10 s timeout falls back to the localized selfie prompt. The PRINT hint (D-28) is added to either.
+- Language: the prompt is always the event's language and tells the model it cannot switch. A live test
+  (`RUN_LIVE_AI_TESTS=1`) checks both directions, plus a deletion request in German calling the tool.
+
+### D-30 Data deletion (SPEC §5.10)
+*2026-10-15. Follows D-12.*
+- `request_data_deletion` (the only tool) sets `pendingDeletionConfirm` and sends **Yes, delete** / **Cancel**.
+  Only the button payload confirms on WhatsApp; on SMS the exact keyword (`DELETE` / `APAGAR`) right after the
+  question. Anything else cancels.
+- Deletes across all events: jobs and their files, slideshow, print-queue items, share links, leads, sessions,
+  bindings, the event picker; then the whole Memory profile and its links (D-12). Anonymous stats stay;
+  `deletionRequests` is counted once it succeeded.
+- Fails closed: every step is idempotent (missing items and blobs are no-ops), so any error stops it without the
+  "done" reply, and confirming again finishes it. A print already at the printer cannot be recalled: its queue item
+  stays until it finishes, and the reply says one print may still come out.
+
+### D-31 Stats page, leads CSV, reset
+*2026-10-15.*
+- `/admin/events/<slug>/stats`: the §10.5 counters, average delivery time, per style and background, the print
+  agent's status (offline after 45 s without a heartbeat), and `lastResetAt`.
+- `/admin/events/<slug>/leads.csv`: leads joined with Conversation Memory; agree-only leads and deleted profiles give
+  empty contact fields. Cells that a spreadsheet would run as a formula are prefixed with `'` (phone numbers are
+  exempt). Admin auth is re-checked in the route.
+- `pnpm --filter web stats:reset --event <slug>` deletes the counters and writes `lastResetAt` to
+  `ev_<slug>_stats_meta` (deleted with the event). The run is logged.
+
+### D-32 Print agent rebuilds a dead Sync connection
+*2026-10-15. Found after the laptop slept: the SDK stopped reconnecting and every heartbeat timed out for 15 hours,
+with no error event.* Each heartbeat is limited to 15 s; with no successful heartbeat for 60 s the agent drops the
+session and starts a fresh one with a new token. A print at the printer keeps its printer job id and is resumed
+(D-25), so this cannot duplicate prints.
+
 ## Open TODOs after the last milestone
 
 - **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and

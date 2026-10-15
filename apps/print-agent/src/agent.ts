@@ -13,6 +13,24 @@ const MAX_BACKOFF_MS = 60_000;
 const POLL_MS = 2_000;
 /** A job that makes no progress this long while the printer says it is ready is cancelled and retried. */
 export const STALLED_MS = 10 * 60 * 1000;
+/**
+ * No successful heartbeat for this long: the Sync connection is treated as
+ * dead and the session is rebuilt with a fresh token. The SDK does not always
+ * reconnect by itself (seen after a laptop slept: hours of timeouts).
+ */
+export const DEAD_CONNECTION_MS = 60_000;
+
+/** Tracks heartbeat results; `dead()` once no beat succeeded for DEAD_CONNECTION_MS. */
+export function connectionWatch(now = () => Date.now()) {
+  let last = now();
+  return {
+    beat(ok: boolean) {
+      if (ok) last = now();
+    },
+    silentFor: () => now() - last,
+    dead: () => now() - last > DEAD_CONNECTION_MS,
+  };
+}
 
 const TokenResponse = z.object({
   token: z.string().min(10),
@@ -106,8 +124,16 @@ async function session(opts: AgentOptions): Promise<void> {
     queue.on("itemAdded", kick);
     queue.on("itemUpdated", kick);
 
-    const beat = setInterval(() => void heartbeat(status, opts.printer, printing), HEARTBEAT_MS);
-    await heartbeat(status, opts.printer, printing);
+    const watch = connectionWatch();
+    const beatOnce = async () => {
+      watch.beat(await heartbeat(status, opts.printer, printing));
+      if (watch.dead() && !ended.signal.aborted) {
+        log("warn", `No contact with Sync for ${Math.round(watch.silentFor() / 1000)}s; reconnecting`);
+        stop();
+      }
+    };
+    const beat = setInterval(() => void beatOnce(), HEARTBEAT_MS);
+    await beatOnce();
     try {
       while (!ended.signal.aborted) {
         // A printer that is off, paused or out of paper takes nothing new: prints stay queued (D-25).
@@ -117,7 +143,7 @@ async function session(opts: AgentOptions): Promise<void> {
           printing = true;
           await printOne(queue, next, opts.printer, ended.signal);
           printing = false;
-          await heartbeat(status, opts.printer, printing);
+          await beatOnce();
           continue;
         }
         await new Promise<void>((resolve) => {
@@ -252,20 +278,29 @@ async function waitForJob(printer: Printer, printerJobId: string, signal: AbortS
 }
 
 /** Heartbeat and printer status every 15 s (SPEC §11.2, PROTOCOL.md §4). */
-async function heartbeat(doc: SyncDocument, printer: Printer, printing: boolean) {
+/** Writes the heartbeat; true when Sync took it. */
+async function heartbeat(doc: SyncDocument, printer: Printer, printing: boolean): Promise<boolean> {
   try {
     const st = await printer.status();
-    await doc.set({
+    // Bounded, so a hung connection still counts as a failed beat.
+    await withTimeout(doc.set({
       agentVersion: AGENT_VERSION,
       mode: printer.mode,
       queue: printer.queue,
       status: printing && st.status === "idle" ? "printing" : st.status,
       detail: st.detail,
       heartbeatAt: new Date().toISOString(),
-    });
+    }), HEARTBEAT_MS, "heartbeat timed out");
+    return true;
   } catch (err) {
     log("warn", `Heartbeat failed: ${(err as Error).message}`);
+    return false;
   }
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([p, new Promise<never>((_, reject) => (t = setTimeout(() => reject(new Error(message)), ms)))]).finally(() => clearTimeout(t));
 }
 
 function sleep(ms: number, signal: AbortSignal) {
