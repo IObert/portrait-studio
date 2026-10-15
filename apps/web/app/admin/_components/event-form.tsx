@@ -11,6 +11,8 @@ export interface Option {
   label: string;
   disabled?: boolean;
   hint?: string;
+  /** Only offered with the LA Kings promotion on (D-36). */
+  laKings?: boolean;
 }
 
 interface Props {
@@ -156,6 +158,12 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
   // React resets uncontrolled fields after an action; re-render from the echoed values
   // (a new key remounts the form so defaultValue applies again).
   const config = state.values?.config ?? initial;
+  // The Kings scenes exist only with the promotion on; off, they leave the form entirely (D-36).
+  const [laKings, setLaKings] = useState(config.laKings);
+  const shownBackgrounds = backgrounds.filter((o) => laKings || !o.laKings);
+  // Just switched on with neither scene ticked: both start selected (the server does the same).
+  const kingsIds = backgrounds.filter((o) => o.laKings).map((o) => o.id);
+  const selectedBackgrounds = laKings && !kingsIds.some((id) => config.backgrounds.includes(id as never)) ? [...kingsIds, ...config.backgrounds] : config.backgrounds;
   const filled = config.ctaText.steps.filter(Boolean);
   const steps = [...filled, "", "", ""].slice(0, Math.min(5, Math.max(3, filled.length + 1)));
   const afterCreate = (what: string) => <p className={field.hint}>{what} can be added once the event is created.</p>;
@@ -233,6 +241,13 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
       </Panel>
 
       <Panel id="portraits" title={title("portraits")} description="The choices attendees get, and what every portrait looks like.">
+        <label className="flex cursor-pointer items-start justify-between gap-6">
+          <span>
+            <span className="block text-sm font-medium">LA Kings promotion</span>
+            <span className="mt-0.5 block text-sm text-slate">Is this an LA Kings promotion activation?</span>
+          </span>
+          <input type="checkbox" name="laKings" defaultChecked={config.laKings} onChange={(e) => setLaKings(e.target.checked)} className="switch mt-0.5" />
+        </label>
         <fieldset>
           <legend className={field.label}>Styles</legend>
           <div className="mt-2 flex flex-wrap gap-3">
@@ -249,7 +264,8 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
         </fieldset>
         <fieldset>
           <legend className={field.label}>Backgrounds</legend>
-          <Chips name="backgrounds" options={backgrounds} selected={config.backgrounds} />
+          {/* Re-mount when the Kings scenes appear, so their defaultChecked applies. */}
+          <Chips key={String(laKings)} name="backgrounds" options={shownBackgrounds} selected={selectedBackgrounds} />
           <FieldError state={state} name="backgrounds" />
           <div className="mt-4 max-w-sm">
             <label className={field.label} htmlFor="uploadedBackgroundName">Name of the custom background</label>

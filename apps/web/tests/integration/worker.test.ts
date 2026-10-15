@@ -64,7 +64,7 @@ async function setup(openai = fakeOpenAI(), cfg: Partial<EventConfigInput> = {})
     sync,
     events,
     messenger,
-    pipeline: { openai: openai.client as never, blob, imageModel: "gpt-image-2.5-flare", vision: { model: "gpt-6.1-sol", effort: "low" }, loadFixedFrame: async () => null },
+    pipeline: { openai: openai.client as never, blob, imageModel: "gpt-image-2.5-flare", vision: { model: "gpt-6.1-sol", effort: "low" }, loadFixedFrame: async () => null, loadBrandAsset: async () => Buffer.alloc(0) },
     log,
     onReady,
     workerId: "w1",

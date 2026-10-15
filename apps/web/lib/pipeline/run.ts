@@ -2,13 +2,15 @@ import type OpenAI from "openai";
 import sharp from "sharp";
 import type { BlobStore } from "../blob/store";
 import { BlobPaths } from "../blob/paths";
-import type { PortraitEvent } from "../events/schema";
+import { type Brand, LA_KINGS } from "../brands/la-kings";
+import type { BackgroundId, PortraitEvent } from "../events/schema";
 import { compositeOnBackground } from "../image/composite";
 import { applyFrame, toDeliveryJpeg, toPrintPng } from "../image/frame";
 import { frameClearance } from "../image/frame-clearance";
 import type { Job } from "../jobs/schema";
+import { bgRefName, brandRefName } from "../prompts/brand";
 import { buildPrompt } from "../prompts/build";
-import { GenerationRefused, generatePortrait } from "./generate";
+import { GenerationRefused, generatePortrait, type RefImage } from "./generate";
 import { analyzeScene, detectFace, moderate, review, type VisionConfig } from "./vision";
 
 /** How a job ended (SPEC §9.1). `ready` = passed review; delivery is milestone g. */
@@ -24,6 +26,8 @@ export interface PipelineDeps {
   vision: VisionConfig;
   /** Loads a fixed frame from apps/web/assets/frames (null for `none`). */
   loadFixedFrame: (id: string) => Promise<Buffer | null>;
+  /** Loads a brand reference image from apps/web/assets/<brand key>/ (D-36). */
+  loadBrandAsset: (brandKey: string, file: string) => Promise<Buffer>;
   signal?: AbortSignal;
 }
 
@@ -56,6 +60,15 @@ export async function screenPhoto(deps: PipelineDeps, job: Job): Promise<Screeni
   return { kind: "passed", subjects: scene.subjects, pet: scene.pet };
 }
 
+/** brand_ref_0.png …, then bg_ref_0.png for a brand scene (D-36). */
+async function brandRefs(deps: PipelineDeps, brand: Brand, background: BackgroundId): Promise<RefImage[]> {
+  const out: RefImage[] = [];
+  for (const [i, file] of brand.refs.entries()) out.push({ name: brandRefName(i), png: await deps.loadBrandAsset(brand.key, file) });
+  const scene = brand.scenes[background];
+  if (scene) out.push({ name: bgRefName(0), png: await deps.loadBrandAsset(brand.key, scene.ref) });
+  return out;
+}
+
 /**
  * Generation for a screened job with chosen options (SPEC §9.2 steps 4–7).
  * Throws on transient or unparseable failures. Never passes a check by default.
@@ -74,14 +87,16 @@ export async function runPipeline(deps: PipelineDeps, event: PortraitEvent, job:
         : await deps.loadFixedFrame(event.config.frame);
   if (event.config.frame !== "none" && !framePng) throw new Error("Selected frame is missing");
 
-  // 4. Prompt.
-  const prompt = buildPrompt(job.style, job.background, scene, framePng ? await frameClearance(framePng) : undefined);
+  // 4. Prompt. The LA Kings promotion dresses everyone in the jersey (D-36).
+  const brand = event.config.laKings ? LA_KINGS : undefined;
+  const prompt = buildPrompt(job.style, job.background, scene, framePng ? await frameClearance(framePng) : undefined, brand);
 
-  // 5. Generate.
+  // 5. Generate. Reference images follow the selfie in the order the prompt names them.
   const uploaded = job.background === "uploaded";
+  const refs = brand ? await brandRefs(deps, brand, job.background) : [];
   let generated: Buffer;
   try {
-    generated = await generatePortrait(deps.openai, { model: deps.imageModel, selfie: jpeg, prompt, transparent: uploaded, signal: deps.signal });
+    generated = await generatePortrait(deps.openai, { model: deps.imageModel, selfie: jpeg, refs, prompt, transparent: uploaded, signal: deps.signal });
   } catch (err) {
     if (err instanceof GenerationRefused) return { kind: "rejected", reason: "generation_refused" };
     throw err;

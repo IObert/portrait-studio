@@ -48,6 +48,7 @@ describe.skipIf(!live)("pipeline (live AI)", () => {
         imageModel: process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2.5-flare",
         vision: { model: process.env.OPENAI_VISION_MODEL ?? "gpt-6.1-sol", effort: "low" },
         loadFixedFrame: async (id) => readFileSync(path.join(import.meta.dirname, `../../assets/frames/${id}.png`)),
+        loadBrandAsset: async (key: string, file: string) => readFileSync(path.join(import.meta.dirname, "../../assets", key, file)),
       },
       event,
       job,
@@ -63,5 +64,42 @@ describe.skipIf(!live)("pipeline (live AI)", () => {
     writeFileSync(path.join(OUT, "delivery.jpg"), (await blob.get(outcome.outputBlobs.deliveryJpeg))!);
     const meta = await sharp((await blob.get(outcome.outputBlobs.printPng))!).metadata();
     expect([meta.width, meta.height, meta.density]).toEqual([1200, 1800, 300]);
+  }, 300_000);
+
+  it("LA Kings promotion: jersey and the arena scene, framed and reviewed (D-36)", async () => {
+    const env = liveEnv(["OPENAI_API_KEY"]);
+    const blob = new FakeBlob();
+    const selfie = await sharp(readFileSync(SELFIE)).rotate().jpeg({ quality: 90 }).toBuffer();
+    await blob.put("events/ev/selfies/k.jpg", selfie, "image/jpeg");
+    const event: PortraitEvent = {
+      slug: "ev",
+      state: "live",
+      config: { ...defaultConfig("Kings Night", "+13203780782"), laKings: true, backgrounds: ["crypto-arena", "ice-rink"], frame: "twilio-tab-bottom-left" },
+      uploads: { frame: null, background: null },
+      printerTokenHash: null, printerToken: null,
+      printerTokenCreatedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const job: Job = JobSchema.parse({ jobId: "live_kings_1", address: "whatsapp:+10000000000", channel: "whatsapp", style: "cartoon", background: "crypto-arena", selfieBlob: "events/ev/selfies/k.jpg", shareId: "k".repeat(24), state: "processing", subjects: 1, pet: null, timestamps: {} });
+    const t0 = performance.now();
+    const outcome = await runPipeline(
+      {
+        openai: new OpenAI({ apiKey: env.OPENAI_API_KEY, maxRetries: 0 }),
+        blob,
+        imageModel: process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2.5-flare",
+        vision: { model: process.env.OPENAI_VISION_MODEL ?? "gpt-6.1-sol", effort: "low" },
+        loadFixedFrame: async (id) => readFileSync(path.join(import.meta.dirname, `../../assets/frames/${id}.png`)),
+        loadBrandAsset: async (key: string, file: string) => readFileSync(path.join(import.meta.dirname, "../../assets", key, file)),
+      },
+      event,
+      job,
+    );
+    console.log(`kings pipeline: ${outcome.kind} in ${((performance.now() - t0) / 1000).toFixed(1)}s`, outcome.kind === "flagged" ? outcome.reason : "");
+    expect(["ready", "flagged"]).toContain(outcome.kind);
+    if (outcome.kind === "rejected") return;
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    mkdirSync(OUT, { recursive: true });
+    writeFileSync(path.join(OUT, "kings-print.png"), (await blob.get(outcome.outputBlobs.printPng))!);
   }, 300_000);
 });

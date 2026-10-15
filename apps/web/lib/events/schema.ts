@@ -12,7 +12,9 @@ export type Locale = (typeof LOCALES)[number];
 
 /** Fixed backgrounds (SPEC §8.2, PROMPTS.md §C). `uploaded` is the event's own image. */
 export const FIXED_BACKGROUNDS = ["gradient", "solid-white", "solid-black", "original"] as const;
-export const BACKGROUND_IDS = [...FIXED_BACKGROUNDS, "uploaded"] as const;
+/** Scenes of the LA Kings promotion (D-36). Only valid, and only shown, with `laKings` on. */
+export const KINGS_BACKGROUNDS = ["ice-rink", "crypto-arena"] as const;
+export const BACKGROUND_IDS = [...FIXED_BACKGROUNDS, ...KINGS_BACKGROUNDS, "uploaded"] as const;
 export type BackgroundId = (typeof BACKGROUND_IDS)[number];
 
 /** Fixed frames shipped in apps/web/assets/frames (SPEC §8.3). */
@@ -51,6 +53,11 @@ export const EventConfigInputSchema = z
     /** Localized display name of the uploaded background (SPEC §8.2). */
     uploadedBackgroundName: text(40).default(""),
     frame: z.enum(FRAME_IDS),
+    /**
+     * LA Kings promotion (D-36): every portrait gets the Kings jersey, and the
+     * two Kings scenes become available (and are preselected). Not shown to attendees.
+     */
+    laKings: z.boolean().default(false),
     leadCollection: z.boolean(),
     /**
      * Verification email extras (D-20), only used with lead collection on:
@@ -66,6 +73,8 @@ export const EventConfigInputSchema = z
     ctaText: z.object({ headline: text(80), steps: z.array(text(120)).max(5) }),
   })
   .superRefine((e, ctx) => {
+    if (!e.laKings && e.backgrounds.some((b) => (KINGS_BACKGROUNDS as readonly string[]).includes(b)))
+      ctx.addIssue({ code: "custom", path: ["backgrounds"], message: "The ice rink and arena scenes need the LA Kings promotion to be on" });
     if (e.promo.enabled && !e.printingEnabled)
       ctx.addIssue({ code: "custom", path: ["promo", "enabled"], message: "Promo needs printing to be on (SPEC §5.9)" });
     if (e.promo.enabled && !e.promo.text)
@@ -138,6 +147,7 @@ export function defaultConfig(name: string, qrSender: string): EventConfigInput 
     backgrounds: [...FIXED_BACKGROUNDS],
     uploadedBackgroundName: "",
     frame: "none",
+    laKings: false,
     leadCollection: true,
     emailPromoCode: "",
     emailShowSnippet: false,

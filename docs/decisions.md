@@ -329,6 +329,25 @@ session and starts a fresh one with a new token. A print at the printer keeps it
 - Chat routing matches the event **name** only; the ID is never matched. The QR message already names the event.
 - Deleting an event asks for its name, not its ID.
 
+### D-36 LA Kings promotion: jersey and two scenes (user decision)
+*2026-10-15. Brings back part of what SPEC §2.2 dropped ("brands") and §9.3 left out (§E4 brand block, §E10 style
+lock), for one brand.*
+- **Admin:** one toggle in the Portraits section, "LA Kings promotion". It does not mention the jersey. Turning it on
+  dresses every portrait in the Kings jersey and adds two backgrounds, **Ice rink** and **Crypto.com Arena**, both
+  selected by default. With it off, those two are not shown, cannot be chosen, and the schema rejects them.
+- **Brand definition** in code (`lib/brands/la-kings.ts`): three reference images (`assets/la-kings/LAK-*.png`), the
+  wardrobe text, and the two scenes with one reference image each. A second brand is a new definition.
+- **Prompt** (`lib/prompts/brand.ts`), PROMPTS.md wording: §E4 "with brand references but no analysis",
+  §C `preserveBrand` replacing the style's preserve line (so the jersey replaces the person's top), §C
+  `promptBrandInstruction`, the wardrobe, the §E4 reminder; §E6 AI mode for the scenes; §E10 style lock with §D
+  `brandCore`. Without the promotion every prompt is byte-for-byte unchanged (snapshots).
+- **No analysis step:** a live probe showed the reference images plus the wardrobe text reproduce the crest, crown,
+  Mercury Insurance patch and NHL collar exactly, so there is no vision call or cache.
+- **Image call:** the selfie, then `brand_ref_0..2.png`, then `bg_ref_0.png`. `input_fidelity` is not sent:
+  gpt-image-2.5-flare rejects it (400).
+- **Scenes** are AI mode: the model re-renders them in the chosen style. The two backgrounds were made from the
+  user's sample portraits with one image-edit call each (person and frame removed, photoreal), approved by the user.
+
 ## Open TODOs after the last milestone
 
 - **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and
