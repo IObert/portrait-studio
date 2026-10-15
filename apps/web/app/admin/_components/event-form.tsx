@@ -145,10 +145,16 @@ function swapDefaultCopy(form: HTMLFormElement | null, locale: string) {
   const copy = DEFAULT_COPY[locale as keyof typeof DEFAULT_COPY];
   if (!form || !copy) return;
   const all = Object.values(DEFAULT_COPY);
-  for (const [name, key] of [["shareText", "shareText"], ["promoText", "promo"]] as const) {
-    const el = form.elements.namedItem(name) as HTMLTextAreaElement | null;
+  for (const [name, key] of [["shareText", "shareText"], ["promoText", "promo"], ["ctaHeadline", "ctaHeadline"]] as const) {
+    const el = form.elements.namedItem(name) as HTMLTextAreaElement | HTMLInputElement | null;
     if (el && (el.value === "" || all.some((c) => c[key] === el.value))) el.value = copy[key];
   }
+  // Steps swap one by one, only where they still read as a default (or are empty).
+  const steps = form.querySelectorAll<HTMLInputElement>('input[name="ctaStep"]');
+  steps.forEach((el, i) => {
+    const defaults = all.map((c) => c.ctaSteps[i]).filter(Boolean);
+    if (copy.ctaSteps[i] && (el.value === "" || defaults.includes(el.value))) el.value = copy.ctaSteps[i]!;
+  });
 }
 
 const LANGUAGE_HINT = "Messages, the booth screen and the share page use this language.";
@@ -193,7 +199,7 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
         <div className="space-y-3">
           <div>
             <label className={field.label} htmlFor="ctaHeadline">Headline</label>
-            <input id="ctaHeadline" name="ctaHeadline" defaultValue={config.ctaText.headline} maxLength={80} className={field.input} placeholder={config.name || "Get your portrait"} />
+            <input id="ctaHeadline" name="ctaHeadline" defaultValue={config.ctaText.headline} maxLength={80} className={field.input} placeholder={config.name || DEFAULT_COPY[config.language].ctaHeadline} />
             <p className={field.hint}>Empty shows the event name.</p>
           </div>
           <fieldset>
@@ -204,7 +210,7 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mist text-xs font-semibold text-slate" aria-hidden>
                     {i + 1}
                   </span>
-                  <input name="ctaStep" defaultValue={s} maxLength={120} className={`${field.input} mt-0`} placeholder={["Scan the code", "Send a selfie", "Pick a style"][i] ?? "Another step"} aria-label={`Step ${i + 1}`} />
+                  <input name="ctaStep" defaultValue={s} maxLength={120} className={`${field.input} mt-0`} placeholder={DEFAULT_COPY[config.language].ctaSteps[i] ?? "Another step"} aria-label={`Step ${i + 1}`} />
                 </li>
               ))}
             </ol>

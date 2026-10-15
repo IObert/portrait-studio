@@ -124,15 +124,19 @@ export function crossCheckUploads(config: EventConfigInput, uploads: PortraitEve
 export const EVENT_NAME_TOKEN = "{event}";
 export const withEventName = (text: string, eventName: string) => text.replaceAll(EVENT_NAME_TOKEN, eventName);
 
-/** Suggested share caption and promo per language; the admin can change both (D-34). */
-export const DEFAULT_COPY: Record<Locale, { shareText: string; promo: string }> = {
+/** Suggested copy per language for a new event; the admin can change all of it (D-34). */
+export const DEFAULT_COPY: Record<Locale, { shareText: string; promo: string; ctaHeadline: string; ctaSteps: readonly string[] }> = {
   en: {
     shareText: "Made at {event}, and on my phone moments later via Twilio Messaging.",
     promo: "Your print is ready! Pick it up at the Twilio booth. Thanks for visiting Portrait Studio, built on Twilio Messaging.",
+    ctaHeadline: "Get your portrait",
+    ctaSteps: ["Scan the code", "Send a selfie", "Pick a style"],
   },
   pt_BR: {
     shareText: "Feito no {event} e no meu celular segundos depois, via Twilio Messaging.",
     promo: "Sua impressão está pronta! Retire no estande da Twilio. Obrigado por visitar o Portrait Studio, feito com Twilio Messaging.",
+    ctaHeadline: "Faça seu retrato",
+    ctaSteps: ["Escaneie o código", "Envie uma selfie", "Escolha um estilo"],
   },
 };
 
@@ -156,6 +160,6 @@ export function defaultConfig(name: string, qrSender: string): EventConfigInput 
     maxPrintsPerPerson: 6,
     promo: { enabled: false, text: DEFAULT_COPY.en.promo },
     shareText: DEFAULT_COPY.en.shareText,
-    ctaText: { headline: "", steps: [] },
+    ctaText: { headline: DEFAULT_COPY.en.ctaHeadline, steps: [...DEFAULT_COPY.en.ctaSteps] },
   };
 }
