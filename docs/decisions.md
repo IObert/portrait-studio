@@ -416,3 +416,12 @@ lock), for one brand.*
 | Local Blob Storage | Azurite in compose |
 | Local Sync | A real dev Sync Service. Tests use mocks. |
 | MMS country check | libphonenumber, so +1 Caribbean numbers are not treated as US or CA |
+
+### D-38 Cartoon: no eyes drawn on sunglasses (user decision)
+*2026-10-15. A change to the PROMPTS.md §D cartoon style; PROMPTS.md itself is unchanged.*
+- Problem: with mirrored or dark sunglasses, cartoon portraits showed eyes painted onto the lenses. The cartoon style
+  asks for "big round expressive eyes with detailed iris reflections", and the preserve line asks for eye colour, so
+  the model invents eyes where none are visible.
+- The cartoon style line now adds: "If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses
+  opaque and reflective as in the photo, and never draw eyes on or through them."
+- Only cartoon changes; the other styles were not seen to do this. If anime does it too, give it the same sentence.

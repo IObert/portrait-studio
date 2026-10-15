@@ -2,7 +2,8 @@ import { COMPOSITION, PRESERVE } from "./defaults";
 
 // Built-in styles, verbatim from PROMPTS.md §D (sticker excluded, SPEC §8.1).
 // Paragraphs are joined with a blank line. Cartoon's hard-coded "Frame from the
-// waist up." is replaced by the shared composition (SPEC §9.3, §17 Q3).
+// waist up." is replaced by the shared composition (SPEC §9.3, §17 Q3), and its
+// eye line yields to sunglasses (D-38).
 
 export const STYLE_IDS = ["cartoon", "pop-art", "watercolor", "anime", "sketch", "pixel-art"] as const;
 export type StyleId = (typeof STYLE_IDS)[number];
@@ -11,7 +12,7 @@ const PARAGRAPHS: Record<StyleId, readonly string[]> = {
   cartoon: [
     "Transform this photo into a 3D animated character portrait in the style of Pixar and Disney Animation Studios (The Incredibles, Coco, Up, Brave). Do not add anyone not in the original photo.",
     PRESERVE,
-    "Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.",
+    "Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them. Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.",
     "Body proportions: Keep the body realistically proportioned — normal adult height, limbs, and torso like The Incredibles characters. Do NOT make the body short, stocky, or compressed. The face and head can be slightly stylized but the body should look natural and well-proportioned.",
     "Lighting: Warm cinematic Pixar-style lighting — soft key light with golden tones, gentle fill light, and a subtle cool rim light. Soft ambient occlusion in creases and under the chin.",
     `${COMPOSITION} Give them a warm, friendly expression.`,
