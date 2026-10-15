@@ -1,7 +1,7 @@
 import type { Brand } from "../brands/la-kings";
 import type { BackgroundId } from "../events/schema";
 import type { Scene } from "./scene";
-import type { StyleId } from "./styles";
+import { SUNGLASSES, type StyleId } from "./styles";
 
 /**
  * Brand parts of the generation prompt (D-36), verbatim from PROMPTS.md:
@@ -26,7 +26,8 @@ export const BRAND_CORE: Record<StyleId, string> = {
   cartoon: "Pixar-style 3D animated portrait with warm colors and rich textures.",
   "pop-art": "Pop art style with halftone dots and high contrast.",
   watercolor: "Soft watercolor painting with flowing brushstrokes and gentle blending.",
-  anime: "Anime style with large expressive eyes and clean line art.",
+  // The lock comes last, so it repeats the sunglasses rule after its eye line (D-38).
+  anime: `Anime style with large expressive eyes and clean line art. ${SUNGLASSES}`,
   sketch: "Hand-drawn pencil sketch with cross-hatching and graphite shading.",
   "pixel-art": "Pixel art style with visible pixels and retro 16-bit aesthetic.",
 };

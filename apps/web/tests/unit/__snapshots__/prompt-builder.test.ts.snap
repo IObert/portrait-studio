@@ -5,7 +5,7 @@ exports[`prompt builder (SPEC §9.3) > anime × gradient 1`] = `
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
-Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
 
 Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
 
@@ -22,7 +22,7 @@ exports[`prompt builder (SPEC §9.3) > anime × original 1`] = `
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
-Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
 
 Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
 
@@ -39,7 +39,7 @@ exports[`prompt builder (SPEC §9.3) > anime × solid-black 1`] = `
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
-Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
 
 Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
 
@@ -56,7 +56,7 @@ exports[`prompt builder (SPEC §9.3) > anime × solid-white 1`] = `
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
-Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
 
 Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
 
@@ -73,7 +73,7 @@ exports[`prompt builder (SPEC §9.3) > anime × uploaded 1`] = `
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
-Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
+Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.
 
 Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.
 

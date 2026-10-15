@@ -2,8 +2,11 @@ import { COMPOSITION, PRESERVE } from "./defaults";
 
 // Built-in styles, verbatim from PROMPTS.md §D (sticker excluded, SPEC §8.1).
 // Paragraphs are joined with a blank line. Cartoon's hard-coded "Frame from the
-// waist up." is replaced by the shared composition (SPEC §9.3, §17 Q3), and its
-// eye line yields to sunglasses (D-38).
+// waist up." is replaced by the shared composition (SPEC §9.3, §17 Q3). The two
+// styles that ask for big expressive eyes yield to sunglasses (D-38).
+
+/** Cartoon and anime paint eyes onto sunglasses without this (D-38). */
+export const SUNGLASSES = "If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them.";
 
 export const STYLE_IDS = ["cartoon", "pop-art", "watercolor", "anime", "sketch", "pixel-art"] as const;
 export type StyleId = (typeof STYLE_IDS)[number];
@@ -12,7 +15,7 @@ const PARAGRAPHS: Record<StyleId, readonly string[]> = {
   cartoon: [
     "Transform this photo into a 3D animated character portrait in the style of Pixar and Disney Animation Studios (The Incredibles, Coco, Up, Brave). Do not add anyone not in the original photo.",
     PRESERVE,
-    "Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. If a subject wears sunglasses or other glasses that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them. Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.",
+    `Style: High-quality Pixar-style 3D render with warm, rich color grading. Big round expressive eyes with detailed iris reflections, soft rounded features with a touch of stylization. ${SUNGLASSES} Smooth subsurface scattering on skin for that signature Pixar porcelain glow. Rich fabric and hair textures with individual strand detail. Every surface should have the polished, tactile quality of a Pixar film frame.`,
     "Body proportions: Keep the body realistically proportioned — normal adult height, limbs, and torso like The Incredibles characters. Do NOT make the body short, stocky, or compressed. The face and head can be slightly stylized but the body should look natural and well-proportioned.",
     "Lighting: Warm cinematic Pixar-style lighting — soft key light with golden tones, gentle fill light, and a subtle cool rim light. Soft ambient occlusion in creases and under the chin.",
     `${COMPOSITION} Give them a warm, friendly expression.`,
@@ -34,7 +37,7 @@ const PARAGRAPHS: Record<StyleId, readonly string[]> = {
   anime: [
     "Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.",
     PRESERVE,
-    "Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.",
+    `Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. ${SUNGLASSES} Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.`,
     "Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.",
     `${COMPOSITION} Give them an expressive, confident pose.`,
   ],
