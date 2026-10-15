@@ -24,6 +24,27 @@ With a printer:
 node agent.mjs --url https://<app> --token <event>.XXXX-XXXX-XXXX-XXXX --printer DNP_DS620
 ```
 
+## Printer doctor
+
+Run this first on a new booth computer, and whenever prints look wrong:
+
+```sh
+node agent.mjs doctor          # check only, changes nothing
+node agent.mjs doctor --fix    # repair what it can
+```
+
+It finds the DS620 queue (or pass `--printer <queue>`) and checks:
+
+- **Driver.** macOS often sets the DS620 up with the *Generic PostScript Printer* driver, which prints wrong sizes.
+  `--fix` switches the queue to the DNP DS620 driver (`lpadmin -m …/DNP-DS620.ppd.gz`). If that driver is not
+  installed, install it from DNP first.
+- **Queue state.** A paused queue is enabled again (`cupsenable`), and one that rejects jobs is set to accept them (`cupsaccept`).
+- **Defaults**, so prints from the agent and from anything else match: `PageSize=dnp6x4`, `Cutter=Normal`,
+  `Finish=Glossy`, `Resolution=300x300dpi`, `AdjustmentsEnabled=False` (no driver colour changes) and `BonusPrint=False`.
+- **No queue yet.** With a DS620 on USB but no queue, `--fix` creates `Dai_Nippon_Printing_DP_DS620`.
+
+It exits with 0 when everything is fine. If a fix needs admin rights, it says so; run the same command with `sudo`.
+
 | Flag | Meaning |
 |---|---|
 | `--url` | The app's public URL |
@@ -61,9 +82,10 @@ pnpm --filter print-agent build
 |---|---|
 | `The printer token was rejected` | The token was rotated, or printing is off for the event. Copy the new command from the admin UI. |
 | `Node.js 22 or newer is required` | Install a newer Node.js. |
+| Status shows `paused` | Run `node agent.mjs doctor --fix`, or `cupsenable <queue>`. |
 | `Invalid CUPS queue name` | Use the exact queue name from `lpstat -p` (letters, digits, `_`, `.`, `-`). |
 | Status shows `offline` | The queue does not exist or the printer is unreachable. Check `lpstat -p <queue>`. |
 | Status shows `out_of_paper` | Replace the paper or ribbon. |
-| Prints look wrong (cropped, bordered) | The DS620 options need checking on real hardware: run `lpoptions -p <queue> -l` and compare with PROTOCOL.md §5. The agent logs these options at start-up. |
+| Prints look wrong (cropped, bordered, wrong size) | Run `node agent.mjs doctor --fix`. Usually the queue uses the Generic PostScript driver. |
 
 The protocol between the agent and the server is documented in [PROTOCOL.md](PROTOCOL.md).

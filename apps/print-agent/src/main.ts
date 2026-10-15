@@ -1,6 +1,7 @@
 import path from "node:path";
 import { AgentUnauthorized, AGENT_VERSION, runAgent } from "./agent.js";
-import { parseAgentArgs, USAGE } from "./args.js";
+import { parseAgentArgs, parseDoctorArgs, USAGE } from "./args.js";
+import { runDoctor } from "./doctor.js";
 import { log } from "./log.js";
 import { cupsPrinter, simulatedPrinter } from "./printer.js";
 
@@ -12,6 +13,15 @@ if (argv.includes("--help") || argv.includes("-h")) {
 if (argv.includes("--version")) {
   console.log(AGENT_VERSION);
   process.exit(0);
+}
+
+if (argv[0] === "doctor") {
+  const doctor = parseDoctorArgs(argv.slice(1));
+  if (!doctor.ok) {
+    console.error(`${doctor.error}\n\n${USAGE}`);
+    process.exit(2);
+  }
+  process.exit(await runDoctor(doctor.args));
 }
 
 const result = parseAgentArgs(argv);

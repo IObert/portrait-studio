@@ -118,5 +118,6 @@ lp -d <queue> -o PageSize=dnp6x4 -o Cutter=Normal -o Finish=Glossy -o Resolution
    -o fit-to-page -o print-scaling=fill -o orientation-requested=3 <file.png>
 ```
 
-The option names come from the spec and are **to be verified on a real DS620** with `lpoptions -p <queue> -l`
-(SPEC §11.2). The agent logs that command's output at start-up so the values can be checked.
+The option names were verified on a real DS620 with the DNP-DS620 PPD (`lpoptions -p <queue> -l`); they live in
+`DS620_OPTIONS` in `src/cups.ts`. The agent logs that command's output at start-up. `node agent.mjs doctor --fix`
+switches a queue to the DS620 driver and sets these values as the queue defaults (see README, "Printer doctor").
