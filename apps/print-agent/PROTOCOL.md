@@ -9,7 +9,7 @@ and both have contract tests against the examples here (`docs/decisions.md`, Q7)
 node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue>] [--simulate --out ./prints]
 ```
 
-The printer token looks like `pst_<slug>_<43 chars>`. The admin UI shows it once, together with this command.
+The printer token looks like `<event id>.XXXX-XXXX-XXXX-XXXX` (docs/decisions.md D-33). The admin UI keeps showing it, together with this command. Tokens from before D-33 (`pst_<id>_<43 chars>`) still work until rotated.
 
 ## 2. Token exchange: `POST /api/agent/token`
 
@@ -17,7 +17,7 @@ The agent swaps its printer token for a short-lived Twilio Sync token (SPEC §11
 
 ```http
 POST /api/agent/token
-Authorization: Bearer pst_sp-london_xxxxxxxx…
+Authorization: Bearer sp-london.K7QM-2XHD-9RTB-W4PZ
 ```
 
 | Response | Meaning |

@@ -509,7 +509,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     await liveEvent(w, "bbb");
     const key = "whatsapp:+447700900123";
     // Data in two events: a delivered job with files and a slideshow entry in aaa, a lead with a profile in bbb.
-    await w.say(WA, "#aaa");
+    await w.say(WA, "Event aaa"); // two live events: name one (the ID is never matched, D-35)
     await w.say(WA, "", { selection: ACTION.agree });
     const a = eventObjects("aaa");
     const job = JobSchema.parse({

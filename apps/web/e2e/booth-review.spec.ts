@@ -112,7 +112,6 @@ test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
   test("review: discard a flagged image", async ({ page }) => {
     await page.goto(REVIEW);
     const item = page.getByTestId("flagged-item");
-    await item.getByPlaceholder("Your name (optional, logged)").fill("E2E Admin");
     await item.getByRole("button", { name: "Discard" }).click();
     await expect(page.getByTestId("flagged-item")).toHaveCount(0);
     await expect(page.getByText("Nothing flagged.")).toBeVisible();

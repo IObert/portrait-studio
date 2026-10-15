@@ -20,18 +20,16 @@ export interface AuditLog {
   info(o: object, m: string): void;
 }
 
-/** Admin name typed with an action (SPEC §10.3); logged, never personal data of attendees. */
-type Actor = string | undefined;
-
-function audit(log: AuditLog, action: string, slug: string, jobId: string, actor: Actor, extra: object = {}) {
-  log.info({ event: "review_action", action, slug, jobId, actor: actor || undefined, ...extra }, `review: ${action}`);
+/** Audit line for a review action (SPEC §10.3); no personal data. */
+function audit(log: AuditLog, action: string, slug: string, jobId: string, extra: object = {}) {
+  log.info({ event: "review_action", action, slug, jobId, ...extra }, `review: ${action}`);
 }
 
 /**
  * Approve & send a flagged image (SPEC §5.7, §10.3): flagged → approved_by_admin,
  * then delivered through the normal delivery path. Not counted toward quota.
  */
-export async function approveFlagged(deps: { sync: SyncStore; delivery: DeliveryDeps; log: AuditLog }, event: PortraitEvent, jobId: string, actor: Actor) {
+export async function approveFlagged(deps: { sync: SyncStore; delivery: DeliveryDeps; log: AuditLog }, event: PortraitEvent, jobId: string) {
   const jobs = deps.sync.map(eventObjects(event.slug).jobs, JobSchema);
   let approved: Job | null = null;
   await jobs.update(jobId, (cur) => {
@@ -44,12 +42,12 @@ export async function approveFlagged(deps: { sync: SyncStore; delivery: Delivery
   const address = addressFromKey(job.address);
   if (!address) throw new ReviewError("Job has an invalid address");
   const result = await deliver(deps.delivery, event, job, address, { approvedByAdmin: true });
-  audit(deps.log, "approve", event.slug, jobId, actor, { result });
+  audit(deps.log, "approve", event.slug, jobId, { result });
   return result;
 }
 
 /** Discard a flagged image (SPEC §10.3): it ends as rejected, with the admin's decision as the reason. */
-export async function discardFlagged(deps: { sync: SyncStore; log: AuditLog }, event: PortraitEvent, jobId: string, actor: Actor) {
+export async function discardFlagged(deps: { sync: SyncStore; log: AuditLog }, event: PortraitEvent, jobId: string) {
   const jobs = deps.sync.map(eventObjects(event.slug).jobs, JobSchema);
   let ok = false;
   await jobs.update(jobId, (cur) => {
@@ -58,7 +56,7 @@ export async function discardFlagged(deps: { sync: SyncStore; log: AuditLog }, e
     return ok ? { ...cur!, state: "rejected", error: "discarded_by_admin", timestamps: { ...cur!.timestamps, rejected: new Date().toISOString() } } : SKIP;
   });
   if (!ok) throw new ReviewError("Only flagged images can be discarded");
-  audit(deps.log, "discard", event.slug, jobId, actor);
+  audit(deps.log, "discard", event.slug, jobId);
 }
 
 /**
@@ -66,7 +64,7 @@ export async function discardFlagged(deps: { sync: SyncStore; log: AuditLog }, e
  * the booth screen, turns the share link off and deletes its files right away.
  * The job ends as removed_by_admin. A print already printing cannot be recalled.
  */
-export async function removePortrait(deps: { sync: SyncStore; blob: BlobStore; log: AuditLog }, event: PortraitEvent, jobId: string, actor: Actor) {
+export async function removePortrait(deps: { sync: SyncStore; blob: BlobStore; log: AuditLog }, event: PortraitEvent, jobId: string) {
   const ev = eventObjects(event.slug);
   let removed: Job | null = null;
   // 1. State first: the share page and slideshow stop showing it at once, even if a file delete fails.
@@ -96,13 +94,13 @@ export async function removePortrait(deps: { sync: SyncStore; blob: BlobStore; l
   const paths = [job.selfieBlob, job.outputBlobs?.printPng, job.outputBlobs?.deliveryJpeg].filter((x): x is string => !!x);
   const results = await Promise.allSettled(paths.map((path) => deps.blob.delete(path)));
   const failed = results.filter((r) => r.status === "rejected").length;
-  audit(deps.log, "portrait_remove", event.slug, jobId, actor, { filesDeleted: paths.length - failed, filesFailed: failed, printing });
+  audit(deps.log, "portrait_remove", event.slug, jobId, { filesDeleted: paths.length - failed, filesFailed: failed, printing });
   if (failed) throw new ReviewError(`Removed, but ${failed} file(s) could not be deleted yet; they expire within 7 days`);
   return { printing };
 }
 
 /** Remove from the print queue, only if it is not printed or printing yet (SPEC §10.3). */
-export async function removeFromPrintQueue(deps: { sync: SyncStore; log: AuditLog }, event: PortraitEvent, jobId: string, actor: Actor) {
+export async function removeFromPrintQueue(deps: { sync: SyncStore; log: AuditLog }, event: PortraitEvent, jobId: string) {
   const print = deps.sync.map(eventObjects(event.slug).print, PrintJobSchema);
   const v = await print.getVersioned(jobId);
   if (!v) throw new ReviewError("This image is not in the print queue");
@@ -110,14 +108,14 @@ export async function removeFromPrintQueue(deps: { sync: SyncStore; log: AuditLo
   await print.delete(jobId, v.revision);
   // Release the quota reservation for a print that will never happen.
   if (v.data.state === "queued" && !v.data.reprint) await releasePrintReservation(deps.sync, event, jobId);
-  audit(deps.log, "print_remove", event.slug, jobId, actor);
+  audit(deps.log, "print_remove", event.slug, jobId);
 }
 
 /**
  * Reprint (SPEC §10.3). Does not count toward the attendee's print quota
  * (§17 Q5); logged with the admin's name.
  */
-export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: (blobPath: string, ttlSeconds: number) => string }, event: PortraitEvent, jobId: string, actor: Actor) {
+export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: (blobPath: string, ttlSeconds: number) => string }, event: PortraitEvent, jobId: string) {
   if (!event.config.printingEnabled) throw new ReviewError("Printing is off for this event");
   const job = await deps.sync.map(eventObjects(event.slug).jobs, JobSchema).get(jobId);
   if (!job || job.state !== "delivered" || !job.outputBlobs) throw new ReviewError("Only delivered images can be reprinted");
@@ -138,7 +136,7 @@ export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: 
     reprint: true,
     timestamps: { queued: new Date().toISOString() },
   });
-  audit(deps.log, "reprint", event.slug, jobId, actor);
+  audit(deps.log, "reprint", event.slug, jobId);
 }
 
 async function releasePrintReservation(sync: SyncStore, event: PortraitEvent, jobId: string) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findCode, resolvePick, route } from "@/lib/conversation/routing";
+import { findEvent, resolvePick, route } from "@/lib/conversation/routing";
 import { matchesKeyword, normalize } from "@/lib/conversation/text";
 import { defaultConfig, type EventState, type PortraitEvent } from "@/lib/events/schema";
 
@@ -8,7 +8,7 @@ const ev = (slug: string, state: EventState, name = slug): PortraitEvent => ({
   state,
   config: { ...defaultConfig(name, "+13203780782") },
   uploads: { frame: null, background: null },
-  printerTokenHash: null,
+  printerTokenHash: null, printerToken: null,
   printerTokenCreatedAt: null,
   createdAt: "2026-10-01T00:00:00.000Z",
   updatedAt: "2026-10-01T00:00:00.000Z",
@@ -19,16 +19,16 @@ describe("route (SPEC §5.2)", () => {
   const london = ev("splondon", "live", "SIGNAL London");
   const paris = ev("paris", "live", "Paris Summit");
 
-  it("binds on a live event code, even with other live events", () => {
-    expect(route("Hi! I want my portrait SPLONDON", [london, paris], null)).toEqual({ kind: "event", event: london, bind: true });
+  it("binds on a live event's name, even with other live events", () => {
+    expect(route("Hi! I want my portrait SIGNAL LONDON", [london, paris], null)).toEqual({ kind: "event", event: london, bind: true });
   });
-  it("re-binds when a code for another live event arrives", () => {
-    expect(route("#paris", [london, paris], bind("splondon"))).toEqual({ kind: "event", event: paris, bind: true });
+  it("re-binds when another live event is named", () => {
+    expect(route("#Paris Summit", [london, paris], bind("splondon"))).toEqual({ kind: "event", event: paris, bind: true });
   });
   it("does not re-bind to the same event", () => {
-    expect(route("#splondon hello", [london, paris], bind("splondon"))).toMatchObject({ bind: false });
+    expect(route("signal london hello", [london, paris], bind("splondon"))).toMatchObject({ bind: false });
   });
-  it("uses the bound live event when there is no code", () => {
+  it("uses the bound live event when no event is named", () => {
     expect(route("hello", [london, paris], bind("paris"))).toEqual({ kind: "event", event: paris, bind: false });
   });
   it("uses and binds the only live event", () => {
@@ -46,36 +46,37 @@ describe("route (SPEC §5.2)", () => {
     const onBreak = ev("splondon", "break");
     expect(route("hello", [onBreak, paris], bind("splondon"))).toEqual({ kind: "not-live", event: onBreak });
   });
-  it("gives the state reply for a coded event on break", () => {
-    const onBreak = ev("splondon", "break");
-    expect(route("#splondon", [onBreak], null)).toEqual({ kind: "not-live", event: onBreak });
+  it("gives the state reply for a named event on break", () => {
+    const onBreak = ev("splondon", "break", "SIGNAL London");
+    expect(route("SIGNAL London", [onBreak], null)).toEqual({ kind: "not-live", event: onBreak });
   });
-  it("treats draft events as non-existent, even by code or binding", () => {
-    const draft = ev("secret", "draft");
-    expect(route("#secret", [draft], null)).toEqual({ kind: "none" });
+  it("treats draft events as non-existent, even by name or binding", () => {
+    const draft = ev("secret", "draft", "Secret Launch");
+    expect(route("Secret Launch", [draft], null)).toEqual({ kind: "none" });
     expect(route("hi", [draft, london], bind("secret"))).toEqual({ kind: "event", event: london, bind: true });
   });
-  it("matches dashed slugs", () => {
-    const dashed = ev("sp-london", "live");
-    expect(findCode("hey #SP-LONDON", [dashed, paris])).toBe(dashed);
-    expect(findCode("SP LONDON is cool", [dashed])).toBe(dashed);
+  it("never matches the internal ID, only the name (D-35)", () => {
+    const named = ev("sp-london-2", "live", "SIGNAL London");
+    expect(findEvent("hey sp-london-2", [named])).toBeUndefined();
+    expect(findEvent("hey #SP-LONDON-2", [named])).toBeUndefined();
+    expect(findEvent("hey signal london", [named])).toBe(named);
   });
   it("matches the event by its full name, no hashtag (QR prefill)", () => {
     const london = ev("splondon", "live", "SIGNAL London");
     const paris = ev("paris", "live", "Paris Summit");
-    expect(findCode("Hi! I'm at SIGNAL London and want to try Portrait Studio 🎨", [london, paris])).toBe(london);
-    expect(findCode("hey signal london!", [london, paris])).toBe(london);
+    expect(findEvent("Hi! I'm at SIGNAL London and want to try Portrait Studio 🎨", [london, paris])).toBe(london);
+    expect(findEvent("hey signal london!", [london, paris])).toBe(london);
     expect(route("Hi! I'm at Paris Summit and want to try Portrait Studio 🎨", [london, paris], null)).toEqual({ kind: "event", event: paris, bind: true });
   });
 
   it("prefers the longest matching name", () => {
     const short = ev("lon", "live", "London");
     const long = ev("splondon", "live", "SIGNAL London");
-    expect(findCode("SIGNAL London", [short, long])).toBe(long);
+    expect(findEvent("SIGNAL London", [short, long])).toBe(long);
   });
 
-  it("does not match a code inside another word", () => {
-    expect(findCode("comparison", [ev("paris", "live")])).toBeUndefined();
+  it("does not match a name inside another word", () => {
+    expect(findEvent("comparison", [ev("paris", "live", "Paris")])).toBeUndefined();
   });
 });
 

@@ -8,20 +8,20 @@ compiled binary or app bundle, so macOS Gatekeeper does not get in the way (SPEC
 
 - **Node.js 22 or newer** (`node --version`)
 - For real printing: CUPS with the DNP DS620 queue set up (`lpstat -p`)
-- The event's **printer token**, shown once in the admin UI with a ready-to-copy command
+- The event's **printer token**, shown in the admin UI with a ready-to-copy command
 
 ## Run it
 
 Simulator, no printer needed:
 
 ```sh
-node agent.mjs --url https://<app> --token pst_<event>_<secret> --simulate --out ./prints
+node agent.mjs --url https://<app> --token <event>.XXXX-XXXX-XXXX-XXXX --simulate --out ./prints
 ```
 
 With a printer:
 
 ```sh
-node agent.mjs --url https://<app> --token pst_<event>_<secret> --printer DNP_DS620
+node agent.mjs --url https://<app> --token <event>.XXXX-XXXX-XXXX-XXXX --printer DNP_DS620
 ```
 
 | Flag | Meaning |

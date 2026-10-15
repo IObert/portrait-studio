@@ -39,20 +39,20 @@ export function ShareButtons({ imageUrl, shareText, labels }: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const btn = "w-full rounded-full px-6 py-3 text-base font-semibold";
+  const btn = "w-full rounded-full px-6 py-3.5 text-base font-semibold transition-colors focus-visible:outline-white";
   return (
     <div className="flex w-full flex-col gap-3">
       {canShareFiles && (
-        <button type="button" onClick={share} className={`${btn} bg-white text-zinc-900`}>
+        <button type="button" onClick={share} className={`${btn} bg-white text-ink hover:bg-white/90`}>
           {labels.share}
         </button>
       )}
       {shareText && (
-        <button type="button" onClick={copy} className={`${btn} border border-white/40 text-white`}>
+        <button type="button" onClick={copy} className={`${btn} border border-white/30 text-white hover:bg-white/10`}>
           {copied ? labels.copied : labels.copyText}
         </button>
       )}
-      <a href={imageUrl} download="image.jpg" className={`${btn} border border-white/40 text-center text-white`}>
+      <a href={imageUrl} download="image.jpg" className={`${btn} border border-white/30 text-center text-white hover:bg-white/10`}>
         {labels.download}
       </a>
     </div>

@@ -17,7 +17,7 @@ export function PrintButton({ shareId, left, pending: onItsWay, labels }: Props)
   const [state, action, pending] = useActionState<SharePrintState, FormData>(sharePrintAction, {});
   // Just sent, or still on its way from before: the button returns once it has printed (reload).
   const done = onItsWay || state.ok;
-  const btn = "w-full rounded-full px-6 py-3 text-base font-semibold";
+  const btn = "w-full rounded-full px-6 py-3.5 text-base font-semibold focus-visible:outline-white";
   return (
     <form action={action} className="flex w-full flex-col gap-2">
       <input type="hidden" name="shareId" value={shareId} />
@@ -26,7 +26,7 @@ export function PrintButton({ shareId, left, pending: onItsWay, labels }: Props)
           {labels.printPending}
         </p>
       ) : (
-        <button type="submit" disabled={pending || left < 1} className={`${btn} bg-[#EF223A] text-white disabled:opacity-50`} data-testid="share-print">
+        <button type="submit" disabled={pending || left < 1} className={`${btn} bg-signal text-white transition-colors hover:bg-[#d61b31] disabled:opacity-50`} data-testid="share-print">
           {pending ? labels.printing : labels.print}
         </button>
       )}

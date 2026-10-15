@@ -27,7 +27,7 @@ describe.skipIf(!live)("print agent token (real Sync)", () => {
     const ev = eventObjects(slug);
     await events.create(slug, { ...defaultConfig("Agent token test", "+13203780782"), printingEnabled: true });
     const { token: printerToken, hash } = generatePrinterToken(slug);
-    await events.setPrinterTokenHash(slug, hash);
+    await events.setPrinterToken(slug, printerToken, hash);
     let client: InstanceType<typeof SyncClient> | undefined;
     try {
       // A rotated or wrong printer token is refused.

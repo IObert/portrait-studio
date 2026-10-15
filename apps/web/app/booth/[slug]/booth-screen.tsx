@@ -88,27 +88,26 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
     };
   }, [slug]);
 
-
   return (
-    <main lang={doc.locale === "pt_BR" ? "pt-BR" : "en"} className="relative flex h-screen w-screen overflow-hidden bg-zinc-950 text-white" data-state={doc.state}>
+    <main lang={doc.locale === "pt_BR" ? "pt-BR" : "en"} className="relative flex h-screen w-screen overflow-hidden bg-ink text-white" data-state={doc.state}>
       {doc.state === "live" ? (
         // CTA + QR always keep the left 55%; the 2:3 slideshow fits the rest by height.
-        <div className="flex h-full w-full gap-[4vw] p-[4vh]">
-          <section className="flex w-[55%] shrink-0 flex-col justify-center gap-[4vh]">
-            <h1 className="text-[5.5vh] font-bold leading-tight">{doc.cta.headline || doc.name}</h1>
+        <div className="flex h-full w-full gap-[4vw] p-[5vh]">
+          <section className="flex w-[55%] shrink-0 flex-col justify-center gap-[5vh]">
+            <h1 className="font-display text-[6.5vh] leading-[1.02] font-semibold tracking-tight text-balance">{doc.cta.headline || doc.name}</h1>
             {doc.cta.steps.length > 0 && (
-              <ol className="space-y-[2vh] text-[3vh]">
+              <ol className="space-y-[2.2vh] text-[3vh] leading-snug">
                 {doc.cta.steps.map((s, i) => (
                   <li key={i} className="flex items-center gap-[1.5vw]">
-                    <span className="flex h-[5vh] w-[5vh] shrink-0 items-center justify-center rounded-full bg-white text-[2.5vh] font-bold text-zinc-950">{i + 1}</span>
+                    <span className="flex h-[5.2vh] w-[5.2vh] shrink-0 items-center justify-center rounded-full bg-signal font-display text-[2.6vh] font-semibold">{i + 1}</span>
                     <span>{s}</span>
                   </li>
                 ))}
               </ol>
             )}
             <div className="flex items-center gap-[2vw]">
-              <div className="aspect-square h-[30vh] shrink-0 rounded-2xl bg-white p-[1vh] [&>svg]:h-full [&>svg]:w-full" data-testid="qr" dangerouslySetInnerHTML={{ __html: doc.qrSvg }} />
-              <p className="text-[3vh] font-semibold tracking-wide">{doc.number}</p>
+              <div className="aspect-square h-[30vh] shrink-0 rounded-[2vh] bg-white p-[1.2vh] [&>svg]:h-full [&>svg]:w-full" data-testid="qr" dangerouslySetInnerHTML={{ __html: doc.qrSvg }} />
+              <p className="font-display text-[3.4vh] font-medium tracking-wide text-white/90 tabular-nums">{doc.number}</p>
             </div>
           </section>
           <section className="flex min-w-0 flex-1 items-center justify-center">
@@ -116,14 +115,14 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
           </section>
         </div>
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-6 p-12 text-center">
-          <h1 className="text-6xl font-bold">{doc.name}</h1>
-          <p className="text-4xl text-white/80" data-testid="status-message">
+        <div className="flex h-full w-full flex-col items-center justify-center gap-8 p-12 text-center">
+          <h1 className="font-display text-7xl font-semibold tracking-tight text-balance">{doc.name}</h1>
+          <p className="max-w-[40ch] text-4xl leading-snug text-white/75 text-balance" data-testid="status-message">
             {doc.state === "break" ? doc.messages.onBreak : doc.messages.ended}
           </p>
         </div>
       )}
-      {!online && <span className="absolute bottom-4 right-4 h-3 w-3 rounded-full bg-amber-400" title="Reconnecting…" data-testid="offline" />}
+      {!online && <span className="absolute right-4 bottom-4 h-3 w-3 rounded-full bg-amber-400" title="Reconnecting…" data-testid="offline" />}
     </main>
   );
 }

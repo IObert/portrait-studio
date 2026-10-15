@@ -24,7 +24,7 @@ async function Booth({ params }: { params: Promise<{ slug: string }> }) {
 export default function BoothPage(props: PageProps<"/booth/[slug]">) {
   return (
     // Non-semantic fallback (no <main>): React swaps it out once the screen streams in.
-    <Suspense fallback={<div className="h-screen w-screen bg-zinc-950" aria-hidden />}>
+    <Suspense fallback={<div className="h-screen w-screen bg-ink" aria-hidden />}>
       <Booth params={props.params} />
     </Suspense>
   );
