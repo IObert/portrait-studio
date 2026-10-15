@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
         </nav>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">{children}</main>
-      <footer className="border-t border-line py-5 text-center text-xs text-slate">Portrait Studio, made with Twilio</footer>
+      <footer className="border-t border-line py-5 text-center text-xs text-slate">Made with <span role="img" aria-label="love">❤️</span> by Twilio</footer>
     </div>
   );
 }
