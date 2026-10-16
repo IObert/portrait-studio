@@ -95,5 +95,9 @@ export function createTwilioSetupApi(cfg: { accountSid: string; apiKeySid: strin
     addTraits: async (storeId, group, traits) => void (await rest("PATCH", `${memory}/${encodeURIComponent(storeId)}/TraitGroups/${encodeURIComponent(group)}`, { traits })),
     listIdentifierTypes: async (storeId) =>
       (await rest<{ identifierConfigs: { idType: string }[] }>("GET", `${memory}/${encodeURIComponent(storeId)}/IdentityResolutionSettings`)).identifierConfigs.map((c) => c.idType),
+    isPublicImage: (url) =>
+      fetch(url, { method: "HEAD", signal: AbortSignal.timeout(10_000) })
+        .then((r) => r.ok && (r.headers.get("content-type") ?? "").startsWith("image/"))
+        .catch(() => false),
   };
 }

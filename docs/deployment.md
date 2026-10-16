@@ -104,7 +104,8 @@ Twilio inbound:    https://<fqdn>/api/twilio/inbound
 
 ## 4. Configure Twilio
 
-Run `pnpm --filter web setup:twilio` (add `--dry-run` first to see what it would do). It is safe to run again: a
+Run `pnpm --filter web setup:twilio --public-base-url https://<fqdn>` (add `--dry-run` first to see what it would
+do). The flag is needed when `.env.local` points `PUBLIC_BASE_URL` at a tunnel. It is safe to run again: a
 resource named in `.env.local` is only checked, otherwise it is found by name and created only if none exists. It:
 
 1. finds or creates the Sync Service (ACLs on), the Verify Service (6-digit codes, no lookup) and the Memory store,
@@ -112,7 +113,8 @@ resource named in `.env.local` is only checked, otherwise it is found by name an
 2. sets the Messaging Service inbound URL to `$PUBLIC_BASE_URL/api/twilio/inbound`. If another app's URL is set
    there, it only does so with `--take-over-inbound` (that app then stops getting messages).
 3. creates the WhatsApp `delivery` templates (en, pt_BR) and submits them as UTILITY. They are named after the public
-   host, because WhatsApp fixes their URLs at approval. **Run it again after approval** to get their SIDs.
+   host, because WhatsApp fixes their URLs at approval. It only submits once `/samples/delivery.jpg` answers on that
+   host, so deploy first. **Run it again after approval** to get their SIDs.
 4. prints the environment values and what is still to do by hand.
 
 **What it cannot do** (Console only):

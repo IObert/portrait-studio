@@ -31,6 +31,7 @@ function fakeAccount() {
     traits: {} as Record<string, Record<string, TraitDef>>,
     identifiers: {} as Record<string, string[]>,
     writes: [] as string[],
+    sampleOnline: true,
   };
   const api: SetupApi = {
     listSyncServices: async () => state.sync,
@@ -86,6 +87,7 @@ function fakeAccount() {
       Object.assign(state.traits[storeId]!, traits);
     },
     listIdentifierTypes: async (storeId) => state.identifiers[storeId] ?? [],
+    isPublicImage: async () => state.sampleOnline,
   };
   return { api, state };
 }
@@ -229,6 +231,17 @@ describe("setup:twilio (SPEC §15)", () => {
     expect(state.writes).not.toContain("inbound");
     expect(state.writes).not.toContain("content");
     expect(r.manual.join("\n")).toMatch(/PUBLIC_BASE_URL/);
+  });
+
+  it("does not submit while the sample image is unreachable, since WhatsApp would reject it", async () => {
+    const { api, state } = fakeAccount();
+    state.sampleOnline = false;
+    const r = await runSetup(api, opts());
+    expect(state.writes).not.toContain("content");
+    expect(r.manual.join("\n")).toMatch(/samples\/delivery\.jpg is not reachable. Deploy the app/);
+    state.sampleOnline = true;
+    await runSetup(api, opts());
+    expect(state.contents).toHaveLength(2);
   });
 
   it("a new public host gets its own templates, since WhatsApp fixes the URLs at approval", async () => {

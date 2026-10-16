@@ -1,11 +1,16 @@
 /**
- * `pnpm --filter web setup:twilio [--dry-run] [--take-over-inbound] [--name "Portrait Studio"]` (SPEC §15).
+ * `pnpm --filter web setup:twilio [--dry-run] [--take-over-inbound] [--name "Portrait Studio"]
+ *   [--public-base-url https://<deployed host>]` (SPEC §15).
  *
  * Finds or creates the Sync Service, Verify Service and Memory store, points
  * the Messaging Service's inbound URL at this app, creates and submits the
  * WhatsApp delivery templates, then prints the environment values and the
  * steps only the Console can do. Safe to run again: see lib/setup/twilio.ts.
  * Run it again after WhatsApp approves the templates to get their SIDs.
+ *
+ * `--public-base-url` overrides PUBLIC_BASE_URL: in development `.env.local`
+ * wins over the shell and usually points at a tunnel, but the templates and
+ * inbound URL must name the deployed host.
  */
 export {};
 
@@ -15,6 +20,7 @@ const { values } = parseArgs({
     "dry-run": { type: "boolean", default: false },
     "take-over-inbound": { type: "boolean", default: false },
     name: { type: "string", default: "Portrait Studio" },
+    "public-base-url": { type: "string" },
   },
   strict: true,
 });
@@ -40,7 +46,7 @@ try {
       TWILIO_TEMPLATE_DELIVERY_EN: env.TWILIO_TEMPLATE_DELIVERY_EN,
       TWILIO_TEMPLATE_DELIVERY_PT_BR: env.TWILIO_TEMPLATE_DELIVERY_PT_BR,
     },
-    publicBaseUrl: env.PUBLIC_BASE_URL,
+    publicBaseUrl: values["public-base-url"] ?? env.PUBLIC_BASE_URL,
     dryRun: values["dry-run"],
     takeOverInbound: values["take-over-inbound"],
   });

@@ -71,6 +71,8 @@ export interface SetupApi {
   fetchTraitGroup(storeId: string, group: string): Promise<Record<string, TraitDef> | null>;
   addTraits(storeId: string, group: string, traits: Record<string, TraitDef>): Promise<void>;
   listIdentifierTypes(storeId: string): Promise<string[]>;
+  /** True when the URL answers 200 with an image (WhatsApp fetches the template's sample). */
+  isPublicImage(url: string): Promise<boolean>;
 }
 
 export interface SetupOptions {
@@ -321,6 +323,12 @@ async function setupTemplates(api: SetupApi, opts: SetupOptions, report: SetupRe
       continue;
     }
     const tpl = matches[0];
+    const needsSubmit = !tpl || ["unsubmitted", ""].includes(tpl.approval.status.toLowerCase());
+    // WhatsApp fetches the sample image while reviewing; without it the template is rejected.
+    if (needsSubmit && !(await api.isPublicImage(`${base}/${DELIVERY_SAMPLE_MEDIA}`))) {
+      report.manual.push(`Delivery template ${name} not submitted: ${base}/${DELIVERY_SAMPLE_MEDIA} is not reachable. Deploy the app to that host first, then run again.`);
+      continue;
+    }
     if (!tpl) {
       let sid: string | undefined;
       await act(`create delivery template ${name} and submit it to WhatsApp (UTILITY)`, async () => {
