@@ -71,9 +71,23 @@ fi
 ACR_LOGIN_SERVER="$(az acr show --name "$AZURE_ACR_NAME" --query loginServer --output tsv)"
 ACR_ID="$(az acr show --name "$AZURE_ACR_NAME" --query id --output tsv)"
 
+# Base image: a copy of the official node image in our own registry. Public registries
+# (Docker Hub, AWS ECR Public) rate-limit anonymous pulls and have failed builds with 429.
+# Refresh the copy on every deploy; if the refresh is rate-limited, build from the last copy.
+NODE_VERSION="$(sed -n 's/^ARG NODE_VERSION=//p' Dockerfile)"
+BASE_TAG="$NODE_VERSION-bookworm-slim"
+log "Refreshing base image node:$BASE_TAG in ACR"
+if ! az acr import --name "$AZURE_ACR_NAME" --source "docker.io/library/node:$BASE_TAG" \
+  --image "base/node:$BASE_TAG" --force --output none; then
+  exists az acr repository show --name "$AZURE_ACR_NAME" --image "base/node:$BASE_TAG" \
+    || die "could not import node:$BASE_TAG and ACR has no copy yet; re-run later"
+  echo "Import failed (rate limit?); using the existing copy of node:$BASE_TAG"
+fi
+
 # The image needs no secrets at build time; all configuration is runtime env.
 log "Building $IMAGE_NAME:$IMAGE_TAG in ACR"
-az acr build --registry "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" --platform linux/amd64 . --output none
+az acr build --registry "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" --platform linux/amd64 \
+  --build-arg "NODE_IMAGE=$ACR_LOGIN_SERVER/base/node" . --output none
 
 # Deploy by digest so a new revision is always created, even for a reused tag.
 IMAGE_DIGEST="$(az acr repository show --name "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" --query digest --output tsv)"

@@ -1,11 +1,14 @@
 name: Deploy
 
-# Deploys to Azure Container Apps on every push to main (docs/decisions.md D-07).
-# Only GitHub-owned actions are allowed, so the Azure OIDC login is done by hand
-# instead of with azure/login. Setup: docs/deployment.md, "CI deployment".
+# Deploys to Azure Container Apps once CI has passed on a push to main
+# (docs/decisions.md D-07). Only GitHub-owned actions are allowed, so the Azure
+# OIDC login is done by hand instead of with azure/login. Setup:
+# docs/deployment.md, "CI deployment".
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -20,11 +23,18 @@ concurrency:
 jobs:
   deploy:
     # Skipped until Azure is set up: set the repo variable DEPLOY_ENABLED=true.
-    if: vars.DEPLOY_ENABLED == 'true'
+    # After CI, only a green run of a push to main deploys (not a PR run, not a failure).
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
     runs-on: ubuntu-latest
     environment: production
     steps:
+      # Deploy exactly the commit CI tested, not whatever main points to now.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Azure login (OIDC)
         env:

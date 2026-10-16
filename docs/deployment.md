@@ -19,6 +19,8 @@ Sync leases.
 `./deploy.sh` creates or updates:
 - the resource group
 - an Azure Container Registry, which the apps pull from with their managed identity (no admin user)
+- a copy of the `node` base image in that registry (`base/node`), refreshed on every deploy. Image builds use this
+  copy, because public registries rate-limit anonymous pulls. If a refresh is rate-limited, the last copy is used.
 - a Log Analytics workspace and a Container Apps environment
 - a Storage account, the blob container and the **7-day lifecycle rule** on `events/` (SPEC §7)
 - the two Container Apps. Secrets are stored as Container App secrets.
@@ -128,7 +130,7 @@ Expected: `external: true` and `targetPort: 3000`.
 
 ## 6. CI deployment (GitHub Actions)
 
-`.github/workflows/deploy.yml` runs `./deploy.sh` on **every push to `main`**. You can also start it by hand.
+`.github/workflows/deploy.yml` runs `./deploy.sh` on every push to `main`, **once CI has passed** for that commit. It deploys the exact commit CI tested; a red CI run deploys nothing. You can also start it by hand.
 It then waits for `/healthz` to respond.
 
 The org's Actions policy allows only GitHub-owned actions, so the workflow does the Azure OIDC login itself
