@@ -1,11 +1,14 @@
 name: Deploy
 
-# Deploys to Azure Container Apps on every push to main (docs/decisions.md D-07).
-# Only GitHub-owned actions are allowed, so the Azure OIDC login is done by hand
-# instead of with azure/login. Setup: docs/deployment.md, "CI deployment".
+# Deploys to Azure Container Apps once CI has passed on a push to main
+# (docs/decisions.md D-07). Only GitHub-owned actions are allowed, so the Azure
+# OIDC login is done by hand instead of with azure/login. Setup:
+# docs/deployment.md, "CI deployment".
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -19,12 +22,17 @@ concurrency:
 
 jobs:
   deploy:
-    # Skipped until Azure is set up: set the repo variable DEPLOY_ENABLED=true.
-    if: vars.DEPLOY_ENABLED == 'true'
+    # After CI, only a green run of a push to main deploys (not a PR run, not a failure).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment: production
     steps:
+      # Deploy exactly the commit CI tested, not whatever main points to now.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Azure login (OIDC)
         env:
@@ -84,27 +92,16 @@ jobs:
             AZURE_STORAGE_CONNECTION_STRING AZURE_STORAGE_CONTAINER AZURE_LOCATION \
             AZURE_RESOURCE_GROUP AZURE_APP_NAME AZURE_ACR_NAME AZURE_STORAGE_ACCOUNT AZURE_USER; do
             value="${!key:-}"
-            [[ -n "$value" ]] && printf '%s=%q\n' "$key" "$value" >> .env.local
+            # `if`, not `[[ ]] &&`: an empty last value would end the step with exit 1 under set -e.
+            if [[ -n "$value" ]]; then printf '%s=%q\n' "$key" "$value" >> .env.local; fi
           done
 
+      # deploy.sh reuses the image CI pushed for this commit (same 7-character tag), then
+      # verifies the release (both revisions running, /healthz/ready) and rolls back if not.
       - name: Deploy
-        run: ./deploy.sh
-
-      - name: Smoke test
-        run: |
-          set -euo pipefail
-          rg="${AZURE_RESOURCE_GROUP:-rg-${AZURE_APP_NAME:-portrait-studio}}"
-          fqdn="$(az containerapp show -g "$rg" -n "${AZURE_APP_NAME:-portrait-studio}-web" \
-            --query properties.configuration.ingress.fqdn -o tsv)"
-          for i in $(seq 1 20); do
-            curl -sSf "https://$fqdn/healthz" && exit 0
-            sleep 6
-          done
-          echo "Health check failed" >&2
-          exit 1
         env:
-          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-          AZURE_APP_NAME: ${{ vars.AZURE_APP_NAME }}
+          COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: IMAGE_TAG="${COMMIT::7}" ./deploy.sh
 
       - name: Remove .env.local
         if: always()
