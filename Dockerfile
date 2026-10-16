@@ -4,8 +4,9 @@
 #   worker: /repo/apps/web/worker/start.sh
 
 ARG NODE_VERSION=24
-# Official Docker Hub image via AWS ECR Public's mirror (same digest): avoids Docker
-# Hub's anonymous pull rate limit (429) on shared CI runners and Azure ACR builds.
+# Official Docker Hub image via AWS ECR Public's mirror (same digest) for local and CI
+# builds. deploy.sh overrides NODE_IMAGE with a copy in the app's own ACR, so Azure builds
+# never hit a public registry's rate limit.
 ARG NODE_IMAGE=public.ecr.aws/docker/library/node
 
 FROM ${NODE_IMAGE}:${NODE_VERSION}-bookworm-slim AS base

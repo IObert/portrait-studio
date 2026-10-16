@@ -88,9 +88,44 @@ jobs:
   docker:
     name: Docker image builds
     runs-on: ubuntu-latest
+    # id-token: the Azure OIDC login on main (repo variables AZURE_*; docs/deployment.md §6).
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      # Push to the registry only for main, and only once the Azure login is set up.
+      PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AZURE_CLIENT_ID != '' }}
+      ACR: ${{ vars.AZURE_ACR_NAME }}
     steps:
       - uses: actions/checkout@v5
-      - run: docker build --tag portrait-studio:ci .
+
+      - name: Azure login (OIDC) and registry login
+        if: env.PUSH == 'true'
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          token="$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r .value)"
+          echo "::add-mask::$token"
+          az login --service-principal --username "$AZURE_CLIENT_ID" --tenant "$AZURE_TENANT_ID" \
+            --federated-token "$token" --output none
+          az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+          az acr login --name "$ACR"
+
+      # On main: the base image comes from our registry's copy (no public rate limit), and
+      # the tested image is pushed so the deploy ships exactly these bytes. PRs have no
+      # Azure access and use the public mirror (Dockerfile default).
+      - name: Build
+        run: |
+          set -euo pipefail
+          args=(--tag portrait-studio:ci)
+          if [[ "$PUSH" == "true" ]]; then
+            args+=(--build-arg "NODE_IMAGE=$ACR.azurecr.io/base/node" --tag "$ACR.azurecr.io/portrait-studio:${GITHUB_SHA::7}")
+          fi
+          docker build "${args[@]}" .
       # The worker runs from source in the image: prove every module it imports is there.
       - name: Worker starts in the image
         run: docker run --rm --workdir /repo/apps/web portrait-studio:ci node --conditions=react-server --import tsx worker/main.ts --check
@@ -99,3 +134,7 @@ jobs:
           docker run -d --name web -p 3000:3000 portrait-studio:ci
           for i in $(seq 1 30); do curl -sf localhost:3000/healthz && exit 0; sleep 1; done
           docker logs web; exit 1
+
+      - name: Push the tested image
+        if: env.PUSH == 'true'
+        run: docker push "$ACR.azurecr.io/portrait-studio:${GITHUB_SHA::7}"

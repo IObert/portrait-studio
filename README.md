@@ -85,7 +85,7 @@ after 7 days. Outside the WhatsApp 24-hour window, delivery uses the approved `d
 
 ## Deployment
 
-Azure Container Apps via `./deploy.sh`. CI deploys automatically on every push to `main`.
+Azure Container Apps via `./deploy.sh`. CI deploys automatically on every push to `main`, once the tests pass.
 See [docs/deployment.md](docs/deployment.md).
 
 ## Decisions

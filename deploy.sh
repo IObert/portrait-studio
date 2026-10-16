@@ -23,6 +23,48 @@ exists() { "$@" >/dev/null 2>&1; }
 require az
 require git
 
+# Every az call goes through this function: a time limit (one call once hung for 13 hours)
+# and retries for network errors (SSL EOF, connection resets, 429/5xx). Other errors, such
+# as "not found" from an existence check, fail at once. `az acr build` streams a remote
+# build, so it gets a longer limit.
+AZ_BIN="$(command -v az)"
+AZ_TIMEOUT="${AZ_TIMEOUT:-300}"
+AZ_RETRIES="${AZ_RETRIES:-4}"
+az() {
+  local limit="$AZ_TIMEOUT" attempt=1 err code
+  [[ "${1:-} ${2:-}" == "acr build" ]] && limit=1800
+  err="$(mktemp)"
+  while :; do
+    run_with_limit "$limit" "$AZ_BIN" "$@" 2>"$err" && code=0 || code=$?
+    if [[ $code -eq 0 ]]; then grep -v '^WARNING' "$err" >&2 || true; rm -f "$err"; return 0; fi
+    if (( attempt >= AZ_RETRIES )) || ! { [[ $code -eq 124 ]] || grep -qiE \
+      'SSL|EOF occurred|Connection (aborted|reset|refused)|timed out|Temporary failure|Max retries|429|Too Many Requests|50[0234]|ServiceUnavailable|InternalServerError' "$err"; }; then
+      cat "$err" >&2; rm -f "$err"; return "$code"
+    fi
+    printf 'az %s %s: transient error (attempt %d/%d), retrying in %ds\n' "${1:-}" "${2:-}" \
+      "$attempt" "$AZ_RETRIES" $((attempt * 10)) >&2
+    sleep $((attempt * 10))
+    attempt=$((attempt + 1))
+  done
+}
+
+# run_with_limit <seconds> <command...>: like timeout(1), which macOS lacks. Exit 124 on timeout.
+run_with_limit() {
+  local limit="$1"; shift
+  "$@" &
+  local pid=$! waited=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if (( waited >= limit )); then
+      kill "$pid" 2>/dev/null; sleep 2; kill -9 "$pid" 2>/dev/null
+      wait "$pid" 2>/dev/null
+      printf 'timed out after %ss\n' "$limit" >&2
+      return 124
+    fi
+    sleep 1; waited=$((waited + 1))
+  done
+  wait "$pid"
+}
+
 if [[ ! -f "$ENV_FILE" && -f ".env" ]]; then ENV_FILE=".env"; fi
 [[ -f "$ENV_FILE" ]] || die "missing $ENV_FILE. Copy .env.example to .env.local and fill it in, or set ENV_FILE."
 
@@ -71,9 +113,30 @@ fi
 ACR_LOGIN_SERVER="$(az acr show --name "$AZURE_ACR_NAME" --query loginServer --output tsv)"
 ACR_ID="$(az acr show --name "$AZURE_ACR_NAME" --query id --output tsv)"
 
-# The image needs no secrets at build time; all configuration is runtime env.
-log "Building $IMAGE_NAME:$IMAGE_TAG in ACR"
-az acr build --registry "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" --platform linux/amd64 . --output none
+# CI pushes the image it tested as $IMAGE_NAME:<commit>. Deploy that exact image when it
+# exists; build only when it does not (a manual deploy of a commit CI has not pushed).
+# FORCE_BUILD=1 rebuilds anyway.
+if [[ "${FORCE_BUILD:-}" != "1" ]] && exists az acr repository show --name "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG"; then
+  log "Using the image CI built and tested: $IMAGE_NAME:$IMAGE_TAG"
+else
+  # Base image: a copy of the official node image in our own registry. Public registries
+  # (Docker Hub, AWS ECR Public) rate-limit anonymous pulls and have failed builds with 429.
+  # Refresh the copy before each build; if the refresh is rate-limited, use the last copy.
+  NODE_VERSION="$(sed -n 's/^ARG NODE_VERSION=//p' Dockerfile)"
+  BASE_TAG="$NODE_VERSION-bookworm-slim"
+  log "Refreshing base image node:$BASE_TAG in ACR"
+  if ! az acr import --name "$AZURE_ACR_NAME" --source "docker.io/library/node:$BASE_TAG" \
+    --image "base/node:$BASE_TAG" --force --output none; then
+    exists az acr repository show --name "$AZURE_ACR_NAME" --image "base/node:$BASE_TAG" \
+      || die "could not import node:$BASE_TAG and ACR has no copy yet; re-run later"
+    echo "Import failed (rate limit?); using the existing copy of node:$BASE_TAG"
+  fi
+
+  # The image needs no secrets at build time; all configuration is runtime env.
+  log "Building $IMAGE_NAME:$IMAGE_TAG in ACR"
+  az acr build --registry "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" --platform linux/amd64 \
+    --build-arg "NODE_IMAGE=$ACR_LOGIN_SERVER/base/node" . --output none
+fi
 
 # Deploy by digest so a new revision is always created, even for a reused tag.
 IMAGE_DIGEST="$(az acr repository show --name "$AZURE_ACR_NAME" --image "$IMAGE_NAME:$IMAGE_TAG" --query digest --output tsv)"
@@ -237,6 +300,11 @@ deploy_app() {
   fi
 }
 
+# Remember what runs now, so a failed release can go straight back to it.
+PREVIOUS_IMAGE="$(az containerapp show --name "$WEB_APP" --resource-group "$AZURE_RESOURCE_GROUP" \
+  --query 'properties.template.containers[0].image' --output tsv 2>/dev/null || true)"
+[[ "$PREVIOUS_IMAGE" == *quickstart* ]] && PREVIOUS_IMAGE=""
+
 # Web can scale out: no state lives in process memory (SPEC §1.2).
 deploy_app "$WEB_APP" "$WEB_MIN_REPLICAS" "$WEB_MAX_REPLICAS" external
 # Worker: same image, different command (SPEC §3.2). Jobs are claimed with Sync leases,
@@ -256,6 +324,42 @@ if [[ -z "${PUBLIC_BASE_URL:-}" && -n "$FQDN" ]]; then
   done
   PUBLIC_BASE_URL="https://$FQDN"
 fi
+
+# --- Verify, or roll back ------------------------------------------------------
+# A release counts only when both new revisions run and the web app reaches Sync and
+# Blob (/healthz/ready). Otherwise both apps go back to the image that ran before.
+revision_running() {
+  local app="$1" rev state
+  rev="$(az containerapp show --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" \
+    --query properties.latestRevisionName --output tsv)"
+  state="$(az containerapp revision show --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" \
+    --revision "$rev" --query properties.runningState --output tsv 2>/dev/null || true)"
+  [[ "$state" == Running* ]]
+}
+verify_release() {
+  local i
+  for i in $(seq 1 30); do
+    if revision_running "$WEB_APP" && revision_running "$WORKER_APP" \
+      && curl -sf --max-time 10 "https://$FQDN/healthz/ready" >/dev/null; then
+      return 0
+    fi
+    sleep 10
+  done
+  return 1
+}
+log "Verifying the release (new revisions running, /healthz/ready)"
+if ! verify_release; then
+  if [[ -n "$PREVIOUS_IMAGE" ]]; then
+    log "Release failed verification: rolling back to $PREVIOUS_IMAGE"
+    for app in "$WEB_APP" "$WORKER_APP"; do
+      az containerapp update --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" \
+        --image "$PREVIOUS_IMAGE" --output none
+    done
+    die "release $IMAGE_TAG failed verification and was rolled back. See: az containerapp logs show -n $WEB_APP -g $AZURE_RESOURCE_GROUP"
+  fi
+  die "release $IMAGE_TAG failed verification (first deploy, nothing to roll back to)"
+fi
+echo "Verified: both revisions are running and /healthz/ready returns 200."
 
 cat <<EOF
 
