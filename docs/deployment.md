@@ -166,9 +166,13 @@ CLIENT_ID=$(az ad app create --display-name gh-portrait-studio-deploy --query ap
 SP_ID=$(az ad sp create --id $CLIENT_ID --query id -o tsv)
 
 # The deploy job runs in the production environment; CI's image push runs on main.
+# This repo uses GitHub's immutable OIDC subjects (owner and repo IDs in the name), so the
+# credential must match that prefix, not plain "repo:$REPO". Otherwise the login fails with
+# AADSTS700213 "No matching federated identity record".
+PREFIX=$(gh api repos/$REPO/actions/oidc/customization/sub -q .sub_claim_prefix)
 for c in "production=environment:production" "main=ref:refs/heads/main"; do
   az ad app federated-credential create --id $CLIENT_ID --parameters "{\"name\":\"portrait-studio-${c%%=*}\",
-    \"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"repo:$REPO:${c#*=}\",
+    \"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"$PREFIX:${c#*=}\",
     \"audiences\":[\"api://AzureADTokenExchange\"]}"
 done
 
