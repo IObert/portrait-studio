@@ -369,6 +369,15 @@ lock), for one brand.*
   lists an architecture overview, webhook tunnel setup, Twilio resource setup, an env var table and a real-life test
   checklist that were never written. Write them or drop the section.
 
+- **WhatsApp delivery templates** (user, 2026-10-16): do this after `minor-improvements` is merged and deployed.
+  Until then, WhatsApp portraits finished outside the 24-hour window are not sent (share page only, logged).
+  1. Check the deployed app serves the sample: `curl -I https://<azure host>/samples/delivery.jpg` must be 200.
+  2. Add a `--public-base-url` option to `setup:twilio` (in development `.env.local` overrides the shell, and it
+     points at the ngrok tunnel). The templates must target the Azure host: WhatsApp fixes their URLs at approval.
+  3. `pnpm --filter web setup:twilio --public-base-url https://<azure host>` creates and submits both (D-39).
+  4. After approval (minutes to 24 hours), run it again, put `TWILIO_TEMPLATE_DELIVERY_EN` / `_PT_BR` into
+     `.env.local` and the deploy's secrets, and deploy once more.
+
 - **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
   with `git grep -n "TODO(profile-deletion)"`.
