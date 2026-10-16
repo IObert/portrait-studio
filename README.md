@@ -3,6 +3,19 @@
 Portrait Studio for events. Attendees scan a QR code, send a selfie over WhatsApp or SMS, pick a style, and get back
 an AI portrait with a share link. If the event has a printer, they can print it at the booth.
 
+How a selfie becomes a portrait, step by step: [docs/how-it-works.md](docs/how-it-works.md).
+
+## Web interfaces
+
+| Page | For | What it does |
+|---|---|---|
+| `/admin` | Staff (basic auth) | List of events with their state; **create** an event |
+| Event **Settings** | Staff | Configure the event: name, language, styles, backgrounds, frame, uploads, limits, QR number and message, leads, printing, LA Kings promotion. Go live / Break / End. Printer token and agent command. |
+| Event **Review** | Staff | Triage portraits: **Approve & send** or **Discard** the ones the AI check held back; **Remove** a delivered one, **Reprint** it (not counted against the attendee), or take it off the print queue |
+| Event **Stats** | Staff | Counters, delivery time, per style and background, print agent status |
+| `/booth/<event>` | Booth display (basic auth) | Full-screen QR code, call to action and live slideshow; break and ended screens |
+| `/s/<share id>` | Attendees | Their portrait: download, share, and print at the booth if prints are left |
+
 ## How it fits together
 
 ```text
@@ -108,8 +121,8 @@ See [docs/deployment.md](docs/deployment.md).
 2. **Booth screen:** open the event's **Booth** link full screen on the booth display.
 3. **Printer** (optional): turn printing on for the event, then set up the booth laptop (below).
 4. **Go live.** Use **Break** for pauses and **End** afterwards: attendees then get the ended reply.
-5. **Review** (`/admin/events/<id>/review`): approve or discard portraits the AI review flagged; take down delivered ones.
-6. **Stats** tab on the event page. Leads: `pnpm --filter web leads:export`. Reset counters: `pnpm --filter web stats:reset --event <id>`.
+5. **Review** tab: keep an eye on held-back portraits during the event.
+6. Afterwards, export leads with `pnpm --filter web leads:export`; reset counters with `pnpm --filter web stats:reset --event <id>`.
 
 ### Booth printer (DNP DS620, 4x6)
 
@@ -146,18 +159,3 @@ Live tests are opt-in and use the real services in `.env.local`: `RUN_LIVE_AI_TE
 `RUN_LIVE_SYNC_TESTS=1`, `RUN_LIVE_INBOUND_TESTS=1` and `RUN_LIVE_DELIVERY_TESTS=1`. The last two send **real**
 messages to `LIVE_TEST_PHONE`, need `pnpm dev` (and the worker, plus the tunnel, for delivery), and never run in CI;
 see the comment at the top of each file in `apps/web/tests/live/`.
-
-### Real-life test checklist
-
-Before an event, and after any major upgrade (SPEC §16):
-
-- [ ] 5+ people from different regions, including the event's, on **WhatsApp and SMS**, several at the same time
-- [ ] QR code opens the right number with the event's message; the first message lands in the right event
-- [ ] Consent, lead collection with the email code (if on), style and background menus
-- [ ] A portrait with the event's **uploaded background** and **frame**
-- [ ] A group photo, and a photo that should be rejected (no face)
-- [ ] A **flagged** portrait approved in the admin review
-- [ ] **Print + show** prints on the DS620 and appears on the booth screen; also a `--simulate` run
-- [ ] **Break** and **End**: the booth screen and the replies change
-- [ ] A **deletion request** ("delete my data") removes the person's data
-- [ ] The share page opens, downloads and shares on iOS and Android
