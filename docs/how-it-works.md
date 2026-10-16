@@ -18,7 +18,7 @@ flowchart TD
   M --> G[Generate: style, background, sponsor jersey, frame]
   G --> V{AI review}
   V -->|fail| F[Asked for another photo; portrait held for admin review] -->|Approve & send| D
-  F -->|Discard| Z[Deleted]
+  F -->|Discard| Z[Never sent; files expire after 7 days]
   V -->|pass| D[Delivered: image and share link]
   D --> K{Print + show / Show only / No thanks}
   K -->|Print + show| PR[Print queue] --> PA[Printed at the booth] --> PM[Promo message]
