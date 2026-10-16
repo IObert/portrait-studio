@@ -29,6 +29,8 @@ export const en = {
     ended: "This event has ended. Thanks for stopping by!",
   },
 
+  booth: { orWhatsapp: "Or message us on WhatsApp", orSms: "Or send a text to" },
+
   consent: {
     agreeButton: "I agree",
     agreeKeywords: ["agree", "i agree", "yes", "ok"],

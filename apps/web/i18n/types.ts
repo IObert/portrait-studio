@@ -26,6 +26,9 @@ export interface Catalog {
     ended: string;
   };
 
+  /** Booth screen: the line beside the QR code, naming the channel it opens. */
+  booth: { orWhatsapp: string; orSms: string };
+
   consent: {
     /** Button label; also the SMS keyword hint (SPEC §5.4, docs/decisions.md). */
     agreeButton: string;

@@ -28,6 +28,8 @@ export const pt_BR = {
     ended: "Este evento terminou. Obrigado pela visita!",
   },
 
+  booth: { orWhatsapp: "Ou fale com a gente no WhatsApp", orSms: "Ou envie um SMS para" },
+
   consent: {
     agreeButton: "Eu concordo",
     agreeKeywords: ["concordo", "eu concordo", "aceito", "sim", "ok"],

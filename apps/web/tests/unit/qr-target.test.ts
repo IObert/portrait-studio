@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { qrTarget } from "@/lib/booth/state";
+import { boothDoc, qrTarget } from "@/lib/booth/state";
 import { defaultConfig, EventConfigInputSchema, type PortraitEvent } from "@/lib/events/schema";
 
 const event = (over: Partial<PortraitEvent["config"]>): PortraitEvent => ({
@@ -32,5 +32,13 @@ describe("QR link (D-37)", () => {
   it("a message must keep {event}: it is how the booth knows the event", () => {
     const cfg = { ...defaultConfig("Kings Night", "+13203780782"), qrText: "Send this message for a portrait" };
     expect(EventConfigInputSchema.safeParse(cfg).success).toBe(false);
+  });
+});
+
+describe("booth line beside the QR code", () => {
+  it("names the channel, in the event language", async () => {
+    expect((await boothDoc(event({ leadChannel: "whatsapp" })))?.numberLabel).toBe("Or message us on WhatsApp");
+    expect((await boothDoc(event({ leadChannel: "sms" })))?.numberLabel).toBe("Or send a text to");
+    expect((await boothDoc(event({ leadChannel: "sms", language: "pt_BR" })))?.numberLabel).toBe("Ou envie um SMS para");
   });
 });
