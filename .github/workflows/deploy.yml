@@ -95,24 +95,12 @@ jobs:
             [[ -n "$value" ]] && printf '%s=%q\n' "$key" "$value" >> .env.local
           done
 
+      # deploy.sh reuses the image CI pushed for this commit (same 7-character tag), then
+      # verifies the release (both revisions running, /healthz/ready) and rolls back if not.
       - name: Deploy
-        run: ./deploy.sh
-
-      - name: Smoke test
-        run: |
-          set -euo pipefail
-          rg="${AZURE_RESOURCE_GROUP:-rg-${AZURE_APP_NAME:-portrait-studio}}"
-          fqdn="$(az containerapp show -g "$rg" -n "${AZURE_APP_NAME:-portrait-studio}-web" \
-            --query properties.configuration.ingress.fqdn -o tsv)"
-          for i in $(seq 1 20); do
-            curl -sSf "https://$fqdn/healthz" && exit 0
-            sleep 6
-          done
-          echo "Health check failed" >&2
-          exit 1
         env:
-          AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
-          AZURE_APP_NAME: ${{ vars.AZURE_APP_NAME }}
+          COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: IMAGE_TAG="${COMMIT::7}" ./deploy.sh
 
       - name: Remove .env.local
         if: always()

@@ -1,0 +1,16 @@
+# Weekly update PRs; CI checks each one like any other PR. The node base image is not
+# here: the Dockerfile builds its FROM from ARGs, which Dependabot cannot read. Bump
+# ARG NODE_VERSION by hand; deploy.sh then copies the new image into ACR.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for all minor and patch updates instead of one per package.
+      minor-and-patch:
+        update-types: [minor, patch]

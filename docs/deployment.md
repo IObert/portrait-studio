@@ -130,35 +130,115 @@ Expected: `external: true` and `targetPort: 3000`.
 
 ## 6. CI deployment (GitHub Actions)
 
-`.github/workflows/deploy.yml` runs `./deploy.sh` on every push to `main`, **once CI has passed** for that commit. It deploys the exact commit CI tested; a red CI run deploys nothing. You can also start it by hand.
-It then waits for `/healthz` to respond.
+### The pipeline
 
-The org's Actions policy allows only GitHub-owned actions, so the workflow does the Azure OIDC login itself
+1. **CI** (`.github/workflows/ci.yml`) runs on every pull request and every push to `main`: lint, typecheck and
+   unit tests; the print agent on Node 22; Playwright; and the Docker image build.
+2. On `main`, the Docker job builds from the registry's copy of the node image (`base/node`) and pushes the image
+   it tested as `portrait-studio:<7-character commit>`. Pull requests have no Azure access and build from the
+   public mirror.
+3. **Deploy** (`.github/workflows/deploy.yml`) starts when CI finishes, and only if CI passed on a push to `main`.
+   It checks out the exact commit CI tested and waits for approval in the `production` environment.
+4. `deploy.sh` reuses the image CI pushed instead of building again, updates both apps, then **verifies** the
+   release: both new revisions running and `/healthz/ready` (Sync and Blob reachable) returning 200. If that fails,
+   it **rolls both apps back** to the image that ran before and the run fails.
+
+Every `az` call in `deploy.sh` has a time limit and is retried on network errors, which used to break deploys.
+
+You can also start a deploy by hand: Actions → Deploy → Run workflow.
+
+The org's Actions policy allows only GitHub-owned actions, so the workflows do the Azure OIDC login themselves
 instead of using `azure/login`.
 
-**One-time setup:**
-1. Create an Entra ID App Registration.
-2. Under **Certificates & secrets → Federated credentials**, add one with:
-   - scenario: GitHub Actions
-   - entity type: **Environment**
-   - environment name: `production`
-3. Give it the **Contributor** and **User Access Administrator** roles on the resource group or subscription.
-   The second role is needed for the `AcrPull` role assignment. After the first deploy has created everything,
-   you can narrow it to "Role Based Access Control Administrator", limited to `AcrPull`.
-4. Create a GitHub environment named `production`. Optionally add required reviewers there.
-5. Add **secrets**:
-   - `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
-   - `ADMIN_PASSWORD`, `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` (`openssl rand -base64 32`), `MEDIA_SIGNING_SECRET` (`openssl rand -base64 48`), `TWILIO_AUTH_TOKEN`, `TWILIO_API_KEY_SECRET`, `OPENAI_API_KEY`
-   - optionally `AZURE_STORAGE_CONNECTION_STRING`
-6. Add **variables** for the non-sensitive values:
-   - `PUBLIC_BASE_URL`, `ADMIN_USER`
-   - `TWILIO_ACCOUNT_SID`, `TWILIO_API_KEY_SID`, `TWILIO_*_SID`, `TWILIO_MEMORY_STORE_ID`, `TWILIO_TEMPLATE_DELIVERY_*`
-   - `OPENAI_*_MODEL`
-   - and any `AZURE_*` overrides
+### One-time setup
 
-Until these are set, every deploy run fails at the Azure login step.
+Until this is done, deploy runs fail at the Azure login step, and CI's Docker job builds from the public mirror
+without pushing. Run these from the repo root, signed in with `az login` and `gh auth login`.
 
-The workflow writes `.env.local` from these values, runs `./deploy.sh`, and deletes the file afterwards.
+**1. An Entra app that GitHub logs in as** (OIDC, no stored password):
+
+```sh
+REPO=IObert/portrait-studio
+RG=rg-portrait-studio
+SUB=$(az account show --query id -o tsv)
+SCOPE=/subscriptions/$SUB/resourceGroups/$RG
+CLIENT_ID=$(az ad app create --display-name gh-portrait-studio-deploy --query appId -o tsv)
+SP_ID=$(az ad sp create --id $CLIENT_ID --query id -o tsv)
+
+# The deploy job runs in the production environment; CI's image push runs on main.
+for c in "production=environment:production" "main=ref:refs/heads/main"; do
+  az ad app federated-credential create --id $CLIENT_ID --parameters "{\"name\":\"portrait-studio-${c%%=*}\",
+    \"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"repo:$REPO:${c#*=}\",
+    \"audiences\":[\"api://AzureADTokenExchange\"]}"
+done
+
+# Contributor on the resource group only, and permission to grant AcrPull and nothing else
+# (deploy.sh gives each Container App AcrPull on the registry).
+az role assignment create --assignee-object-id $SP_ID --assignee-principal-type ServicePrincipal \
+  --role Contributor --scope $SCOPE
+ACR_PULL=7f951dda-4ed3-4680-a7ca-43fe172d538d
+az role assignment create --assignee-object-id $SP_ID --assignee-principal-type ServicePrincipal \
+  --role "Role Based Access Control Administrator" --scope $SCOPE --condition-version 2.0 --condition \
+  "((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$ACR_PULL})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$ACR_PULL}))"
+```
+
+**2. The `production` environment: approval, secrets and variables.** Use the env file of the running app, not
+your local `.env.local`: `PUBLIC_BASE_URL` must be the Azure address, and storage must be the real account, not
+Azurite.
+
+```sh
+# Each deploy waits for your approval; only protected branches (main) may deploy.
+gh api -X PUT repos/$REPO/environments/production --input - <<JSON
+{ "reviewers": [{ "type": "User", "id": $(gh api user -q .id) }],
+  "deployment_branch_policy": { "protected_branches": true, "custom_branch_policies": false } }
+JSON
+
+set -a; source .env.production.local; set +a
+for k in ADMIN_PASSWORD NEXT_SERVER_ACTIONS_ENCRYPTION_KEY MEDIA_SIGNING_SECRET TWILIO_AUTH_TOKEN \
+  TWILIO_API_KEY_SECRET OPENAI_API_KEY AZURE_STORAGE_CONNECTION_STRING; do
+  [ -n "${!k:-}" ] && printf '%s' "${!k}" | gh secret set $k --repo $REPO --env production
+done
+for k in PUBLIC_BASE_URL ADMIN_USER LOG_LEVEL TWILIO_ACCOUNT_SID TWILIO_API_KEY_SID TWILIO_MESSAGING_SERVICE_SID \
+  TWILIO_SYNC_SERVICE_SID TWILIO_VERIFY_SERVICE_SID TWILIO_MEMORY_STORE_ID TWILIO_TEMPLATE_DELIVERY_EN \
+  TWILIO_TEMPLATE_DELIVERY_PT_BR OPENAI_IMAGE_MODEL OPENAI_VISION_MODEL OPENAI_CHAT_MODEL AZURE_STORAGE_CONTAINER; do
+  [ -n "${!k:-}" ] && gh variable set $k --repo $REPO --env production --body "${!k}"
+done
+TENANT=$(az account show --query tenantId -o tsv)
+gh secret set AZURE_CLIENT_ID --repo $REPO --env production --body $CLIENT_ID
+gh secret set AZURE_TENANT_ID --repo $REPO --env production --body $TENANT
+gh secret set AZURE_SUBSCRIPTION_ID --repo $REPO --env production --body $SUB
+
+# CI's image push (main, outside the environment) needs the login and the registry name.
+gh variable set AZURE_CLIENT_ID --repo $REPO --body $CLIENT_ID
+gh variable set AZURE_TENANT_ID --repo $REPO --body $TENANT
+gh variable set AZURE_SUBSCRIPTION_ID --repo $REPO --body $SUB
+gh variable set AZURE_ACR_NAME --repo $REPO --body portraitstudioacr
+```
+
+`AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` are identifiers, not credentials: the login works
+only from this repo's `main` and `production`, through the federated credentials.
+
+**3. Protect `main`:** a PR can merge only when the four CI checks pass.
+
+```sh
+gh api -X PUT repos/$REPO/branches/main/protection --input - <<'JSON'
+{ "required_status_checks": { "strict": false, "contexts": [
+    "Lint, typecheck, unit tests", "Print agent on Node 22", "Playwright", "Docker image builds"] },
+  "enforce_admins": false, "required_pull_request_reviews": null, "restrictions": null,
+  "allow_force_pushes": false, "allow_deletions": false }
+JSON
+```
+
+### Rolling back by hand
+
+`deploy.sh` rolls back by itself when verification fails. To go back to an earlier release on purpose, deploy its
+commit again: `IMAGE_TAG=<7-character commit> ./deploy.sh`. The image is still in the registry, so it is not
+rebuilt. `az acr repository show-tags -n portraitstudioacr --repository portrait-studio` lists them.
+
+### Dependency updates
+
+Dependabot (`.github/dependabot.yml`) opens weekly PRs for GitHub Actions and npm packages. The node base image is
+bumped by hand (`ARG NODE_VERSION` in the Dockerfile); `deploy.sh` copies the new image into the registry.
 
 ## Local container check
 
