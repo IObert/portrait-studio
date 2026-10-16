@@ -1,6 +1,6 @@
 // Verbatim from PROMPTS.md §B1. All six criteria are on (SPEC §9.2 step 7); the
-// branding criterion applies only with brand references, which V2 does not have,
-// so it is omitted exactly as V1 did without them. Criteria are numbered in order.
+// branding criterion is left out for every event, including LA Kings ones (D-15,
+// D-36). Criteria are numbered in order.
 
 export const REVIEW_CRITERIA = [
   "Subject likeness — the person(s) in the portrait must be recognizable as the same person(s) from the original, accounting for the requested art style. Key features to check: face shape, skin tone, eye color, hair color/style.",

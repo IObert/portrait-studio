@@ -28,13 +28,12 @@ export interface WorkerDeps {
   messenger: Messenger;
   pipeline: Omit<PipelineDeps, "signal">;
   log: Logger;
-  /** Called when a job passes review (SPEC §6). Milestone g implements delivery. */
+  /** Called when a job passes review: delivers it (SPEC §6). */
   onReady: (event: PortraitEvent, job: Job) => Promise<void>;
   now?: () => Date;
   workerId: string;
 }
 
-/** Retry metadata stored on the job (`error` holds a short reason, never personal data). */
 function isRunnable(job: Job, now: Date): boolean {
   // Screening (D-18) and generation both wait in a state; leaseUntil doubles as "not before" after a retry.
   if (job.state === "screening" || job.state === "queued") return !job.leaseUntil || Date.parse(job.leaseUntil) <= now.getTime();
@@ -192,14 +191,14 @@ async function finish(deps: WorkerDeps, event: PortraitEvent, job: Job, outcome:
       error: outcome === null ? job.error : outcome.kind === "rejected" ? outcome.reason : null,
       subjects: outcome && outcome.kind !== "rejected" ? outcome.subjects : cur.subjects,
       outputBlobs: outcome && outcome.kind !== "rejected" ? outcome.outputBlobs : cur.outputBlobs,
-      aiReview: outcome?.kind === "flagged" ? { result: "fail", reason: outcome.reason } : outcome?.kind === "ready" ? { result: "pass", reason: "" } : cur.aiReview,
+      aiReview: outcome?.kind === "flagged" ? { reason: outcome.reason } : outcome?.kind === "ready" ? { reason: "" } : cur.aiReview,
       timestamps: state === "processing" ? cur.timestamps : { ...cur.timestamps, [state]: now },
     };
   });
   if (!updated) return;
 
   if (outcome?.kind === "ready") {
-    // Passed review: delivery (milestone g) counts the quota and releases the slot.
+    // Passed review: delivery counts the quota and releases the slot.
     await deps.onReady(event, updated);
     return;
   }

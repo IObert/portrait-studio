@@ -90,10 +90,14 @@ this one. A delete of an already-deleted profile succeeds, and a lookup that fin
 - **Event deletion (§4.4):** the event is unlinked from each profile; a profile linked to no other Portrait Studio
   event is then deleted.
 
-### D-13 Ending an event removes its bindings
-*2026-10-12.* SPEC §4.1 says ending removes bindings and that "any message" gets the ended reply. Without a binding,
-a message with no code can no longer be linked to the ended event, so it gets the standard reply (or goes to another
-live event). Only messages that carry the event code get "This event has ended". **Open for review.**
+### D-13 Ending an event keeps its bindings
+*2026-10-12, revised 2026-10-16 (user decision).* SPEC §4.1 says "any message" to an ended event gets the ended
+reply, but it also said ending removes bindings, and without a binding a message that does not name the event cannot be
+linked to it. The first version removed them anyway, so only messages naming the event got "This event has ended".
+Now **ending keeps the bindings**: everyone who used the event gets the ended reply, whatever they write.
+- Once another event is live, an ended binding is ignored and the message is routed as usual (that event, or the
+  picker), so someone at the next event is not stuck on the old one. Naming the ended event still gets its reply.
+- Deleting an event still removes its bindings (§4.4).
 
 ### D-14 Vision model reasoning effort
 *2026-10-12.* The early research said `gpt-6.1-sol` supports reasoning effort `none`. **It does not.** The API returns
@@ -255,7 +259,7 @@ when it was switched on.*
 - The session keeps up to 10 delivered job ids (`delivered`, a WhatsApp list's limit), so the menu reads only
   those jobs rather than scanning the jobs map (SPEC §3.4 hot spot).
 - The "send us a selfie" fallback adds "Or reply PRINT…" when the person has prints left and a portrait.
-- Milestone j's AI chat replies (§5.10) will replace the fallback; this keyword handling stays in front of it.
+- The AI chat replies (§5.10, D-29) replaced the fallback; this keyword handling stays in front of them.
 
 ### D-29 Chat replies (SPEC §5.10)
 *2026-10-15.*
@@ -309,8 +313,8 @@ session and starts a fresh one with a new token. A print at the printer keeps it
 - The token is stored on the event (`printerToken`) next to its hash, and the event page always shows it with the
   server URL and the full agent command, each with a copy button. Anyone who can read the event can read the token;
   that is the same audience that can already change the event.
-- Tokens from before D-33 (`pst_<id>_<43 chars>`) still verify until rotated; they cannot be shown, so the page offers
-  to rotate them.
+- Tokens from before D-33 (`pst_<id>_<43 chars>`) no longer verify (2026-10-16). An event that still has one shows
+  **Generate token**, and its agent must be restarted with the new token.
 
 ### D-34 Share caption and promo defaults, with an `{event}` placeholder (user decision)
 *2026-10-15.*
@@ -365,21 +369,28 @@ lock), for one brand.*
 
 ## Open TODOs after the last milestone
 
-- **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and
-  `Resolution=300x300dpi` are confirmed against the DS620's `lpoptions` (2026-10-14), and a print came out. Still
-  to check on paper: that the borderless scaling flags leave no white edge and nothing is cropped.
-
-- **Fewer settings per page in the admin** (user, 2026-10-13): the event form shows every §4.2 field at once. Split it
-  into smaller sections or pages.
+- **WhatsApp delivery templates** (user, 2026-10-16): do this after `minor-improvements` is merged and deployed.
+  Until then, WhatsApp portraits finished outside the 24-hour window are not sent (share page only, logged).
+  1. Check the deployed app serves the sample: `curl -I https://<azure host>/samples/delivery.jpg` must be 200.
+  2. `pnpm --filter web setup:twilio --public-base-url https://<azure host>` creates and submits both (D-39). The
+     templates must name the Azure host: WhatsApp fixes their URLs at approval. The script refuses to submit while the
+     sample image is unreachable.
+  3. After approval (minutes to 24 hours), run it again, put `TWILIO_TEMPLATE_DELIVERY_EN` / `_PT_BR` into
+     `.env.local` and the deploy's secrets, and deploy once more.
 
 - **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
-  with `git grep -n "TODO(profile-deletion)"`. The deletion-request tool (milestone j) will add more tags.
+  with `git grep -n "TODO(profile-deletion)"`.
 
-- **Email templates for all activations** (requested 2026-10-10): update the SendGrid verification templates used by
-  every activation's Verify email integration (Portrait Studio, Mixologist, Wheel of Twilio, …). For Portrait Studio,
-  the template renders the `{{consent_text}}` substitution (privacy notice and consent, SPEC §5.4); confirmed by the
-  user, 2026-10-12. The other activations' templates still need the same update.
+### Closed
+
+- **`setup:twilio` script** (2026-10-16): written, see D-39.
+- **README** (2026-10-16): rewritten with setup, architecture, env table, booth printer steps and the test checklist.
+
+- **DS620 borderless prints** (2026-10-16): confirmed on paper, no white edge and nothing cropped.
+- **Fewer settings per page in the admin** (2026-10-16): not needed; the event form stays one page.
+- **Email templates for all activations** (2026-10-16): the SendGrid verification templates are updated. Portrait
+  Studio's uses `event_name`, `promo_code` and `show_snippet` only (D-20).
 
 ## Answers to SPEC §17
 
@@ -400,7 +411,7 @@ lock), for one brand.*
 | Topic | Decision |
 |---|---|
 | Repo location | `~/Desktop/portrait-studio`, a pnpm monorepo (`apps/web`, `apps/print-agent`) |
-| Runtime | Node 24 in the container. The print agent supports Node 22+. |
+| Runtime | Node 24 everywhere: the container, development and the print agent (2026-10-16; the agent previously supported Node 22+). |
 | CI | GitHub Actions |
 | Containers | Podman locally (with the `docker-compose` provider). The compose file follows the standard Compose spec. |
 | HEIC selfies | Not supported. WhatsApp converts photos to JPEG. |
@@ -410,7 +421,7 @@ lock), for one brand.*
 | Quota identity | Per channel address. WhatsApp and SMS count separately. |
 | Lead email | Any valid email is accepted (no business-only rule) |
 | Smart-reply prompts | Drop G2's "Instruções adicionais do evento" line. Add a language-lock line and a deletion-tool line to G1 and G2. |
-| Copy | I write the new en and pt_BR text. pt_BR is marked for review by a native speaker. |
+| Copy | I write the new en and pt_BR text. No native-speaker review (user decision, 2026-10-16). |
 | Delivery template | Submitted as UTILITY. If Meta reclassifies it, the user is told; nothing is changed automatically. |
 | QR sender list | The Messaging Service's phone numbers plus WhatsApp senders from the Channels Senders API, falling back to entering the number by hand |
 | Local Blob Storage | Azurite in compose |
@@ -427,3 +438,18 @@ lock), for one brand.*
 - With a brand, the anime style lock (§E10) also says "large expressive eyes" and comes last in the prompt, so it
   repeats the sentence. The cartoon lock says nothing about eyes.
 - The other styles were not seen to do this and are unchanged.
+
+### D-39 `setup:twilio` (SPEC §15)
+*2026-10-16.* `scripts/setup-twilio.ts`, logic in `lib/setup/twilio.ts`. Safe to run again, and never creates a
+second copy:
+- A SID in the environment pins its resource; one that does not exist stops the run rather than creating another.
+  Otherwise it finds by exact name (`Portrait Studio`, `--name` to change); two with the same name stop the run.
+- It goes further than SPEC §15: it also finds or creates the Memory store, since the Memory API can. A store it did not
+  create (such as the shared one, D-10) is only checked, never changed.
+- The inbound URL is never taken from another app without `--take-over-inbound` (the cut-over, D-10).
+- **Delivery template variables changed:** WhatsApp only approves a media header like `https://host/{{1}}` whose
+  sample ends in a file type. `{{1}}` is now `m/<token>.jpg` (the media route ignores `.jpg`) instead of the full URL,
+  and `{{2}}` stays the share id. The sample image is `public/samples/delivery.jpg`.
+- Templates are named `portrait_studio_delivery_<host hash>_<lang>`: WhatsApp fixes the URLs at approval, so a new
+  `PUBLIC_BASE_URL` host gets new templates and the old ones keep working for the old host.
+- `--dry-run` reports and changes nothing.

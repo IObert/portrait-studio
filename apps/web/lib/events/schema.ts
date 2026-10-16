@@ -70,7 +70,8 @@ export const EventConfigInputSchema = z
     leadCollection: z.boolean(),
     /**
      * Verification email extras (D-20), only used with lead collection on:
-     * a promo code shown in the email, and whether to show the Verify code snippet.
+     * a promo code shown in the email, and whether to show the Verify code snippet
+     * (on by default; ignored while lead collection is off).
      */
     emailPromoCode: text(40).default(""),
     emailShowSnippet: z.boolean().default(false),
@@ -90,7 +91,7 @@ export const EventConfigInputSchema = z
       ctx.addIssue({ code: "custom", path: ["promo", "enabled"], message: "Promo needs printing to be on (SPEC §5.9)" });
     if (e.promo.enabled && !e.promo.text)
       ctx.addIssue({ code: "custom", path: ["promo", "text"], message: "Promo text is required when promo is on" });
-    if (!e.leadCollection && (e.emailPromoCode || e.emailShowSnippet))
+    if (!e.leadCollection && e.emailPromoCode)
       ctx.addIssue({ code: "custom", path: ["emailPromoCode"], message: "Email extras need lead collection to be on" });
     if (e.backgrounds.includes("uploaded") && !e.uploadedBackgroundName)
       ctx.addIssue({ code: "custom", path: ["uploadedBackgroundName"], message: "Name the uploaded background" });
@@ -108,12 +109,8 @@ export const EventSchema = z.object({
   }),
   /** SHA-256 of the printer token; the agent API compares against this only (SPEC §4.2). */
   printerTokenHash: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
-  /**
-   * The token itself, so the admin page can keep showing it (user decision, D-33).
-   * Null for tokens issued before D-33: those were shown once and can only be rotated.
-   */
+  /** The token itself, so the admin page can keep showing it (user decision, D-33). */
   printerToken: z.string().max(80).nullable().default(null),
-  printerTokenCreatedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
@@ -164,7 +161,7 @@ export function defaultConfig(name: string, qrSender: string): EventConfigInput 
     laKings: false,
     leadCollection: true,
     emailPromoCode: "",
-    emailShowSnippet: false,
+    emailShowSnippet: true,
     maxImagesPerPerson: 10,
     printingEnabled: false,
     maxPrintsPerPerson: 6,

@@ -32,26 +32,26 @@ jobs:
       - run: pnpm test
       - run: pnpm --filter @portrait-studio/print-agent build
 
-  # The print agent must keep running on the booth computer's Node 22 (SPEC §11.1).
-  print-agent-node22:
-    name: Print agent on Node 22
+  # The built print agent must start on its own, as on the booth computer (Node 24, SPEC §11.1).
+  print-agent-bundle:
+    name: Print agent bundle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           package-manager-cache: false
       - run: corepack enable
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile --filter @portrait-studio/print-agent
       - run: pnpm --filter @portrait-studio/print-agent test
       - run: pnpm --filter @portrait-studio/print-agent build
       - run: node apps/print-agent/dist/agent.mjs --help
-      # The bundle must actually start on Node 22 (twilio-sync is CommonJS).
+      # The bundle must actually start (twilio-sync is CommonJS, D-22).
       - run: node apps/print-agent/dist/agent.mjs --version
       - name: Bundle rejects a bad invocation instead of crashing
         run: |

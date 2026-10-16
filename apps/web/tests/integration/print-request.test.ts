@@ -16,7 +16,7 @@ async function setup(maxPrints: number, printed = 0) {
   const sync = new SyncStore(fake, { warn: vi.fn() }, { baseDelayMs: 1, maxDelayMs: 2 });
   const event: PortraitEvent = {
     slug: "ev", state: "live", config: { ...defaultConfig("Ev", "+13203780782"), printingEnabled: true, maxPrintsPerPerson: maxPrints },
-    uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null, printerTokenCreatedAt: null, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
+    uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
   };
   const ev = eventObjects("ev");
   for (const m of [ev.jobs, ev.sessions]) await sync.ensureMap(m);

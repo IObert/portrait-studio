@@ -10,13 +10,13 @@ describe("token exchange (PROTOCOL.md §2)", () => {
 
   it("returns the session on 200", async () => {
     const f = vi.fn(async () => Response.json(body));
-    await expect(exchangeToken("https://app.test", "pst_ev_" + "x".repeat(43), f as unknown as typeof fetch)).resolves.toEqual(body);
-    expect(f).toHaveBeenCalledWith(new URL("https://app.test/api/agent/token"), expect.objectContaining({ method: "POST", headers: { authorization: expect.stringContaining("Bearer pst_ev_") } }));
+    await expect(exchangeToken("https://app.test", "ev.K7QM-2XH0-9RTB-W41Z", f as unknown as typeof fetch)).resolves.toEqual(body);
+    expect(f).toHaveBeenCalledWith(new URL("https://app.test/api/agent/token"), expect.objectContaining({ method: "POST", headers: { authorization: expect.stringContaining("Bearer ev.K7QM-2XH0-9RTB-W41Z") } }));
   });
 
   it("a rotated token gives a clear, final error", async () => {
     const f = vi.fn(async () => new Response("Unauthorized", { status: 401 }));
-    await expect(exchangeToken("https://app.test", "pst_ev_x", f as unknown as typeof fetch)).rejects.toBeInstanceOf(AgentUnauthorized);
+    await expect(exchangeToken("https://app.test", "ev.0000-0000-0000-0000", f as unknown as typeof fetch)).rejects.toBeInstanceOf(AgentUnauthorized);
   });
 
   it("other failures are retryable errors, and a malformed body is rejected", async () => {

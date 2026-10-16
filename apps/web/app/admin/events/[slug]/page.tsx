@@ -50,7 +50,7 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
                 <AssetUpload slug={slug} kind="background" previewUrl={backgroundPreview} requirements="PNG or JPEG, portrait, at least 1024×1536 px. Used exactly as uploaded." />
               </div>
             ),
-            printAgent: <PrinterToken slug={slug} appUrl={appUrl} token={event.printerToken} hasToken={!!event.printerTokenHash} />,
+            printAgent: <PrinterToken slug={slug} appUrl={appUrl} token={event.printerToken} />,
           }}
         />
     </div>

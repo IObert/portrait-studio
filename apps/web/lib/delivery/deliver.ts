@@ -24,7 +24,7 @@ export interface DeliveryDeps {
   /** Public URL of the delivery JPEG for Twilio (signed /m/<token> link). */
   mediaUrl: (blobPath: string, ttlSeconds: number) => string;
   publicBaseUrl: string;
-  /** Approved `delivery` template SIDs (SPEC §6.3); absent until setup:twilio has run. */
+  /** Approved `delivery` template SIDs (SPEC §6.3); absent until they are configured. */
   templates: Partial<Record<"en" | "pt_BR", string>>;
   log: { info(o: object, m: string): void; warn(o: object, m: string): void };
   now?: () => Date;
@@ -150,10 +150,12 @@ async function sendTemplate(
 ): Promise<"sent" | "skipped"> {
   const sid = deps.templates[locale];
   if (!sid) {
-    // Not set up yet (milestone k). The portrait stays on the share page.
+    // No delivery template configured. The portrait stays on the share page.
     deps.log.warn({ event: "send_skipped", reason: "no-delivery-template", to: mask(address), slug: event.slug }, "outside 24h window and no delivery template configured");
     return "skipped";
   }
-  const r = await deps.messenger.sendTemplate(address, sid, { "1": vars.media, "2": vars.shareId }, { from: event.config.qrSender });
+  // The template's URLs are `<base>/{{1}}` and `<base>/s/{{2}}` (scripts/setup-twilio.ts).
+  const media = `${new URL(vars.media).pathname.slice(1)}.jpg`;
+  const r = await deps.messenger.sendTemplate(address, sid, { "1": media, "2": vars.shareId }, { from: event.config.qrSender });
   return r.status;
 }

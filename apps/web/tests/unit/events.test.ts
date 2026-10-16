@@ -140,7 +140,6 @@ describe("printer token", () => {
     expect(verifyPrinterToken(tampered, hash)).toBe(false);
     expect(verifyPrinterToken(token, null)).toBe(false);
     expect(slugFromToken("../etc.AAAA-AAAA-AAAA-AAAA")).toBeNull();
-    expect(slugFromToken("pst_../etc_" + "a".repeat(43))).toBeNull();
   });
   it("forgives case, spacing, missing dashes and look-alike letters when typed", () => {
     const hash = hashToken("sp-london.K7QM-2XH0-9RTB-W41Z");
@@ -149,10 +148,10 @@ describe("printer token", () => {
     expect(normalizeToken("sp-london.K7QM-2XH0-9RTB")).toBeNull();
     expect(normalizeToken("sp-london.K7QM-2XH0-9RTB-W4UZ")).toBeNull();
   });
-  it("still accepts a token issued before D-33 until it is rotated", () => {
-    const legacy = "pst_sp-london_" + "a".repeat(43);
-    expect(slugFromToken(legacy)).toBe("sp-london");
-    expect(verifyPrinterToken(legacy, hashToken(legacy))).toBe(true);
+  it("rejects the old pst_ token format (D-33)", () => {
+    const old = "pst_sp-london_" + "a".repeat(43);
+    expect(slugFromToken(old)).toBeNull();
+    expect(verifyPrinterToken(old, hashToken(old))).toBe(false);
   });
   it("rotating produces a different token", () => {
     expect(generatePrinterToken("a").token).not.toBe(generatePrinterToken("a").token);

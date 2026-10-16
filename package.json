@@ -4,7 +4,7 @@
   "description": "Portrait Studio",
   "packageManager": "pnpm@10.27.0",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "pnpm --filter @portrait-studio/web dev",

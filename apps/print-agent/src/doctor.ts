@@ -59,7 +59,14 @@ export function findDs620Device(lpinfoV: string): string | null {
   return null;
 }
 
-/** The installed DS620 driver, from `lpinfo -m`: `Library/…/DNP-DS620.ppd.gz Dai Nippon Printing DP-DS620, 5.2.7 (CUPS)`. */
+/**
+ * The installed DS620 driver, from `lpinfo -m`: `Library/…/DNP-DS620.ppd.gz Dai Nippon Printing DP-DS620, 5.2.7 (CUPS)`.
+ *
+ * TODO(linux): only matches DNP's PPD (`…/DNP-DS620.ppd.gz`). Gutenprint lists it as
+ * `gutenprint.5.3://dnp-ds620/expert`, which has no `.ppd` suffix, so on Linux the
+ * doctor reports the driver as missing. Accept that too, together with the Linux
+ * option names (see DS620_OPTIONS).
+ */
 export function findDs620Model(lpinfoM: string): string | null {
   for (const line of lpinfoM.split("\n")) {
     const [model, ...desc] = line.trim().split(/\s+/);

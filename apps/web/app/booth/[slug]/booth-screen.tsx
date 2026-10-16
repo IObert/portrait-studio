@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { type ConnectionState, SyncClient, type SyncMapItem } from "twilio-sync";
 import type { BoothDoc, BoothSlide } from "@/lib/booth/state";
 import { SlideStack } from "./slide-stack";
+import { Lockup } from "./brand";
 
 const MAX_BACKOFF_MS = 30_000;
 
@@ -89,28 +90,35 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
   }, [slug]);
 
   return (
-    <main lang={doc.locale === "pt_BR" ? "pt-BR" : "en"} className="relative flex h-screen w-screen overflow-hidden bg-ink text-white" data-state={doc.state}>
+    <main lang={doc.locale === "pt_BR" ? "pt-BR" : "en"} className="relative flex h-screen w-screen overflow-hidden bg-ink bg-[radial-gradient(60vh_60vh_at_0%_100%,rgb(239_34_58/0.22),transparent)] text-white" data-state={doc.state}>
       {doc.state === "live" ? (
         // CTA + QR always keep the left 55%; the 2:3 slideshow fits the rest by height.
-        <div className="flex h-full w-full gap-[4vw] p-[5vh]">
-          <section className="flex w-[55%] shrink-0 flex-col justify-center gap-[5vh]">
-            <h1 className="font-display text-[6.5vh] leading-[1.02] font-semibold tracking-tight text-balance">{doc.cta.headline || doc.name}</h1>
-            {doc.cta.steps.length > 0 && (
-              <ol className="space-y-[2.2vh] text-[3vh] leading-snug">
-                {doc.cta.steps.map((s, i) => (
-                  <li key={i} className="flex items-center gap-[1.5vw]">
-                    <span className="flex h-[5.2vh] w-[5.2vh] shrink-0 items-center justify-center rounded-full bg-signal font-display text-[2.6vh] font-semibold">{i + 1}</span>
-                    <span>{s}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-            <div className="flex items-center gap-[2vw]">
-              <div className="aspect-square h-[30vh] shrink-0 rounded-[2vh] bg-white p-[1.2vh] [&>svg]:h-full [&>svg]:w-full" data-testid="qr" dangerouslySetInnerHTML={{ __html: doc.qrSvg }} />
-              <p className="font-display text-[3.4vh] font-medium tracking-wide text-white/90 tabular-nums">{doc.number}</p>
+        <div className="flex h-full w-full gap-[4vw] p-[5vh] portrait:flex-col portrait:gap-[3vh] portrait:p-[4vw]">
+          <section className="flex w-[55%] shrink-0 flex-col justify-between portrait:w-full portrait:gap-[3vh]">
+            <Lockup />
+            <div className="flex flex-col gap-[5vh]">
+              <h1 className="font-display text-[6.5vh] portrait:text-[5vh] leading-[1.02] font-semibold tracking-tight text-balance">{doc.cta.headline || doc.name}</h1>
+              {doc.cta.steps.length > 0 && (
+                <ol className="space-y-[2.2vh] text-[3vh] leading-snug">
+                  {doc.cta.steps.map((s, i) => (
+                    <li key={i} className="flex items-center gap-[1.5vw]">
+                      <span className="flex h-[5.2vh] w-[5.2vh] shrink-0 items-center justify-center rounded-full bg-signal font-display text-[2.6vh] font-semibold">{i + 1}</span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <div className="flex items-center gap-[2.4vw] portrait:gap-[4vw]">
+                <div className="aspect-square h-[30vh] shrink-0 rounded-[2vh] portrait:h-[20vh] bg-white p-[1.2vh] shadow-[0_0_0_0.6vh_var(--color-signal)] [&>svg]:h-full [&>svg]:w-full" data-testid="qr" dangerouslySetInnerHTML={{ __html: doc.qrSvg }} />
+                <div className="space-y-[0.8vh]">
+                  {doc.numberLabel && <p className="text-[2.6vh] portrait:text-[2vh] leading-snug text-white/70">{doc.numberLabel}</p>}
+                  <p className="font-display text-[4.2vh] portrait:text-[3vh] leading-none font-semibold tracking-wide whitespace-nowrap tabular-nums" data-testid="booth-number">{doc.number}</p>
+                </div>
+              </div>
             </div>
+            <p className="text-[2.2vh] text-white/55 portrait:hidden">Built with Twilio Messaging</p>
           </section>
-          <section className="flex min-w-0 flex-1 items-center justify-center">
+          <section className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
             <SlideStack slides={slides} />
           </section>
         </div>

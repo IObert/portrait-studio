@@ -9,7 +9,6 @@ const ev = (slug: string, state: EventState, name = slug): PortraitEvent => ({
   config: { ...defaultConfig(name, "+13203780782") },
   uploads: { frame: null, background: null },
   printerTokenHash: null, printerToken: null,
-  printerTokenCreatedAt: null,
   createdAt: "2026-10-01T00:00:00.000Z",
   updatedAt: "2026-10-01T00:00:00.000Z",
 });
@@ -45,6 +44,17 @@ describe("route (SPEC §5.2)", () => {
   it("gives the state reply for a bound event on break or ended", () => {
     const onBreak = ev("splondon", "break");
     expect(route("hello", [onBreak, paris], bind("splondon"))).toEqual({ kind: "not-live", event: onBreak });
+  });
+  it("keeps answering an ended event's attendees with the ended reply (SPEC §4.1, D-13)", () => {
+    const ended = ev("splondon", "ended", "SIGNAL London");
+    expect(route("hello", [ended], bind("splondon"))).toEqual({ kind: "not-live", event: ended });
+    expect(route("hello", [ended, ev("x", "draft")], bind("splondon"))).toEqual({ kind: "not-live", event: ended });
+  });
+  it("ignores an ended binding once another event is live (D-13)", () => {
+    const ended = ev("splondon", "ended", "SIGNAL London");
+    expect(route("hello", [ended, paris], bind("splondon"))).toEqual({ kind: "event", event: paris, bind: true });
+    // Naming the ended event still gets its reply.
+    expect(route("SIGNAL London", [ended, paris], bind("splondon"))).toEqual({ kind: "not-live", event: ended });
   });
   it("gives the state reply for a named event on break", () => {
     const onBreak = ev("splondon", "break", "SIGNAL London");

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { csvCell, leadsCsv } from "@/lib/admin/leads-csv";
+import { csvCell, leadsCsv } from "@/lib/leads/csv";
 import { printerStatus } from "@/lib/admin/printer-status";
 import { bump, readLastReset, readStats, resetStats } from "@/lib/stats";
 import { eventObjects } from "@/lib/sync/names";

@@ -177,8 +177,6 @@ export async function setStateAction(_prev: ActionState, form: FormData): Promis
     const to = z.enum(["draft", "live", "break", "ended"]).parse(form.get("state"));
     const events = await getEventRepo();
     const updated = await events.setState(slug, to);
-    // Ending removes the event's bindings (SPEC §4.1); attendees then get the ended reply by code only.
-    if (updated.state === "ended") await getDeleteHooks().removeBindings(slug);
     log.info({ event: "event_state_changed", slug, state: updated.state }, "event state changed");
     revalidateEvent(slug);
     revalidatePath("/admin");

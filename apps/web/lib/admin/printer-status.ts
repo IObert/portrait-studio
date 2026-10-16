@@ -5,7 +5,7 @@ import type { SyncStore } from "../sync/store";
 /** The agent's heartbeat document (PROTOCOL.md §4). */
 const PrinterDocSchema = z.object({
   agentVersion: z.string(),
-  mode: z.enum(["cups", "simulate"]),
+  mode: z.enum(["cups", "windows", "simulate"]),
   queue: z.string(),
   status: z.string(),
   detail: z.string().default(""),

@@ -5,10 +5,10 @@
   "description": "Portrait Studio print agent for the booth computer (DNP DS620, 4x6)",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
-    "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --format=esm --minify --outfile=dist/agent.mjs --banner:js=\"// Portrait Studio print agent. Run: node agent.mjs --help\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\"",
+    "build": "esbuild src/main.ts --bundle --platform=node --target=node24 --format=esm --minify --outfile=dist/agent.mjs --banner:js=\"// Portrait Studio print agent. Run: node agent.mjs --help\nimport { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\"",
     "start": "node dist/agent.mjs",
     "printer:doctor": "pnpm build && node dist/agent.mjs doctor",
     "printer:fix": "pnpm build && node dist/agent.mjs doctor --fix",
@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9",
-    "@types/node": "^22",
+    "@types/node": "^24",
     "esbuild": "^0.28.2",
     "eslint": "^9",
     "typescript": "~5.9.3",

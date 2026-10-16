@@ -20,7 +20,7 @@ loadRootEnv();
 const { getEnv, requireEnv } = await import("../lib/env");
 const { getServices } = await import("../lib/services");
 const { EventRepo } = await import("../lib/events/repo");
-const { leadsCsv } = await import("../lib/admin/leads-csv");
+const { leadsCsv } = await import("../lib/leads/csv");
 const { createMemoryClient } = await import("../lib/twilio/memory");
 const { log } = await import("../lib/log");
 const { repoRoot } = await import("../lib/app-dir");

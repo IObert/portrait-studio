@@ -1,139 +1,161 @@
 # Portrait Studio
 
-Portrait Studio for events. Attendees scan a QR code, send a selfie over WhatsApp or SMS,
-and get back a stylized portrait, printed at the booth if the event has a printer.
+Portrait Studio for events. Attendees scan a QR code, send a selfie over WhatsApp or SMS, pick a style, and get back
+an AI portrait with a share link. If the event has a printer, they can print it at the booth.
 
-> This README grows with each milestone. The sections marked *(coming)* are filled in as those parts are built.
+How a selfie becomes a portrait, step by step: [docs/how-it-works.md](docs/how-it-works.md).
 
-## Repository layout
+## Web interfaces
+
+| Page | For | What it does |
+|---|---|---|
+| `/admin` | Staff (basic auth) | List of events with their state; **create** an event |
+| Event **Settings** | Staff | Configure the event: name, language, styles, backgrounds, frame, uploads, limits, QR number and message, leads, printing, LA Kings promotion. Go live / Break / End. Printer token and agent command. |
+| Event **Review** | Staff | Triage portraits: **Approve & send** or **Discard** the ones the AI check held back; **Remove** a delivered one, **Reprint** it (not counted against the attendee), or take it off the print queue |
+| Event **Stats** | Staff | Counters, delivery time, per style and background, print agent status |
+| `/booth/<event>` | Booth display (basic auth) | Full-screen QR code, call to action and live slideshow; break and ended screens |
+| `/s/<share id>` | Attendees | Their portrait: download, share, and print at the booth if prints are left |
+
+## How it fits together
+
+```text
+ attendee ──WhatsApp/SMS──▶ Twilio Messaging ──webhook──▶ web (Next.js) ──▶ Twilio Sync (all state)
+                                                              │                  ▲   │
+ booth screen ◀── Sync push (read-only token) ────────────────┘                  │   ▼
+                                                        worker ── OpenAI ── Azure Blob Storage (images, 7 days)
+ print agent (booth laptop) ◀── Sync push (scoped token) ──▶ DNP DS620
+```
 
 | Path | What it is |
 |---|---|
-| `apps/web` | Next.js app (App Router): admin, booth screen, share page, privacy page, webhooks, agent API |
-| `apps/web/worker` | Background worker (same codebase and image, separate process) |
-| `apps/print-agent` | Standalone Node.js print agent for the booth computer, see [`PROTOCOL.md`](apps/print-agent/PROTOCOL.md) |
-| `Dockerfile` | One image for web and worker |
-| `compose.yaml` | Local stack: web, worker, Azurite (Blob Storage emulator) |
+| `apps/web` | Next.js app: admin, booth screen, share page, Twilio webhook, print agent API |
+| `apps/web/worker` | Background worker: photo checks, generation, AI review, delivery (same image, separate process) |
+| `apps/print-agent` | Standalone Node.js print agent for the booth computer ([README](apps/print-agent/README.md), [protocol](apps/print-agent/PROTOCOL.md)) |
+| `docs/` | [Deployment](docs/deployment.md) and the [decisions log](docs/decisions.md) (changes to [SPEC.md](SPEC.md)) |
 
-## Data layer
+- **Twilio Sync** holds all state: events, sessions, jobs, print queue, stats. Hot objects are sharded (D-03).
+- **Conversation Memory** recognises returning attendees; **Verify** (email via SendGrid) confirms lead emails.
+- **Azure Blob Storage** holds selfies and portraits for 7 days. Locally, compose runs Azurite.
+- `/healthz` is liveness; `/healthz/ready` checks Sync and Blob Storage.
 
-- **Twilio Sync** holds all application state (SPEC §3.4). `apps/web/lib/sync/` has a typed store that validates every
-  item with zod, rejects payloads over 15 KiB, retries 429/5xx with backoff, and does read-modify-write with
-  `If-Match` revisions. Every Sync rate-limit response logs a `WARN` with `event: "sync_rate_limited"` and the
-  object name. Hot objects (`dedup`, per-event `stats`) are sharded across several maps
-  ([decision D-03](docs/decisions.md)).
-- **Azure Blob Storage** holds images (SPEC §7) in a private container. Outside readers get short-lived, read-only SAS URLs.
-  Locally, compose runs Azurite.
-- `/healthz` is liveness. `/healthz/ready` returns 503 unless Sync and Blob Storage are reachable.
+## Setup
 
-## Prerequisites
+### 1. Tools
 
-- Node.js 24 (see `.nvmrc`); the print agent supports Node 22+
-- pnpm 10 (`corepack enable`)
-- Docker or Podman with a Compose provider (for Podman on macOS: `brew install docker-compose`)
+- **Node.js 24** (`.nvmrc`; `nvm install`) and **pnpm 10** (`corepack enable`)
+- **Docker or Podman** with Compose, for the local stack (Podman on macOS: `brew install docker-compose`)
+- **ngrok** or another HTTPS tunnel, so Twilio can reach your laptop
+- For deploying: Azure CLI 2.60+ ([docs/deployment.md](docs/deployment.md))
 
-## Local development
+### 2. Configuration
 
 ```sh
 pnpm install
-pnpm dev                       # web app on http://localhost:3000
-pnpm --filter web worker       # worker in a second terminal
+cp .env.example .env.local
 ```
 
-All processes read one file, the repo-root `.env.local` (copy it from `.env.example`).
+Every process reads the repo-root `.env.local`. In development it wins over shell variables, so a `TWILIO_*` exported
+for another project is never used by mistake.
 
-With containers:
+| Variables | Where they come from |
+|---|---|
+| `PUBLIC_BASE_URL` | Your tunnel (`https://<name>.ngrok.app`) locally; printed by `./deploy.sh` on Azure |
+| `ADMIN_USER`, `ADMIN_PASSWORD` | You choose. Basic auth for `/admin` and `/booth` |
+| `MEDIA_SIGNING_SECRET`, `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Generate once: `openssl rand -base64 48` / `32` |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Console → Account info |
+| `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET` | Console → API keys & tokens → Create API key (Standard) |
+| `TWILIO_MESSAGING_SERVICE_SID` | The Messaging Service with the booth's SMS numbers and WhatsApp senders (see step 3) |
+| `TWILIO_SYNC_SERVICE_SID`, `TWILIO_VERIFY_SERVICE_SID`, `TWILIO_MEMORY_STORE_ID`, `TWILIO_TEMPLATE_DELIVERY_EN` / `_PT_BR` | Printed by `setup:twilio` (step 3) |
+| `OPENAI_API_KEY` | platform.openai.com → API keys. Models default to the values in `.env.example` |
+| `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER` | Empty locally (Azurite); `./deploy.sh` creates them on Azure |
+
+`.env.example` describes every variable, including optional ones (`LOG_LEVEL`, `WORKER_CONCURRENCY`, deploy overrides).
+
+### 3. Twilio resources
+
+In the Console (the API cannot do these):
+
+1. **Messaging Service** with the booth numbers. WhatsApp senders are registered through WhatsApp self sign-up.
+2. **SendGrid email integration** for Verify. After step 3 below, link it to the Verify Service (Verify → Services →
+   the service → Email) and set its dynamic template to [`verification-email.html`](apps/web/assets/email/verification-email.html)
+   (subject "Your Portrait Studio verification code").
+
+Then let the script do the rest:
 
 ```sh
-cp .env.example .env.local
-docker compose up --build      # or: podman compose up --build
-curl localhost:3000/healthz
+pnpm --filter web setup:twilio --dry-run    # shows what it would do
+pnpm --filter web setup:twilio --public-base-url https://<deployed host>
 ```
 
-## Admin
+It finds or creates the Sync Service, Verify Service and Memory store, points the Messaging Service at
+`/api/twilio/inbound`, and submits the WhatsApp delivery templates. It is safe to run again and never creates
+duplicates; it never changes a shared Memory store, and only takes inbound traffic from another app with
+`--take-over-inbound`. Copy the values it prints into `.env.local`. **Run it again after WhatsApp approves the
+templates** (minutes to 24 hours) to get their SIDs. Details: [docs/deployment.md](docs/deployment.md) §4, D-39.
 
-`/admin` (basic auth: `ADMIN_USER` / `ADMIN_PASSWORD`). Here you can:
-- create and edit events, with every SPEC §4.2 field
-- change state: Go live / Break / End / Back to draft
-- upload a frame and a background, with previews
-- generate or rotate the printer token, shown once together with the agent command
-- delete an event, after typing its code
+Use the deployed host for templates: WhatsApp fixes their URLs at approval, so templates made for a tunnel only work
+on that tunnel.
 
-The proxy enforces basic auth on `/admin` and `/booth`, and every Server Action checks it again.
+### 4. Run locally
 
-The e2e suite (`pnpm test:e2e`) runs with in-memory Sync and Blob (`PORTRAIT_E2E_FAKE_SYNC=1`), so CI needs no
-credentials. That mode is for tests only: it keeps state in process memory, which the real app never does.
+```sh
+ngrok http 3000 --url <name>.ngrok.app      # PUBLIC_BASE_URL must match
+pnpm dev                                    # web on http://localhost:3000
+pnpm --filter web worker                    # worker, second terminal
+```
 
-## Delivery and share page
+Or everything in containers: `docker compose up --build` (or `podman compose up --build`).
 
-Portraits are delivered over WhatsApp (image, caption and share link), MMS for US/CA/AU numbers, or SMS with only the link
-(SPEC §6.1). Twilio fetches images from signed, expiring `/m/<token>` links (`MEDIA_SIGNING_SECRET`). The public
-share page `/s/<shareId>` has Share (with the image file), Copy text and Download, plus OpenGraph tags; it expires
-after 7 days. Outside the WhatsApp 24-hour window, delivery uses the approved `delivery` template (created by
-`setup:twilio`). Until that template exists, those deliveries are skipped and logged.
+To test messages against your laptop, point the Messaging Service at the tunnel with
+`pnpm --filter web setup:twilio --take-over-inbound`, and back at the deployed app the same way afterwards. While it
+points at your laptop, the deployed app receives nothing.
 
-## Review and booth screen
+### 5. Deploy
 
-- `/admin/events/<code>/review`:
-  - **Flagged** tab: selfie, output and the AI's reason, with **Approve & send** (not counted toward quota) and **Discard**.
-  - **Delivered** tab: remove from the slideshow, remove from the print queue, reprint (not counted toward quota).
-- `/booth/<code>` (basic auth): a full-screen kiosk page.
-  - **live**: the CTA, the QR code for the event's lead channel (prefilled with the event code) and the consented slideshow.
-  - **break** and **ended** get their own screens.
-  - Updates are pushed by the Twilio Sync client SDK, using a read-only token scoped to that event. On a network drop
-    the screen keeps showing the last state.
-
-## Deployment
-
-Azure Container Apps via `./deploy.sh`. CI deploys automatically on every push to `main`, once the tests pass.
+`./deploy.sh` deploys web and worker to Azure Container Apps; CI deploys every push to `main`.
 See [docs/deployment.md](docs/deployment.md).
 
-## Decisions
+## Running an event
 
-Product decisions made after SPEC.md are recorded in [docs/decisions.md](docs/decisions.md).
+1. **Create the event** in `/admin`: name, language, styles, backgrounds, frame, limits, the QR number and message.
+2. **Booth screen:** open the event's **Booth** link full screen on the booth display.
+3. **Printer** (optional): turn printing on for the event, then set up the booth laptop (below).
+4. **Go live.** Use **Break** for pauses and **End** afterwards: attendees then get the ended reply.
+5. **Review** tab: keep an eye on held-back portraits during the event.
+6. Afterwards, export leads with `pnpm --filter web leads:export`; reset counters with `pnpm --filter web stats:reset --event <id>`.
+
+### Booth printer (DNP DS620, 4x6)
+
+On the booth laptop (macOS; Windows is beta, Linux not yet supported):
+
+1. **Install Node.js 24 or newer** from [nodejs.org](https://nodejs.org) (`node --version`).
+2. **Install the DNP DS620 driver** from DNP ([dnpphoto.com/downloads](https://www.dnpphoto.com/downloads), DS620 macOS driver), then connect
+   the printer by USB. macOS's automatic *Generic PostScript* driver prints the wrong size.
+3. **Copy the agent**: build it with `pnpm --filter @portrait-studio/print-agent build` and copy
+   `apps/print-agent/dist/agent.mjs` to the laptop. It is one file with nothing to install.
+4. **Run the printer doctor**, which checks and fixes the print queue: DS620 driver, paused queue, 4x6 glossy
+   defaults, and creates the queue if none exists.
+
+   ```sh
+   node agent.mjs doctor          # check only
+   node agent.mjs doctor --fix    # repair (prefix with sudo if it asks for admin rights)
+   ```
+
+5. **Start the agent** with the command from the event page (token and URL filled in). Try `--simulate` first, then
+   replace `--simulate --out ./prints` with `--printer <queue>` (the queue name doctor printed).
+
+The event page shows the printer's status. See the [print agent README](apps/print-agent/README.md) for flags and
+troubleshooting.
 
 ## Tests
 
 ```sh
-pnpm lint
-pnpm typecheck
-pnpm test                      # unit tests (vitest)
-pnpm test:e2e                  # Playwright (builds and starts the web app)
+pnpm lint && pnpm typecheck
+pnpm test                      # unit and integration (vitest)
+pnpm test:e2e                  # Playwright, with in-memory Sync and Blob (no credentials)
 ```
 
-Live tests are opt-in and use real services from `.env.local`:
-
-```sh
-RUN_LIVE_AI_TESTS=1 pnpm test      # OpenAI: full pipeline incl. uploaded background (~$0.20)
-RUN_LIVE_SYNC_TESTS=1 pnpm test    # Twilio Sync (throwaway map, deleted afterwards)
-RUN_LIVE_INBOUND_TESTS=1 pnpm --filter web exec vitest run tests/live/inbound.live.test.ts
-                                   # needs `pnpm dev` on :3200 and LIVE_TEST_PHONE in .env.local
-```
-
-RUN_LIVE_DELIVERY_TESTS=1 LIVE_SELFIE_MESSAGE_SID=MM… pnpm --filter web exec vitest run tests/live/delivery.live.test.ts
-                                   # full pipeline + delivery; needs ngrok on PUBLIC_BASE_URL, `pnpm dev` and `pnpm worker`
-
-`RUN_LIVE_INBOUND_TESTS` sends **real** WhatsApp or SMS messages to `LIVE_TEST_PHONE`, so it is local only and never runs
-in CI. On WhatsApp, message the booth number first to open the 24-hour window.
-
-## Print agent
-
-Prints at the booth on a DNP DS620 (4x6), or to a folder with `--simulate`. It is a single self-contained file that
-needs **Node.js 22+** and nothing installed. See [apps/print-agent/README.md](apps/print-agent/README.md) and the
-[protocol](apps/print-agent/PROTOCOL.md).
-
-```sh
-pnpm --filter print-agent build
-node apps/print-agent/dist/agent.mjs --url http://localhost:3000 --token <printer token> --simulate --out ./prints
-pnpm --filter @portrait-studio/print-agent printer:fix   # set up the DS620 queue: driver and print defaults
-```
-
-The admin UI shows this command with the values filled in when the printer token is generated. The agent claims print
-jobs from Twilio Sync with a scoped read/write token, reports a heartbeat and printer status every 15 s, and retries a
-failed print 3 times. The server counts prints and sends the promo.
-
-## Coming in later milestones
-
-Architecture overview, webhook tunnel setup,
-Twilio resource setup (`pnpm --filter web setup:twilio`), the full environment variable table,
-and the real-life test checklist.
+Live tests are opt-in and use the real services in `.env.local`: `RUN_LIVE_AI_TESTS=1` (OpenAI, about $0.20),
+`RUN_LIVE_SYNC_TESTS=1`, `RUN_LIVE_INBOUND_TESTS=1` and `RUN_LIVE_DELIVERY_TESTS=1`. The last two send **real**
+messages to `LIVE_TEST_PHONE`, need `pnpm dev` (and the worker, plus the tunnel, for delivery), and never run in CI;
+see the comment at the top of each file in `apps/web/tests/live/`.

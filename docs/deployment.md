@@ -106,9 +106,27 @@ Twilio inbound:    https://<fqdn>/api/twilio/inbound
 
 ## 4. Configure Twilio
 
-Run `pnpm --filter web setup:twilio`. It sets the Messaging Service inbound URL to
-`$PUBLIC_BASE_URL/api/twilio/inbound`. To do it by hand: Console → Messaging → Services → your service →
-Integration → "Send a webhook".
+Run `pnpm --filter web setup:twilio --public-base-url https://<fqdn>` (add `--dry-run` first to see what it would
+do). The flag is needed when `.env.local` points `PUBLIC_BASE_URL` at a tunnel. It is safe to run again: a
+resource named in `.env.local` is only checked, otherwise it is found by name and created only if none exists. It:
+
+1. finds or creates the Sync Service (ACLs on), the Verify Service (6-digit codes, no lookup) and the Memory store,
+   and checks the store's Contact traits and identifiers. A shared store is never changed, only checked.
+2. sets the Messaging Service inbound URL to `$PUBLIC_BASE_URL/api/twilio/inbound`. If another app's URL is set
+   there, it only does so with `--take-over-inbound` (that app then stops getting messages).
+3. creates the WhatsApp `delivery` templates (en, pt_BR) and submits them as UTILITY. They are named after the public
+   host, because WhatsApp fixes their URLs at approval. It only submits once `/samples/delivery.jpg` answers on that
+   host, so deploy first. **Run it again after approval** to get their SIDs.
+4. prints the environment values and what is still to do by hand.
+
+**What it cannot do** (Console only):
+- create the Messaging Service and register its senders (WhatsApp self sign-up); set `TWILIO_MESSAGING_SERVICE_SID`
+- link a SendGrid email integration to the Verify Service and set its template to
+  `apps/web/assets/email/verification-email.html` (D-10, D-20)
+- create the API key the script itself runs with
+- add traits or identifier rules to a shared Memory store
+- get WhatsApp's approval itself; it can take minutes to 24 hours. `PUBLIC_BASE_URL` must be live when it is
+  submitted, because WhatsApp fetches the sample image `/samples/delivery.jpg`.
 
 ## 5. Verify
 
@@ -133,7 +151,7 @@ Expected: `external: true` and `targetPort: 3000`.
 ### The pipeline
 
 1. **CI** (`.github/workflows/ci.yml`) runs on every pull request and every push to `main`: lint, typecheck and
-   unit tests; the print agent on Node 22; Playwright; and the Docker image build.
+   unit tests; the print agent bundle on Node 24; Playwright; and the Docker image build.
 2. On `main`, the Docker job builds from the registry's copy of the node image (`base/node`) and pushes the image
    it tested as `portrait-studio:<7-character commit>`. Pull requests have no Azure access and build from the
    public mirror.
@@ -229,7 +247,7 @@ only from this repo's `main` and `production`, through the federated credentials
 ```sh
 gh api -X PUT repos/$REPO/branches/main/protection --input - <<'JSON'
 { "required_status_checks": { "strict": false, "contexts": [
-    "Lint, typecheck, unit tests", "Print agent on Node 22", "Playwright", "Docker image builds"] },
+    "Lint, typecheck, unit tests", "Print agent bundle", "Playwright", "Docker image builds"] },
   "enforce_admins": false, "required_pull_request_reviews": null, "restrictions": null,
   "allow_force_pushes": false, "allow_deletions": false }
 JSON

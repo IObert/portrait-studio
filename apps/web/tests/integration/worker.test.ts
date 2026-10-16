@@ -98,7 +98,7 @@ describe("worker pipeline (SPEC §9)", () => {
     await queue(fake);
     expect(await workOnce(deps)).toBe(1);
     const job = await getJob(fake);
-    expect(job.aiReview).toEqual({ result: "pass", reason: "" });
+    expect(job.aiReview).toEqual({ reason: "" });
     expect(job.subjects).toBe(1);
     expect(blob.blobs.has(job.outputBlobs!.printPng)).toBe(true);
     expect(blob.blobs.has(job.outputBlobs!.deliveryJpeg)).toBe(true);
@@ -205,7 +205,7 @@ describe("worker pipeline (SPEC §9)", () => {
     await queue(fake, { background: "uploaded" });
     await workOnce(deps);
     expect(o.client.images.edit).toHaveBeenCalledWith(expect.objectContaining({ background: "transparent" }), expect.anything());
-    expect((await getJob(fake)).aiReview?.result).toBe("pass");
+    expect((await getJob(fake)).aiReview).toEqual({ reason: "" });
   });
 });
 

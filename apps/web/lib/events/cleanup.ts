@@ -8,7 +8,7 @@ const BindingSchema = z.object({ eventSlug: z.string(), boundAt: z.string() });
 const LeadSchema = z.object({ memoryProfileId: z.string().nullable() }).passthrough();
 const ProfileLinksSchema = z.object({ events: z.array(z.string()) });
 
-/** Removes every binding that points at the event (SPEC §4.1 ended, §4.4 deleted). Returns the count. */
+/** Removes every binding that points at the event (SPEC §4.4 deleted). Returns the count. */
 export async function removeBindings(sync: SyncStore, slug: string): Promise<number> {
   const bindings = sync.map(Global.bindings, BindingSchema);
   const stale: string[] = [];

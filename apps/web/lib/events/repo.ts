@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { SyncStore } from "../sync/store";
 import { SKIP } from "../sync/store";
 import { Global } from "../sync/names";
@@ -78,7 +77,6 @@ export class EventRepo {
       uploads: { frame: null, background: null },
       printerTokenHash: null,
       printerToken: null,
-      printerTokenCreatedAt: null,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -120,12 +118,10 @@ export class EventRepo {
   }
 
   setPrinterToken(slug: string, token: string, hash: string) {
-    return this.mutate(slug, (e) => ({ ...e, printerToken: token, printerTokenHash: hash, printerTokenCreatedAt: this.now().toISOString() }));
+    return this.mutate(slug, (e) => ({ ...e, printerToken: token, printerTokenHash: hash }));
   }
 
   remove(slug: string) {
     return this.map.delete(slug);
   }
 }
-
-export const StateChangeSchema = z.enum(["live", "break", "ended", "draft"]);

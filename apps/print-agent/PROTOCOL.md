@@ -9,7 +9,7 @@ and both have contract tests against the examples here (`docs/decisions.md`, Q7)
 node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue>] [--simulate --out ./prints]
 ```
 
-The printer token looks like `<event id>.XXXX-XXXX-XXXX-XXXX` (docs/decisions.md D-33). The admin UI keeps showing it, together with this command. Tokens from before D-33 (`pst_<id>_<43 chars>`) still work until rotated.
+The printer token looks like `<event id>.XXXX-XXXX-XXXX-XXXX` (docs/decisions.md D-33). The admin UI keeps showing it, together with this command.
 
 ## 2. Token exchange: `POST /api/agent/token`
 
@@ -98,7 +98,7 @@ The agent writes this every 15 s (SPEC §11.2). The admin UI shows it.
 }
 ```
 
-`mode` is `cups` or `simulate`. `status` is one of:
+`mode` is `cups`, `windows` (Windows print spooler, beta) or `simulate`. `status` is one of:
 
 | `status` | Meaning |
 |---|---|

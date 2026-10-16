@@ -13,8 +13,6 @@ export interface ConsentInput {
   text: string;
   /** Quick-reply or list selection, if any. */
   selection?: string;
-  /** True when this message carried a usable selfie. */
-  hasSelfie: boolean;
 }
 
 /** Side effects the caller must perform, in order, after the state is stored. */

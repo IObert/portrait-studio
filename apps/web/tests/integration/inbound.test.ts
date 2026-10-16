@@ -180,7 +180,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect((await w.say(SMS, "Ana Souza"))[0]).toContain("Thanks, Ana!");
     const askCode = await w.say(SMS, "ana@example.com");
     expect(askCode[0]).toContain("6-digit code to ana@example.com");
-    expect(w.verifier.send).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@example.com", locale: "en", substitutions: { event_name: "Event ev" } }));
+    expect(w.verifier.send).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@example.com", locale: "en", substitutions: { event_name: "Event ev", show_snippet: "true" } }));
 
     expect((await w.say(SMS, "111111"))[0]).toContain("didn't work");
     w.verifier.check.mockResolvedValueOnce("approved");
@@ -245,6 +245,15 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await w.say(WA, "hi")).toEqual([catalogs.en.routing.onBreak]);
     await w.events.setState("ev", "ended");
     expect(await w.say(WA, "hi")).toEqual([catalogs.en.routing.ended]);
+  });
+
+  it("an ended event keeps its attendees: any message gets the ended reply until another event is live (SPEC §4.1, D-13)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(WA, "#ev");
+    await w.events.setState("ev", "ended");
+    expect(await w.say(WA, "what now?")).toEqual([catalogs.en.routing.ended]);
+    await liveEvent(w, "next", { leadCollection: false });
+    expect((await w.say(WA, "hi"))[0]).toContain("Welcome to Portrait Studio");
   });
 
   it("replies in the event language (pt_BR)", async () => {

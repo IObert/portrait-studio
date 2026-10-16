@@ -14,9 +14,8 @@ export interface Sender {
 /**
  * QR choices (SPEC §4.2, D-37): every number in the Messaging Service
  * (TWILIO_MESSAGING_SERVICE_SID), once per channel it can be messaged on.
- * WhatsApp needs an ONLINE WhatsApp sender for the number (WhatsApp senders
- * are not linked to services in the Senders API, so the service's number
- * pool is the source of truth; D-10). RCS has no QR link of its own: it is an
+ * WhatsApp needs an ONLINE WhatsApp sender for the number, either a pool number
+ * or a WhatsApp channel sender attached to the service (D-10). RCS has no QR link of its own: it is an
  * agent, not a number, so it is shown as a badge on the SMS entries.
  */
 export async function listSenders(cfg: { accountSid: string; apiKeySid: string; apiKeySecret: string; messagingServiceSid: string }): Promise<Sender[]> {
@@ -34,10 +33,17 @@ export async function listSenders(cfg: { accountSid: string; apiKeySid: string; 
   ]);
   const onlineWa = new Set(wa.senders.filter((s) => s.status === "ONLINE").map((s) => s.sender_id.replace(/^whatsapp:/, "")));
   const rcs = pool.senders.some((s) => /rcs/i.test(s.sender_type) || s.sender.startsWith("rcs:"));
-  const out: Sender[] = [];
-  for (const n of [...numbers].sort((a, b) => a.phoneNumber.localeCompare(b.phoneNumber))) {
-    if (onlineWa.has(n.phoneNumber)) out.push({ e164: n.phoneNumber, channel: "whatsapp" });
-    if ((n.capabilities ?? []).map(String).includes("SMS")) out.push({ e164: n.phoneNumber, channel: "sms", ...(rcs ? { rcs: true } : {}) });
+  // A WhatsApp sender added to the service is a channel sender, not a pool number.
+  const poolWa = pool.senders.map((s) => s.sender).filter((s) => s.startsWith("whatsapp:")).map((s) => s.replace(/^whatsapp:/, ""));
+  const byNumber = new Map<string, Sender[]>();
+  for (const n of numbers) {
+    const list: Sender[] = [];
+    if ((n.capabilities ?? []).map(String).includes("SMS")) list.push({ e164: n.phoneNumber, channel: "sms", ...(rcs ? { rcs: true } : {}) });
+    byNumber.set(n.phoneNumber, list);
   }
-  return out;
+  for (const e164 of new Set([...numbers.map((n) => n.phoneNumber), ...poolWa])) {
+    if (!onlineWa.has(e164) || !(byNumber.has(e164) || poolWa.includes(e164))) continue;
+    byNumber.set(e164, [{ e164, channel: "whatsapp" }, ...(byNumber.get(e164) ?? [])]);
+  }
+  return [...byNumber.keys()].sort().flatMap((k) => byNumber.get(k)!);
 }

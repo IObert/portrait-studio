@@ -10,12 +10,13 @@ const run = promisify(execFile);
 export type JobOutcome = { kind: "done" } | { kind: "failed"; reason: string } | { kind: "waiting"; detail: string };
 
 /**
- * One way to put a PNG on paper: real CUPS or the simulator (SPEC §11.2).
+ * One way to put a PNG on paper: real CUPS, the Windows spooler (windows.ts) or
+ * the simulator (SPEC §11.2).
  * A print is submitted exactly once; the agent then polls `check` until it is
  * done or failed, and `cancel`s it before any retry (no duplicate copies).
  */
 export interface Printer {
-  readonly mode: "cups" | "simulate";
+  readonly mode: "cups" | "windows" | "simulate";
   readonly queue: string;
   /** Folder that keeps a copy of every print. */
   readonly outDir: string;
@@ -51,7 +52,13 @@ export async function savePrint(outDir: string, png: Buffer, jobId: string, now 
 /** States in which the printer cannot take a job now. Prints stay queued. */
 export const NOT_READY: readonly PrinterStatus[] = ["offline", "paused", "out_of_paper", "error"];
 
-/** CUPS via `lp` / `ipptool` / `cancel`, called with execFile (never a shell). */
+/**
+ * CUPS via `lp` / `ipptool` / `cancel`, called with execFile (never a shell).
+ *
+ * TODO(linux): `ipptool` is a separate package on Debian/Ubuntu (`cups-ipp-utils`).
+ * Without it every `check` reports "printer status unavailable" and jobs never
+ * complete. The doctor should check for it.
+ */
 export function cupsPrinter(queue: string, outDir: string): Printer {
   // Validate once at start-up (throws on an unsafe name).
   lpArgs(queue, "/dev/null");

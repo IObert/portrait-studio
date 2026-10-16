@@ -13,9 +13,9 @@ import { buildPrompt } from "../prompts/build";
 import { GenerationRefused, generatePortrait, type RefImage } from "./generate";
 import { analyzeScene, detectFace, moderate, review, type VisionConfig } from "./vision";
 
-/** How a job ended (SPEC §9.1). `ready` = passed review; delivery is milestone g. */
+/** How a job ended (SPEC §9.1). `ready` = passed review and goes to delivery. */
 export type PipelineOutcome =
-  | { kind: "ready"; outputBlobs: { printPng: string; deliveryJpeg: string }; subjects: number; prompt: string }
+  | { kind: "ready"; outputBlobs: { printPng: string; deliveryJpeg: string }; subjects: number }
   | { kind: "flagged"; outputBlobs: { printPng: string; deliveryJpeg: string }; subjects: number; reason: string }
   | { kind: "rejected"; reason: "moderation" | "no_face" | "too_many_people" | "generation_refused" };
 
@@ -123,6 +123,6 @@ export async function runPipeline(deps: PipelineDeps, event: PortraitEvent, job:
   // 7. AI review of the final (framed) output, with the selfie and the generation prompt.
   const verdict = await review(deps.openai, deps.vision, jpeg, deliveryJpeg, prompt);
   return verdict.pass
-    ? { kind: "ready", outputBlobs, subjects: scene.subjects, prompt }
+    ? { kind: "ready", outputBlobs, subjects: scene.subjects }
     : { kind: "flagged", outputBlobs, subjects: scene.subjects, reason: verdict.reason };
 }

@@ -1,6 +1,5 @@
 import type { Catalog } from "./types";
 
-// TODO(review): pt_BR copy needs a native-speaker review (docs/decisions.md).
 export const pt_BR = {
   styles: {
     cartoon: { name: "Desenho 3D", aliases: ["pixar", "3d", "cartoon", "desenho"] },
@@ -19,8 +18,6 @@ export const pt_BR = {
     "crypto-arena": { name: "Crypto.com Arena", aliases: ["arena", "crypto", "crypto.com"] },
   },
 
-  qrPrefill: ({ eventName }) => `Oi! Estou no ${eventName} e quero experimentar o Portrait Studio 🎨`,
-
   routing: {
     noActiveEvent: "Oi! O Portrait Studio não está funcionando agora. Volte durante o evento!",
     pickEvent: "Oi! Em qual evento você está?",
@@ -30,6 +27,8 @@ export const pt_BR = {
     onBreak: "Já voltamos! O Portrait Studio está fazendo uma pequena pausa.",
     ended: "Este evento terminou. Obrigado pela visita!",
   },
+
+  booth: { orWhatsapp: "Ou fale com a gente no WhatsApp", orSms: "Ou envie um SMS para" },
 
   consent: {
     agreeButton: "Eu concordo",

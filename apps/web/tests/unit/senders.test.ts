@@ -28,6 +28,20 @@ describe("QR senders (D-37)", () => {
     ]);
   });
 
+  it("a WhatsApp sender attached to the service lists even when its number is not in the pool", async () => {
+    phoneNumbers.mockResolvedValue([{ phoneNumber: "+13203780782", capabilities: ["SMS"] }]);
+    stubFetch(
+      [{ sender_id: "whatsapp:+13203780782", status: "ONLINE" }, { sender_id: "whatsapp:+14155550100", status: "ONLINE" }, { sender_id: "whatsapp:+14155550199", status: "ONLINE" }],
+      [{ sender: "whatsapp:+14155550100", sender_type: "WhatsApp" }],
+    );
+    const { listSenders } = await import("@/lib/twilio/senders");
+    expect(await listSenders(cfg)).toEqual([
+      { e164: "+13203780782", channel: "whatsapp" },
+      { e164: "+13203780782", channel: "sms" },
+      { e164: "+14155550100", channel: "whatsapp" },
+    ]);
+  });
+
   it("an RCS sender in the service marks the SMS entries", async () => {
     phoneNumbers.mockResolvedValue([{ phoneNumber: "+13203780782", capabilities: ["SMS"] }]);
     stubFetch([], [{ sender: "rcs:brand_agent", sender_type: "RCS" }]);

@@ -21,6 +21,8 @@ export const BoothDocSchema = z.object({
   cta: z.object({ headline: z.string(), steps: z.array(z.string()) }),
   qrSvg: z.string(),
   number: z.string(),
+  /** "Or message us on WhatsApp": the line above the number, in the event language. Absent in older documents. */
+  numberLabel: z.string().optional(),
   messages: z.object({ onBreak: z.string(), ended: z.string() }),
 });
 export type BoothDoc = z.infer<typeof BoothDocSchema>;
@@ -52,6 +54,7 @@ export async function boothDoc(event: PortraitEvent): Promise<BoothDoc | null> {
     cta: { headline: event.config.ctaText.headline, steps: event.config.ctaText.steps },
     qrSvg: await QRCode.toString(qrTarget(event), { type: "svg", margin: 1, errorCorrectionLevel: "M" }),
     number: event.config.qrSender,
+    numberLabel: event.config.leadChannel === "whatsapp" ? c.booth.orWhatsapp : c.booth.orSms,
     messages: { onBreak: c.routing.onBreak, ended: c.routing.ended },
   };
 }
