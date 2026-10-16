@@ -43,7 +43,7 @@ export const JobSchema = z.object({
   attempts: z.number().int().min(0).default(0),
   leaseUntil: z.iso.datetime().nullable().default(null),
   error: z.string().max(500).nullable().default(null),
-  aiReview: z.object({ result: z.enum(["pass", "fail"]), reason: z.string().max(1000) }).nullable().default(null),
+  aiReview: z.object({ reason: z.string().max(1000) }).nullable().default(null),
   /** ISO timestamp per state reached (SPEC §9.1). */
   timestamps: z.partialRecord(z.enum(JOB_STATES), z.iso.datetime()),
 });

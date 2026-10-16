@@ -9,7 +9,7 @@ const body = html.replace(/<!--[\s\S]*?-->/g, "");
 const vars = new Set([...body.matchAll(/\{\{\s*(?:#if\s+)?([a-z_]+)\s*\}\}/g)].map((m) => m[1]!));
 const event = (over: Partial<EventConfigInput>): PortraitEvent => ({
   slug: "ev", state: "live", config: { ...defaultConfig("SIGNAL London", "+13203780782"), ...over },
-  uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null, printerTokenCreatedAt: null, createdAt: "", updatedAt: "",
+  uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null, createdAt: "", updatedAt: "",
 });
 
 describe("verification email (D-20)", () => {

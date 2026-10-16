@@ -16,14 +16,14 @@ export type Route =
 
 /**
  * Finds the event a message names (SPEC §5.2): its full name, as whole
- * words, case- and accent-insensitive. No hashtag needed. The internal ID is
+ * words, case- and accent-insensitive. The internal ID is
  * never matched: attendees never see it (D-35). The longest name wins (so
  * "SIGNAL London" beats "London").
  */
 export function findEvent(text: string, events: readonly PortraitEvent[]): PortraitEvent | undefined {
-  const hay = ` ${normalize(text).replace(/#/g, " ").replace(/\s+/g, " ")} `;
+  const hay = ` ${normalize(text)} `;
   const has = (needle: string) => {
-    const n = normalize(needle).replace(/#/g, " ").replace(/\s+/g, " ").trim();
+    const n = normalize(needle);
     return n.length >= 2 && hay.includes(` ${n} `);
   };
   return events.filter((e) => has(e.config.name)).sort((a, b) => b.config.name.length - a.config.name.length)[0];

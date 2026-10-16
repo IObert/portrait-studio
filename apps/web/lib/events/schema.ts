@@ -108,12 +108,8 @@ export const EventSchema = z.object({
   }),
   /** SHA-256 of the printer token; the agent API compares against this only (SPEC §4.2). */
   printerTokenHash: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
-  /**
-   * The token itself, so the admin page can keep showing it (user decision, D-33).
-   * Null for tokens issued before D-33: those were shown once and can only be rotated.
-   */
+  /** The token itself, so the admin page can keep showing it (user decision, D-33). */
   printerToken: z.string().max(80).nullable().default(null),
-  printerTokenCreatedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

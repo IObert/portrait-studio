@@ -19,8 +19,6 @@ export const pt_BR = {
     "crypto-arena": { name: "Crypto.com Arena", aliases: ["arena", "crypto", "crypto.com"] },
   },
 
-  qrPrefill: ({ eventName }) => `Oi! Estou no ${eventName} e quero experimentar o Portrait Studio 🎨`,
-
   routing: {
     noActiveEvent: "Oi! O Portrait Studio não está funcionando agora. Volte durante o evento!",
     pickEvent: "Oi! Em qual evento você está?",

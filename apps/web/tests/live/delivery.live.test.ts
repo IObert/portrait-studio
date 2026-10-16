@@ -42,10 +42,12 @@ describe.skipIf(!live)("delivery (live, local only)", () => {
     }
 
     const started = new Date(Date.now() - 5_000);
-    await events.create(slug, { ...defaultConfig("Portrait Studio live test", BOOTH), leadCollection: false, styles: ["cartoon"], backgrounds: ["gradient"], frame: "twilio-tab-bottom" });
+    // Routing matches the event name only (D-35), so a unique name keeps this run off other live events.
+    const name = `Portrait Studio live test ${slug}`;
+    await events.create(slug, { ...defaultConfig(name, BOOTH), leadCollection: false, styles: ["cartoon"], backgrounds: ["gradient"], frame: "twilio-tab-bottom" });
     await events.setState(slug, "live");
     try {
-      await send(`#${slug}`);
+      await send(`Hi! I'm at ${name}`);
       await send("", { ButtonPayload: "ps:agree" });
       await send("", { NumMedia: "1", MediaUrl0: mediaUrl, MediaContentType0: media[0]!.contentType });
 

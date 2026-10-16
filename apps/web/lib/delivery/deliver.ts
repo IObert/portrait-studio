@@ -24,7 +24,7 @@ export interface DeliveryDeps {
   /** Public URL of the delivery JPEG for Twilio (signed /m/<token> link). */
   mediaUrl: (blobPath: string, ttlSeconds: number) => string;
   publicBaseUrl: string;
-  /** Approved `delivery` template SIDs (SPEC §6.3); absent until setup:twilio has run. */
+  /** Approved `delivery` template SIDs (SPEC §6.3); absent until they are configured. */
   templates: Partial<Record<"en" | "pt_BR", string>>;
   log: { info(o: object, m: string): void; warn(o: object, m: string): void };
   now?: () => Date;
@@ -150,7 +150,7 @@ async function sendTemplate(
 ): Promise<"sent" | "skipped"> {
   const sid = deps.templates[locale];
   if (!sid) {
-    // Not set up yet (milestone k). The portrait stays on the share page.
+    // No delivery template configured. The portrait stays on the share page.
     deps.log.warn({ event: "send_skipped", reason: "no-delivery-template", to: mask(address), slug: event.slug }, "outside 24h window and no delivery template configured");
     return "skipped";
   }

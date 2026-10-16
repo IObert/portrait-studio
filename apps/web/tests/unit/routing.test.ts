@@ -9,7 +9,6 @@ const ev = (slug: string, state: EventState, name = slug): PortraitEvent => ({
   config: { ...defaultConfig(name, "+13203780782") },
   uploads: { frame: null, background: null },
   printerTokenHash: null, printerToken: null,
-  printerTokenCreatedAt: null,
   createdAt: "2026-10-01T00:00:00.000Z",
   updatedAt: "2026-10-01T00:00:00.000Z",
 });

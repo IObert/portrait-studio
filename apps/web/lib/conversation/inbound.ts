@@ -220,7 +220,7 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
 
   // Side effects (Verify, Memory) need answers before the state can be decided, so
   // they run first and their results feed the pure step functions.
-  const consentInput = { channel: msg.from.channel, text: msg.text, selection: msg.selection, hasSelfie: !!selfieBlob };
+  const consentInput = { channel: msg.from.channel, text: msg.text, selection: msg.selection };
   const outcome = await decide(deps, current, event, c, consentInput, privacyUrl, msg, selfieBlob, unusableMedia, images.length);
 
   // Write with If-Match against the revision we read. If another message for this
@@ -253,7 +253,7 @@ async function decide(
   session: Session,
   event: PortraitEvent,
   c: Catalog,
-  input: { channel: Address["channel"]; text: string; selection?: string; hasSelfie: boolean },
+  input: { channel: Address["channel"]; text: string; selection?: string },
   privacyUrl: string,
   msg: InboundMessage,
   selfieBlob: string | undefined,

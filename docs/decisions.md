@@ -255,7 +255,7 @@ when it was switched on.*
 - The session keeps up to 10 delivered job ids (`delivered`, a WhatsApp list's limit), so the menu reads only
   those jobs rather than scanning the jobs map (SPEC §3.4 hot spot).
 - The "send us a selfie" fallback adds "Or reply PRINT…" when the person has prints left and a portrait.
-- Milestone j's AI chat replies (§5.10) will replace the fallback; this keyword handling stays in front of it.
+- The AI chat replies (§5.10, D-29) replaced the fallback; this keyword handling stays in front of them.
 
 ### D-29 Chat replies (SPEC §5.10)
 *2026-10-15.*
@@ -309,8 +309,8 @@ session and starts a fresh one with a new token. A print at the printer keeps it
 - The token is stored on the event (`printerToken`) next to its hash, and the event page always shows it with the
   server URL and the full agent command, each with a copy button. Anyone who can read the event can read the token;
   that is the same audience that can already change the event.
-- Tokens from before D-33 (`pst_<id>_<43 chars>`) still verify until rotated; they cannot be shown, so the page offers
-  to rotate them.
+- Tokens from before D-33 (`pst_<id>_<43 chars>`) no longer verify (2026-10-16). An event that still has one shows
+  **Generate token**, and its agent must be restarted with the new token.
 
 ### D-34 Share caption and promo defaults, with an `{event}` placeholder (user decision)
 *2026-10-15.*
@@ -365,21 +365,24 @@ lock), for one brand.*
 
 ## Open TODOs after the last milestone
 
-- **DS620 print options on real hardware** (SPEC §11.2): `PageSize=dnp6x4`, `Cutter=Normal`, `Finish=Glossy` and
-  `Resolution=300x300dpi` are confirmed against the DS620's `lpoptions` (2026-10-14), and a print came out. Still
-  to check on paper: that the borderless scaling flags leave no white edge and nothing is cropped.
+- **`setup:twilio` script** (SPEC §15): never built. `docs/deployment.md` step 4, `README.md` and SPEC.md
+  still point to it. Either write it (Sync and Verify services, Memory store, delivery templates, Messaging Service
+  inbound URL; safe to run again) or replace those references with the manual Console steps.
 
-- **Fewer settings per page in the admin** (user, 2026-10-13): the event form shows every §4.2 field at once. Split it
-  into smaller sections or pages.
+- **README is out of date**: the intro still says sections are marked *(coming)*, and "Coming in later milestones"
+  lists an architecture overview, webhook tunnel setup, Twilio resource setup, an env var table and a real-life test
+  checklist that were never written. Write them or drop the section.
 
 - **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
-  with `git grep -n "TODO(profile-deletion)"`. The deletion-request tool (milestone j) will add more tags.
+  with `git grep -n "TODO(profile-deletion)"`.
 
-- **Email templates for all activations** (requested 2026-10-10): update the SendGrid verification templates used by
-  every activation's Verify email integration (Portrait Studio, Mixologist, Wheel of Twilio, …). For Portrait Studio,
-  the template renders the `{{consent_text}}` substitution (privacy notice and consent, SPEC §5.4); confirmed by the
-  user, 2026-10-12. The other activations' templates still need the same update.
+### Closed
+
+- **DS620 borderless prints** (2026-10-16): confirmed on paper, no white edge and nothing cropped.
+- **Fewer settings per page in the admin** (2026-10-16): not needed; the event form stays one page.
+- **Email templates for all activations** (2026-10-16): the SendGrid verification templates are updated. Portrait
+  Studio's uses `event_name`, `promo_code` and `show_snippet` only (D-20).
 
 ## Answers to SPEC §17
 

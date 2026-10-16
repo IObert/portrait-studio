@@ -10,8 +10,7 @@ import { SlugSchema } from "../sync/names";
  * Only guessable online, one request at a time, which 80 bits makes hopeless.
  *
  * Typing is forgiving: case, spaces, missing dashes and the look-alikes O→0, I/L→1
- * are normalised before the hash is compared. Tokens from before D-33
- * (`pst_<slug>_<43 chars base64url>`) still verify until they are rotated.
+ * are normalised before the hash is compared.
  */
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const GROUPS = 4;
@@ -29,12 +28,9 @@ export function hashToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
-const LEGACY = /^pst_([a-z0-9-]{1,40})_([A-Za-z0-9_-]{43})$/;
-
 /** The canonical form of a typed token, or null if it cannot be one. */
 export function normalizeToken(input: string): string | null {
   const raw = input.trim();
-  if (LEGACY.test(raw)) return raw;
   const dot = raw.lastIndexOf(".");
   if (dot < 1) return null;
   const slug = raw.slice(0, dot).toLowerCase();
@@ -53,8 +49,7 @@ export function normalizeToken(input: string): string | null {
 export function slugFromToken(token: string): string | null {
   const canonical = normalizeToken(token);
   if (!canonical) return null;
-  const legacy = LEGACY.exec(canonical);
-  const slug = legacy ? legacy[1]! : canonical.slice(0, canonical.lastIndexOf("."));
+  const slug = canonical.slice(0, canonical.lastIndexOf("."));
   return SlugSchema.safeParse(slug).success ? slug : null;
 }
 

@@ -3,7 +3,7 @@ import { checkBasicAuth } from "./lib/auth/basic";
 
 /**
  * Basic auth for the admin UI and booth screen (SPEC §10.1). Everything else
- * (webhooks, share and privacy pages, agent API, health) is public and has its
+ * (webhooks, share page, agent API, health) is public and has its
  * own checks. Fails closed if ADMIN_USER / ADMIN_PASSWORD are not set.
  */
 export async function proxy(request: NextRequest) {

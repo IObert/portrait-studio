@@ -13,7 +13,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "spike:transparent": "node --conditions=react-server --import tsx scripts/spike-transparent.ts",
     "stats:reset": "node --conditions=react-server --import tsx scripts/stats-reset.ts",
     "leads:export": "node --conditions=react-server --import tsx scripts/leads-export.ts",
     "previews:styles": "node --conditions=react-server --import tsx scripts/style-previews.ts"
@@ -42,7 +41,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
-    "handlebars": "^4.7.10",
     "jsqr": "^1.4.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",

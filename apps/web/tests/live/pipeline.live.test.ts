@@ -34,7 +34,6 @@ describe.skipIf(!live)("pipeline (live AI)", () => {
       config: { ...defaultConfig("Live pipeline", "+13203780782"), backgrounds: ["uploaded"], uploadedBackgroundName: "Stage", frame: "twilio-tab-bottom" },
       uploads: { frame: null, background: { blobPath: "assets/events/ev/background.jpg", contentType: "image/jpeg", width: 1024, height: 1536, uploadedAt: new Date().toISOString() } },
       printerTokenHash: null, printerToken: null,
-      printerTokenCreatedAt: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -77,7 +76,6 @@ describe.skipIf(!live)("pipeline (live AI)", () => {
       config: { ...defaultConfig("Kings Night", "+13203780782"), laKings: true, backgrounds: ["crypto-arena", "ice-rink"], frame: "twilio-tab-bottom-left" },
       uploads: { frame: null, background: null },
       printerTokenHash: null, printerToken: null,
-      printerTokenCreatedAt: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

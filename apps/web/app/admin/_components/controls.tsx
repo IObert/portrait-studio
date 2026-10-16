@@ -169,7 +169,7 @@ function Credential({ label, value, testId, mono = true }: { label: string; valu
  * The print agent's credentials (D-33): one short token per event, kept visible here,
  * because the agent runs on a laptop next to the printer and someone types it in there.
  */
-export function PrinterToken({ slug, appUrl, token: saved, hasToken }: { slug: string; appUrl: string; token: string | null; hasToken: boolean }) {
+export function PrinterToken({ slug, appUrl, token: saved }: { slug: string; appUrl: string; token: string | null }) {
   const [state, action, pending] = useActionState(rotatePrinterTokenAction, {});
   const token = state.token ?? saved;
   // Simulator by default: it works with no printer attached (SPEC §11.2).
@@ -178,13 +178,13 @@ export function PrinterToken({ slug, appUrl, token: saved, hasToken }: { slug: s
     <button
       type="button"
       disabled={pending}
-      className={`${btn.base} ${token || hasToken ? btn.quiet : btn.secondary}`}
+      className={`${btn.base} ${token ? btn.quiet : btn.secondary}`}
       onClick={() => {
-        if ((token || hasToken) && !confirm("Rotate the printer token? The running print agent stops until it is restarted with the new token.")) return;
+        if (token && !confirm("Rotate the printer token? The running print agent stops until it is restarted with the new token.")) return;
         send(action, { slug });
       }}
     >
-      {pending ? "Generating…" : token || hasToken ? "Rotate token" : "Generate token"}
+      {pending ? "Generating…" : token ? "Rotate token" : "Generate token"}
     </button>
   );
   return (
@@ -222,11 +222,7 @@ export function PrinterToken({ slug, appUrl, token: saved, hasToken }: { slug: s
       ) : (
         <div className="flex flex-wrap items-center gap-3">
           {rotate}
-          <span className="text-sm text-slate">
-            {hasToken
-              ? "This event has an older token that can't be shown again. Rotate it to get a short one you can read here."
-              : "No token yet. The print agent needs one to connect."}
-          </span>
+          <span className="text-sm text-slate">No token yet. The print agent needs one to connect.</span>
         </div>
       )}
       <Status state={{ ...state, message: state.token ? undefined : state.message }} />

@@ -32,7 +32,6 @@ async function setup(o: { cfg?: Partial<EventConfigInput>; session?: Partial<Ses
     config: { ...defaultConfig("Ev", "+13203780782"), ...o.cfg },
     uploads: { frame: null, background: null },
     printerTokenHash: null, printerToken: null,
-    printerTokenCreatedAt: null,
     createdAt: NOW.toISOString(),
     updatedAt: NOW.toISOString(),
   };

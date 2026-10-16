@@ -164,7 +164,7 @@ export function handleSelfieFlow(session: Session, event: PortraitEvent, c: Cata
     return choose(session, event, c, { background });
   }
 
-  // Ready and no image: free text, handled by the chat reply in milestone j (SPEC §5.10).
+  // Ready and no image: free text, handled by the chat reply (SPEC §5.10).
   return { session, messages: [], effects: [], handled: false };
 }
 

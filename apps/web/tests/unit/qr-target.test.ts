@@ -9,7 +9,6 @@ const event = (over: Partial<PortraitEvent["config"]>): PortraitEvent => ({
   uploads: { frame: null, background: null },
   printerTokenHash: null,
   printerToken: null,
-  printerTokenCreatedAt: null,
   createdAt: "2026-10-15T00:00:00.000Z",
   updatedAt: "2026-10-15T00:00:00.000Z",
 });

@@ -34,7 +34,7 @@ async function seedBooth(): Promise<void> {
       jobId: id, address: "whatsapp:+10000000001", channel: "whatsapp", style: "pop-art", background: "solid-white",
       selfieBlob: `events/${slug}/selfies/${id}.jpg`, outputBlobs: { printPng: `events/${slug}/generated/${id}.print.png`, deliveryJpeg: `events/${slug}/generated/${id}.jpg` },
       shareId: `${id}_share_000000000000`, subjects: 1, state,
-      aiReview: state === "flagged" ? { result: "fail", reason: "2. Subject count: an extra person was added" } : { result: "pass", reason: "" },
+      aiReview: state === "flagged" ? { reason: "2. Subject count: an extra person was added" } : { reason: "" },
       timestamps: { [state]: new Date().toISOString() },
     });
   for (const [id, state, hex] of [["e2e_slide_01", "delivered", "#0ea5e9"], ["e2e_flag_01", "flagged", "#f59e0b"]] as const) {

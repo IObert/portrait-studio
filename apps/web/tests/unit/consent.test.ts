@@ -13,11 +13,10 @@ const event = (leadCollection: boolean): PortraitEvent => ({
   config: { ...defaultConfig("SIGNAL London", "+13203780782"), leadCollection },
   uploads: { frame: null, background: null },
   printerTokenHash: null, printerToken: null,
-  printerTokenCreatedAt: null,
   createdAt: now.toISOString(),
   updatedAt: now.toISOString(),
 });
-const msg = (text: string, extra: Partial<ConsentInput> = {}): ConsentInput => ({ channel: "whatsapp", text, hasSelfie: false, ...extra });
+const msg = (text: string, extra: Partial<ConsentInput> = {}): ConsentInput => ({ channel: "whatsapp", text, ...extra });
 const session = () => newSession("en", now);
 const bodies = (r: { messages: { kind: string; body: string; smsBody?: string }[] }) => r.messages.map((m) => m.body);
 
@@ -119,7 +118,7 @@ describe("the gate holds", () => {
   const ev = event(false);
   it("re-prompts and never proceeds for any other message", () => {
     const s = beginConsent(session(), ev, c, null, privacyUrl, "whatsapp").session;
-    for (const input of [msg("hi"), msg("I want a portrait"), msg("", { hasSelfie: true }), msg("yes please")]) {
+    for (const input of [msg("hi"), msg("I want a portrait"), msg(""), msg("yes please")]) {
       const r = advanceConsent(s, ev, c, input, privacyUrl);
       expect(r.session.optedIn).toBe(false);
       expect(r.effects).toEqual([]);

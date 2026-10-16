@@ -30,12 +30,6 @@ describe.each(LOCALES)("catalog %s", (locale) => {
     for (const k of ["styleButton", "backgroundButton"] as const) expect(c.menus[k].length).toBeLessThanOrEqual(20);
   });
 
-  it("names the event in the QR prefill, with no hashtag", () => {
-    const t = c.qrPrefill({ eventName: "SIGNAL London" });
-    expect(t).toContain("SIGNAL London");
-    expect(t).not.toContain("#");
-  });
-
   it("states privacy, the link and marketing consent in the code request (SPEC §5.4)", () => {
     const text = c.consent.askCode({ email: "a@b.co", privacyUrl: "https://x.test/privacy/ev", resendKeyword: "RESEND" });
     expect(text).toContain("https://x.test/privacy/ev");

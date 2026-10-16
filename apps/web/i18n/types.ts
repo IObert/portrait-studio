@@ -13,9 +13,6 @@ export interface Catalog {
   styles: Record<StyleId, { name: string; aliases: readonly string[] }>;
   backgrounds: Record<Exclude<BackgroundId, "uploaded">, { name: string; aliases: readonly string[] }>;
 
-  /** QR prefill text; names the event so routing can find it (SPEC §5.2). No hashtag. */
-  qrPrefill: (p: { eventName: string }) => string;
-
   routing: {
     noActiveEvent: string;
     /** Body of the event picker (WhatsApp list/quick reply, or SMS numbered list). */

@@ -22,7 +22,7 @@ async function setup(cfg: Partial<EventConfigInput> = {}, jobOver: Partial<Job> 
   await messenger.init();
   const event: PortraitEvent = {
     slug: "ev", state: "live", config: { ...defaultConfig("Ev", "+13203780782"), ...cfg },
-    uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null, printerTokenCreatedAt: null,
+    uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null,
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
   const ev = eventObjects("ev");
@@ -31,7 +31,7 @@ async function setup(cfg: Partial<EventConfigInput> = {}, jobOver: Partial<Job> 
   const job = JobSchema.parse({
     jobId: "job_00000001", address: KEY, channel: "whatsapp", style: "anime", background: "gradient", selfieBlob: "s",
     outputBlobs: { printPng: "events/ev/generated/job_00000001.print.png", deliveryJpeg: "events/ev/generated/job_00000001.jpg" },
-    shareId: "S".repeat(24), state: "flagged", aiReview: { result: "fail", reason: "1. likeness" }, timestamps: {}, ...jobOver,
+    shareId: "S".repeat(24), state: "flagged", aiReview: { reason: "1. likeness" }, timestamps: {}, ...jobOver,
   });
   await fake.createItem(ev.jobs, job.jobId, job);
   const delivery: DeliveryDeps = { sync, messenger, mediaUrl: (p) => `https://booth.test/m/${p}`, publicBaseUrl: "https://booth.test", templates: {}, log };
