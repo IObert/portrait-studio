@@ -31,7 +31,7 @@ describe("verification email (D-20)", () => {
 
   it("sends the promo code and snippet flag per event, only with lead collection on", () => {
     expect(verificationEmailSubstitutions(event({ emailPromoCode: "SIGNAL-25", emailShowSnippet: true }))).toEqual({ event_name: "SIGNAL London", promo_code: "SIGNAL-25", show_snippet: "true" });
-    expect(verificationEmailSubstitutions(event({}))).toEqual({ event_name: "SIGNAL London" });
+    expect(verificationEmailSubstitutions(event({ emailShowSnippet: false }))).toEqual({ event_name: "SIGNAL London" });
     expect(verificationEmailSubstitutions(event({ leadCollection: false, emailPromoCode: "X", emailShowSnippet: true }))).toEqual({ event_name: "SIGNAL London" });
   });
 });
