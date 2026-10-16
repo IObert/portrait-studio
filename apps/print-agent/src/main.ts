@@ -36,8 +36,8 @@ if (!result.ok) {
 const { args } = result;
 
 const major = Number(process.versions.node.split(".")[0]);
-if (major < 22) {
-  console.error(`Node.js 22 or newer is required (this is ${process.version}).`);
+if (major < 24) {
+  console.error(`Node.js 24 or newer is required (this is ${process.version}).`);
   process.exit(2);
 }
 

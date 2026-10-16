@@ -411,7 +411,7 @@ lock), for one brand.*
 | Topic | Decision |
 |---|---|
 | Repo location | `~/Desktop/portrait-studio`, a pnpm monorepo (`apps/web`, `apps/print-agent`) |
-| Runtime | Node 24 in the container. The print agent supports Node 22+. |
+| Runtime | Node 24 everywhere: the container, development and the print agent (2026-10-16; the agent previously supported Node 22+). |
 | CI | GitHub Actions |
 | Containers | Podman locally (with the `docker-compose` provider). The compose file follows the standard Compose spec. |
 | HEIC selfies | Not supported. WhatsApp converts photos to JPEG. |

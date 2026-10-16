@@ -115,7 +115,7 @@ See [docs/deployment.md](docs/deployment.md).
 
 On the booth laptop (macOS; Windows is beta, Linux not yet supported):
 
-1. **Install Node.js 22 or newer** from [nodejs.org](https://nodejs.org) (`node --version`).
+1. **Install Node.js 24 or newer** from [nodejs.org](https://nodejs.org) (`node --version`).
 2. **Install the DNP DS620 driver** from DNP ([dnpphoto.com/downloads](https://www.dnpphoto.com/downloads), DS620 macOS driver), then connect
    the printer by USB. macOS's automatic *Generic PostScript* driver prints the wrong size.
 3. **Copy the agent**: build it with `pnpm --filter @portrait-studio/print-agent build` and copy

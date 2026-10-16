@@ -210,7 +210,7 @@ export function PrinterToken({ slug, appUrl, token: saved }: { slug: string; app
                 <CopyButton text={command} label="command" />
               </div>
               <p className="text-xs leading-relaxed text-slate">
-                With a real printer, replace <code>--simulate --out ./prints</code> with <code>--printer &lt;CUPS queue&gt;</code> (see <code>lpstat -p</code>). Run <code>node agent.mjs doctor --fix</code> first to set up the DS620 queue. Needs Node.js 22+.
+                With a real printer, replace <code>--simulate --out ./prints</code> with <code>--printer &lt;CUPS queue&gt;</code> (see <code>lpstat -p</code>). Run <code>node agent.mjs doctor --fix</code> first to set up the DS620 queue. Needs Node.js 24+.
               </p>
             </div>
           </details>

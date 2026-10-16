@@ -6,7 +6,7 @@ compiled binary or app bundle, so macOS Gatekeeper does not get in the way (SPEC
 
 ## Requirements
 
-- **Node.js 22 or newer** (`node --version`)
+- **Node.js 24 or newer** (`node --version`)
 - For real printing: CUPS with the DNP DS620 queue set up (`lpstat -p`)
 - The event's **printer token**, shown in the admin UI with a ready-to-copy command
 
@@ -90,7 +90,7 @@ pnpm --filter print-agent build
 | Symptom | What to do |
 |---|---|
 | `The printer token was rejected` | The token was rotated, or printing is off for the event. Copy the new command from the admin UI. |
-| `Node.js 22 or newer is required` | Install a newer Node.js. |
+| `Node.js 24 or newer is required` | Install a newer Node.js. |
 | Status shows `paused` | Run `node agent.mjs doctor --fix`, or `cupsenable <queue>`. |
 | `Invalid CUPS queue name` | Use the exact queue name from `lpstat -p` (letters, digits, `_`, `.`, `-`). |
 | Status shows `offline` | The queue does not exist or the printer is unreachable. Check `lpstat -p <queue>`. |
