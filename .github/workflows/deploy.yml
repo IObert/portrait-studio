@@ -30,7 +30,7 @@ jobs:
     environment: production
     steps:
       # Deploy exactly the commit CI tested, not whatever main points to now.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
