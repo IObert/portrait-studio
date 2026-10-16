@@ -22,6 +22,11 @@ describe("prompt builder (SPEC §9.3)", () => {
     }
   });
 
+  it("cartoon and anime never draw eyes on sunglasses (D-38)", () => {
+    for (const style of ["cartoon", "anime"] as const)
+      expect(buildPrompt(style, "gradient", { subjects: 1, pet: null }), style).toContain("never draw eyes on or through them");
+  });
+
   it("adds the scene line and the matching final reminder for groups and pets", () => {
     const group = buildPrompt("anime", "original", { subjects: 3, pet: null });
     expect(group).toContain("exactly 3 HUMAN subjects");

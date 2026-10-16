@@ -416,3 +416,14 @@ lock), for one brand.*
 | Local Blob Storage | Azurite in compose |
 | Local Sync | A real dev Sync Service. Tests use mocks. |
 | MMS country check | libphonenumber, so +1 Caribbean numbers are not treated as US or CA |
+
+### D-38 Cartoon and anime: no eyes drawn on sunglasses (user decision)
+*2026-10-15. A change to the PROMPTS.md §D cartoon and anime styles; PROMPTS.md itself is unchanged.*
+- Problem: with mirrored or dark sunglasses, cartoon and anime portraits showed eyes painted onto the lenses. Both
+  styles ask for big expressive eyes (cartoon also for "detailed iris reflections"), and the preserve line asks for eye
+  colour, so the model invents eyes where none are visible.
+- Both style lines now add (`SUNGLASSES` in `lib/prompts/styles.ts`): "If a subject wears sunglasses or other glasses
+  that hide the eyes, keep the lenses opaque and reflective as in the photo, and never draw eyes on or through them."
+- With a brand, the anime style lock (§E10) also says "large expressive eyes" and comes last in the prompt, so it
+  repeats the sentence. The cartoon lock says nothing about eyes.
+- The other styles were not seen to do this and are unchanged.
