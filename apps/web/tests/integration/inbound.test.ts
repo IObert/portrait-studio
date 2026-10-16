@@ -247,6 +247,15 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await w.say(WA, "hi")).toEqual([catalogs.en.routing.ended]);
   });
 
+  it("an ended event keeps its attendees: any message gets the ended reply until another event is live (SPEC §4.1, D-13)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(WA, "#ev");
+    await w.events.setState("ev", "ended");
+    expect(await w.say(WA, "what now?")).toEqual([catalogs.en.routing.ended]);
+    await liveEvent(w, "next", { leadCollection: false });
+    expect((await w.say(WA, "hi"))[0]).toContain("Welcome to Portrait Studio");
+  });
+
   it("replies in the event language (pt_BR)", async () => {
     await liveEvent(w, "rio", { language: "pt_BR", leadCollection: false });
     expect((await w.say(WA, "#rio"))[0]).toContain("Bem-vindo ao Portrait Studio");

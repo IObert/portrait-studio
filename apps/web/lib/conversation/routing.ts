@@ -32,7 +32,8 @@ export function findEvent(text: string, events: readonly PortraitEvent[]): Portr
 /**
  * Event routing (SPEC §5.2). Draft events are invisible. Naming a live event
  * binds (or re-binds) the address; naming a non-live event gets that state's
- * reply.
+ * reply. Bindings survive the end of an event, so its attendees get the ended
+ * reply (§4.1); once another event is live, an ended binding is ignored (D-13).
  */
 export function route(text: string, events: readonly PortraitEvent[], binding: Binding | null): Route {
   const visible = events.filter((e) => e.state !== "draft");
@@ -41,7 +42,7 @@ export function route(text: string, events: readonly PortraitEvent[], binding: B
   const named = findEvent(text, visible);
   if (named) return named.state === "live" ? { kind: "event", event: named, bind: binding?.eventSlug !== named.slug } : { kind: "not-live", event: named };
 
-  const bound = binding && visible.find((e) => e.slug === binding.eventSlug);
+  const bound = binding && visible.find((e) => e.slug === binding.eventSlug && !(e.state === "ended" && live.length));
   if (bound) return bound.state === "live" ? { kind: "event", event: bound, bind: false } : { kind: "not-live", event: bound };
 
   if (live.length === 1) return { kind: "event", event: live[0]!, bind: true };

@@ -90,10 +90,14 @@ this one. A delete of an already-deleted profile succeeds, and a lookup that fin
 - **Event deletion (§4.4):** the event is unlinked from each profile; a profile linked to no other Portrait Studio
   event is then deleted.
 
-### D-13 Ending an event removes its bindings
-*2026-10-12.* SPEC §4.1 says ending removes bindings and that "any message" gets the ended reply. Without a binding,
-a message with no code can no longer be linked to the ended event, so it gets the standard reply (or goes to another
-live event). Only messages that carry the event code get "This event has ended". **Open for review.**
+### D-13 Ending an event keeps its bindings
+*2026-10-12, revised 2026-10-16 (user decision).* SPEC §4.1 says "any message" to an ended event gets the ended
+reply, but it also said ending removes bindings, and without a binding a message that does not name the event cannot be
+linked to it. The first version removed them anyway, so only messages naming the event got "This event has ended".
+Now **ending keeps the bindings**: everyone who used the event gets the ended reply, whatever they write.
+- Once another event is live, an ended binding is ignored and the message is routed as usual (that event, or the
+  picker), so someone at the next event is not stuck on the old one. Naming the ended event still gets its reply.
+- Deleting an event still removes its bindings (§4.4).
 
 ### D-14 Vision model reasoning effort
 *2026-10-12.* The early research said `gpt-6.1-sol` supports reasoning effort `none`. **It does not.** The API returns
