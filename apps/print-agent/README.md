@@ -97,4 +97,20 @@ pnpm --filter print-agent build
 | Status shows `out_of_paper` | Replace the paper or ribbon. |
 | Prints look wrong (cropped, bordered, wrong size) | Run `node agent.mjs doctor --fix`. Usually the queue uses the Generic PostScript driver. |
 
+## Other platforms (beta)
+
+**Linux** should work through CUPS, but is not supported yet. DNP's driver is for macOS and Windows only; with
+Gutenprint the DS620 option names differ, so prints may use the wrong settings and `doctor` reports the driver as
+missing. See the `TODO(linux)` notes in the code.
+
+**Windows (beta)** is **untested on real hardware**; the agent and `doctor` say so when they start. On Windows the agent prints through the Windows
+spooler with PowerShell instead of CUPS; `--printer` is the Windows printer name (`Get-Printer`), for example
+`--printer "DP-DS620"`. Before using it at an event, work through every `CRITICAL(windows)` note in
+[src/windows.ts](src/windows.ts). In short:
+
+- Set cutter, glossy finish, resolution and no colour adjustment once in the printer's **Printing Preferences**:
+  the agent cannot set them, and `doctor` cannot check them.
+- Turn on **Keep printed documents** (`node agent.mjs doctor --fix` in an Administrator terminal). Without it the
+  agent cannot tell a printed job from a cancelled one.
+
 The protocol between the agent and the server is documented in [PROTOCOL.md](PROTOCOL.md).

@@ -10,16 +10,18 @@ const ArgsSchema = z
     out: z.string().min(1).default("./prints"),
   })
   .refine((a) => a.simulate || a.printer, {
-    message: "--printer <CUPS queue> is required unless --simulate is set",
+    message: "--printer <CUPS queue or Windows printer name> is required unless --simulate is set",
     path: ["printer"],
   });
 
 export type AgentArgs = z.infer<typeof ArgsSchema>;
 
 export const USAGE = `Usage:
-  node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue> | --simulate] [--out ./prints]
+  node agent.mjs --url https://<app> --token <event printer token> [--printer <queue> | --simulate] [--out ./prints]
 
-  node agent.mjs doctor [--printer <CUPS queue>] [--fix]
+  node agent.mjs doctor [--printer <queue>] [--fix]
+
+  --printer  CUPS queue (macOS, Linux) or Windows printer name, e.g. "DP-DS620" (Windows: beta)
 
   --out   Folder that keeps a copy of every print, for manual reprints (default ./prints)
   doctor  Checks the DS620 queue: driver, enabled, and print defaults. --fix repairs it.`;

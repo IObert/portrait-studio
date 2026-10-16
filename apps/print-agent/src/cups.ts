@@ -7,6 +7,12 @@
  * DS620 driver options for one 4x6 print (SPEC §11.2), checked on a real DS620
  * with the DNP-DS620 PPD (`lpoptions -p <queue> -l`). The print command sends
  * them, and `doctor` sets them as the queue defaults (PROTOCOL.md §5).
+ *
+ * TODO(linux): these are the DNP PPD's names. Gutenprint (the usual DS620 driver
+ * on Linux) names them differently, e.g. PageSize `w288h432` and its own cutter
+ * and finish options. CUPS ignores unknown options silently, so prints would come
+ * out with the queue defaults. Map the names per driver, checked with
+ * `lpoptions -p <queue> -l` on a Linux box.
  */
 export const DS620_OPTIONS = {
   PageSize: "dnp6x4",

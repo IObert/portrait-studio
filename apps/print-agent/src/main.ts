@@ -4,6 +4,10 @@ import { parseAgentArgs, parseDoctorArgs, USAGE } from "./args.js";
 import { runDoctor } from "./doctor.js";
 import { log } from "./log.js";
 import { cupsPrinter, simulatedPrinter } from "./printer.js";
+import { runWindowsDoctor, WINDOWS_BETA_NOTICE, windowsPrinter } from "./windows.js";
+
+// TODO(windows): beta, untested on real Windows. See the CRITICAL(windows) notes in windows.ts.
+const isWindows = process.platform === "win32";
 
 const argv = process.argv.slice(2);
 if (argv.includes("--help") || argv.includes("-h")) {
@@ -21,7 +25,7 @@ if (argv[0] === "doctor") {
     console.error(`${doctor.error}\n\n${USAGE}`);
     process.exit(2);
   }
-  process.exit(await runDoctor(doctor.args));
+  process.exit(await (isWindows ? runWindowsDoctor(doctor.args) : runDoctor(doctor.args)));
 }
 
 const result = parseAgentArgs(argv);
@@ -38,9 +42,12 @@ if (major < 22) {
 }
 
 // parseAgentArgs guarantees --printer unless --simulate.
-const printer = args.simulate || !args.printer ? simulatedPrinter(args.out) : cupsPrinter(args.printer, args.out);
+// TODO(linux): CUPS works on Linux, but the DNP driver is macOS/Windows only. With Gutenprint the
+// DS620 option names differ (see DS620_OPTIONS in cups.ts), so pick the option set by driver.
+const printer = args.simulate || !args.printer ? simulatedPrinter(args.out) : isWindows ? windowsPrinter(args.printer, args.out) : cupsPrinter(args.printer, args.out);
 log("info", `Portrait Studio print agent ${AGENT_VERSION} (server ${new URL(args.url).origin})`);
-log("info", args.simulate ? "Simulator mode: nothing goes to a printer" : `Printer queue: ${args.printer}`);
+log("info", args.simulate ? "Simulator mode: nothing goes to a printer" : `${isWindows ? "Windows printer" : "Printer queue"}: ${args.printer}`);
+if (isWindows && !args.simulate) log("warn", WINDOWS_BETA_NOTICE);
 log("info", `A copy of every print is saved in ${path.resolve(args.out)}`);
 
 const controller = new AbortController();

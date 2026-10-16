@@ -98,7 +98,7 @@ The agent writes this every 15 s (SPEC §11.2). The admin UI shows it.
 }
 ```
 
-`mode` is `cups` or `simulate`. `status` is one of:
+`mode` is `cups`, `windows` (Windows print spooler, beta) or `simulate`. `status` is one of:
 
 | `status` | Meaning |
 |---|---|
