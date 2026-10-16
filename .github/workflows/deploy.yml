@@ -92,7 +92,8 @@ jobs:
             AZURE_STORAGE_CONNECTION_STRING AZURE_STORAGE_CONTAINER AZURE_LOCATION \
             AZURE_RESOURCE_GROUP AZURE_APP_NAME AZURE_ACR_NAME AZURE_STORAGE_ACCOUNT AZURE_USER; do
             value="${!key:-}"
-            [[ -n "$value" ]] && printf '%s=%q\n' "$key" "$value" >> .env.local
+            # `if`, not `[[ ]] &&`: an empty last value would end the step with exit 1 under set -e.
+            if [[ -n "$value" ]]; then printf '%s=%q\n' "$key" "$value" >> .env.local; fi
           done
 
       # deploy.sh reuses the image CI pushed for this commit (same 7-character tag), then
