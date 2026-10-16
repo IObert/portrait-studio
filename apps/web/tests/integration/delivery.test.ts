@@ -104,7 +104,7 @@ describe("delivery (SPEC §6.1)", () => {
     expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("sent");
     expect(w.sent).toHaveLength(1); // no free-form slideshow question outside the window
     expect(w.sent[0]).toMatchObject({ contentSid: tpl, from: "whatsapp:+13203780782" });
-    expect(JSON.parse(w.sent[0]!.contentVariables!)).toEqual({ "1": expect.stringContaining("/m/"), "2": "S".repeat(24) });
+    expect(JSON.parse(w.sent[0]!.contentVariables!)).toEqual({ "1": expect.stringMatching(/^m\/[^/]+\.jpg$/), "2": "S".repeat(24) });
   });
 
   it("WhatsApp outside the window without a template: skipped and logged, share page still works", async () => {

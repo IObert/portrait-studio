@@ -154,6 +154,8 @@ async function sendTemplate(
     deps.log.warn({ event: "send_skipped", reason: "no-delivery-template", to: mask(address), slug: event.slug }, "outside 24h window and no delivery template configured");
     return "skipped";
   }
-  const r = await deps.messenger.sendTemplate(address, sid, { "1": vars.media, "2": vars.shareId }, { from: event.config.qrSender });
+  // The template's URLs are `<base>/{{1}}` and `<base>/s/{{2}}` (scripts/setup-twilio.ts).
+  const media = `${new URL(vars.media).pathname.slice(1)}.jpg`;
+  const r = await deps.messenger.sendTemplate(address, sid, { "1": media, "2": vars.shareId }, { from: event.config.qrSender });
   return r.status;
 }

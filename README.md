@@ -70,7 +70,8 @@ Portraits are delivered over WhatsApp (image, caption and share link), MMS for U
 (SPEC §6.1). Twilio fetches images from signed, expiring `/m/<token>` links (`MEDIA_SIGNING_SECRET`). The public
 share page `/s/<shareId>` has Share (with the image file), Copy text and Download, plus OpenGraph tags; it expires
 after 7 days. Outside the WhatsApp 24-hour window, delivery uses the approved `delivery` template (created by
-`setup:twilio`). Until that template exists, those deliveries are skipped and logged.
+`pnpm --filter web setup:twilio`, see [docs/deployment.md](docs/deployment.md) §4). Until that template is approved,
+those deliveries are skipped and logged.
 
 ## Review and booth screen
 

@@ -104,9 +104,25 @@ Twilio inbound:    https://<fqdn>/api/twilio/inbound
 
 ## 4. Configure Twilio
 
-Run `pnpm --filter web setup:twilio`. It sets the Messaging Service inbound URL to
-`$PUBLIC_BASE_URL/api/twilio/inbound`. To do it by hand: Console → Messaging → Services → your service →
-Integration → "Send a webhook".
+Run `pnpm --filter web setup:twilio` (add `--dry-run` first to see what it would do). It is safe to run again: a
+resource named in `.env.local` is only checked, otherwise it is found by name and created only if none exists. It:
+
+1. finds or creates the Sync Service (ACLs on), the Verify Service (6-digit codes, no lookup) and the Memory store,
+   and checks the store's Contact traits and identifiers. A shared store is never changed, only checked.
+2. sets the Messaging Service inbound URL to `$PUBLIC_BASE_URL/api/twilio/inbound`. If another app's URL is set
+   there, it only does so with `--take-over-inbound` (that app then stops getting messages).
+3. creates the WhatsApp `delivery` templates (en, pt_BR) and submits them as UTILITY. They are named after the public
+   host, because WhatsApp fixes their URLs at approval. **Run it again after approval** to get their SIDs.
+4. prints the environment values and what is still to do by hand.
+
+**What it cannot do** (Console only):
+- create the Messaging Service and register its senders (WhatsApp self sign-up); set `TWILIO_MESSAGING_SERVICE_SID`
+- link a SendGrid email integration to the Verify Service and set its template to
+  `apps/web/assets/email/verification-email.html` (D-10, D-20)
+- create the API key the script itself runs with
+- add traits or identifier rules to a shared Memory store
+- get WhatsApp's approval itself; it can take minutes to 24 hours. `PUBLIC_BASE_URL` must be live when it is
+  submitted, because WhatsApp fetches the sample image `/samples/delivery.jpg`.
 
 ## 5. Verify
 

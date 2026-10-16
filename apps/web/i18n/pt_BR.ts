@@ -1,6 +1,5 @@
 import type { Catalog } from "./types";
 
-// TODO(review): pt_BR copy needs a native-speaker review (docs/decisions.md).
 export const pt_BR = {
   styles: {
     cartoon: { name: "Desenho 3D", aliases: ["pixar", "3d", "cartoon", "desenho"] },

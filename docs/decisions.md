@@ -365,10 +365,6 @@ lock), for one brand.*
 
 ## Open TODOs after the last milestone
 
-- **`setup:twilio` script** (SPEC §15): never built. `docs/deployment.md` step 4, `README.md` and SPEC.md
-  still point to it. Either write it (Sync and Verify services, Memory store, delivery templates, Messaging Service
-  inbound URL; safe to run again) or replace those references with the manual Console steps.
-
 - **README is out of date**: the intro still says sections are marked *(coming)*, and "Coming in later milestones"
   lists an architecture overview, webhook tunnel setup, Twilio resource setup, an env var table and a real-life test
   checklist that were never written. Write them or drop the section.
@@ -378,6 +374,8 @@ lock), for one brand.*
   with `git grep -n "TODO(profile-deletion)"`.
 
 ### Closed
+
+- **`setup:twilio` script** (2026-10-16): written, see D-39.
 
 - **DS620 borderless prints** (2026-10-16): confirmed on paper, no white edge and nothing cropped.
 - **Fewer settings per page in the admin** (2026-10-16): not needed; the event form stays one page.
@@ -413,7 +411,7 @@ lock), for one brand.*
 | Quota identity | Per channel address. WhatsApp and SMS count separately. |
 | Lead email | Any valid email is accepted (no business-only rule) |
 | Smart-reply prompts | Drop G2's "Instruções adicionais do evento" line. Add a language-lock line and a deletion-tool line to G1 and G2. |
-| Copy | I write the new en and pt_BR text. pt_BR is marked for review by a native speaker. |
+| Copy | I write the new en and pt_BR text. No native-speaker review (user decision, 2026-10-16). |
 | Delivery template | Submitted as UTILITY. If Meta reclassifies it, the user is told; nothing is changed automatically. |
 | QR sender list | The Messaging Service's phone numbers plus WhatsApp senders from the Channels Senders API, falling back to entering the number by hand |
 | Local Blob Storage | Azurite in compose |
@@ -430,3 +428,18 @@ lock), for one brand.*
 - With a brand, the anime style lock (§E10) also says "large expressive eyes" and comes last in the prompt, so it
   repeats the sentence. The cartoon lock says nothing about eyes.
 - The other styles were not seen to do this and are unchanged.
+
+### D-39 `setup:twilio` (SPEC §15)
+*2026-10-16.* `scripts/setup-twilio.ts`, logic in `lib/setup/twilio.ts`. Safe to run again, and never creates a
+second copy:
+- A SID in the environment pins its resource; one that does not exist stops the run rather than creating another.
+  Otherwise it finds by exact name (`Portrait Studio`, `--name` to change); two with the same name stop the run.
+- It goes further than SPEC §15: it also finds or creates the Memory store, since the Memory API can. A store it did not
+  create (such as the shared one, D-10) is only checked, never changed.
+- The inbound URL is never taken from another app without `--take-over-inbound` (the cut-over, D-10).
+- **Delivery template variables changed:** WhatsApp only approves a media header like `https://host/{{1}}` whose
+  sample ends in a file type. `{{1}}` is now `m/<token>.jpg` (the media route ignores `.jpg`) instead of the full URL,
+  and `{{2}}` stays the share id. The sample image is `public/samples/delivery.jpg`.
+- Templates are named `portrait_studio_delivery_<host hash>_<lang>`: WhatsApp fixes the URLs at approval, so a new
+  `PUBLIC_BASE_URL` host gets new templates and the old ones keep working for the old host.
+- `--dry-run` reports and changes nothing.
