@@ -138,7 +138,8 @@ Expected: `external: true` and `targetPort: 3000`.
    it tested as `portrait-studio:<7-character commit>`. Pull requests have no Azure access and build from the
    public mirror.
 3. **Deploy** (`.github/workflows/deploy.yml`) starts when CI finishes, and only if CI passed on a push to `main`.
-   It checks out the exact commit CI tested and waits for approval in the `production` environment.
+   It checks out the exact commit CI tested and deploys it right away; no approval is needed. Only protected
+   branches (`main`) can deploy to the `production` environment.
 4. `deploy.sh` reuses the image CI pushed instead of building again, updates both apps, then **verifies** the
    release: both new revisions running and `/healthz/ready` (Sync and Blob reachable) returning 200. If that fails,
    it **rolls both apps back** to the image that ran before and the run fails.
@@ -166,9 +167,13 @@ CLIENT_ID=$(az ad app create --display-name gh-portrait-studio-deploy --query ap
 SP_ID=$(az ad sp create --id $CLIENT_ID --query id -o tsv)
 
 # The deploy job runs in the production environment; CI's image push runs on main.
+# This repo uses GitHub's immutable OIDC subjects (owner and repo IDs in the name), so the
+# credential must match that prefix, not plain "repo:$REPO". Otherwise the login fails with
+# AADSTS700213 "No matching federated identity record".
+PREFIX=$(gh api repos/$REPO/actions/oidc/customization/sub -q .sub_claim_prefix)
 for c in "production=environment:production" "main=ref:refs/heads/main"; do
   az ad app federated-credential create --id $CLIENT_ID --parameters "{\"name\":\"portrait-studio-${c%%=*}\",
-    \"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"repo:$REPO:${c#*=}\",
+    \"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"$PREFIX:${c#*=}\",
     \"audiences\":[\"api://AzureADTokenExchange\"]}"
 done
 
@@ -182,14 +187,15 @@ az role assignment create --assignee-object-id $SP_ID --assignee-principal-type 
   "((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$ACR_PULL})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$ACR_PULL}))"
 ```
 
-**2. The `production` environment: approval, secrets and variables.** Use the env file of the running app, not
+**2. The `production` environment: secrets and variables.** Use the env file of the running app, not
 your local `.env.local`: `PUBLIC_BASE_URL` must be the Azure address, and storage must be the real account, not
 Azurite.
 
 ```sh
-# Each deploy waits for your approval; only protected branches (main) may deploy.
-gh api -X PUT repos/$REPO/environments/production --input - <<JSON
-{ "reviewers": [{ "type": "User", "id": $(gh api user -q .id) }],
+# Only protected branches (main) may deploy. No reviewer: green CI deploys straight away.
+# To require approval before each deploy, put your user in "reviewers".
+gh api -X PUT repos/$REPO/environments/production --input - <<'JSON'
+{ "reviewers": [],
   "deployment_branch_policy": { "protected_branches": true, "custom_branch_policies": false } }
 JSON
 
