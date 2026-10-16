@@ -156,7 +156,7 @@ instead of using `azure/login`.
    - `OPENAI_*_MODEL`
    - and any `AZURE_*` overrides
 
-7. Set the repo variable `DEPLOY_ENABLED=true`. Until it is set, the deploy job is skipped.
+Until these are set, every deploy run fails at the Azure login step.
 
 The workflow writes `.env.local` from these values, runs `./deploy.sh`, and deletes the file afterwards.
 

@@ -22,12 +22,10 @@ concurrency:
 
 jobs:
   deploy:
-    # Skipped until Azure is set up: set the repo variable DEPLOY_ENABLED=true.
     # After CI, only a green run of a push to main deploys (not a PR run, not a failure).
     if: >-
-      vars.DEPLOY_ENABLED == 'true' &&
-      (github.event_name == 'workflow_dispatch' ||
-       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment: production
     steps:
