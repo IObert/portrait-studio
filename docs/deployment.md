@@ -151,7 +151,7 @@ Expected: `external: true` and `targetPort: 3000`.
 ### The pipeline
 
 1. **CI** (`.github/workflows/ci.yml`) runs on every pull request and every push to `main`: lint, typecheck and
-   unit tests; the print agent on Node 22; Playwright; and the Docker image build.
+   unit tests; the print agent bundle on Node 24; Playwright; and the Docker image build.
 2. On `main`, the Docker job builds from the registry's copy of the node image (`base/node`) and pushes the image
    it tested as `portrait-studio:<7-character commit>`. Pull requests have no Azure access and build from the
    public mirror.
@@ -247,7 +247,7 @@ only from this repo's `main` and `production`, through the federated credentials
 ```sh
 gh api -X PUT repos/$REPO/branches/main/protection --input - <<'JSON'
 { "required_status_checks": { "strict": false, "contexts": [
-    "Lint, typecheck, unit tests", "Print agent on Node 22", "Playwright", "Docker image builds"] },
+    "Lint, typecheck, unit tests", "Print agent bundle", "Playwright", "Docker image builds"] },
   "enforce_admins": false, "required_pull_request_reviews": null, "restrictions": null,
   "allow_force_pushes": false, "allow_deletions": false }
 JSON
