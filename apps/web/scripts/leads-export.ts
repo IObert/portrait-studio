@@ -60,7 +60,14 @@ if (!event) {
 const env = requireEnv(getEnv(), ["TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "TWILIO_MEMORY_STORE_ID"]);
 const memory = createMemoryClient({ storeId: env.TWILIO_MEMORY_STORE_ID, username: env.TWILIO_API_KEY_SID, password: env.TWILIO_API_KEY_SECRET });
 const csv = await leadsCsv({ sync, memory }, event.slug);
-const rows = csv.split("\r\n").length - 2;
+// Count rows: parse CSV lines, accounting for quoted cells that contain \r\n.
+let rows = 0;
+let inQuotes = false;
+for (let i = 0; i < csv.length; i++) {
+  if (csv[i] === '"' && (i === 0 || csv[i - 1] !== '"')) inQuotes = !inQuotes;
+  if (!inQuotes && csv[i] === "\r" && csv[i + 1] === "\n") rows++;
+}
+rows--; // Subtract the final \r\n
 // Default: <repo>/exports/, which is gitignored. --out is taken relative to where the command was run.
 const exportsDir = path.join(repoRoot(), "exports");
 const file = values.out

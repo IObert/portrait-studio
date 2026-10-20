@@ -36,7 +36,7 @@ export async function deleteEvent(
   await hooks.unlinkProfiles(slug);
   await hooks.removeBindings(slug);
   await Promise.all(ev.allMaps().map((m) => sync.deleteMap(m)));
-  await sync.deleteDocument(ev.printer);
+  await Promise.all([sync.deleteDocument(ev.printer), sync.deleteDocument(ev.booth)]);
   const [images, assets] = await Promise.all([
     blob.deletePrefix(BlobPaths.eventPrefix(slug)),
     blob.deletePrefix(BlobPaths.assetPrefix(slug)),

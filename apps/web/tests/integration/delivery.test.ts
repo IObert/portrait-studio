@@ -145,7 +145,7 @@ describe("delivery (SPEC §6.1)", () => {
     expect(await on.printJob()).toBeUndefined();
     expect((await on.session()).counters.printsReserved).toBe(0);
     expect(on.sent[1]!.body).toBe(`${catalogs.en.delivery.printQuestion({ printsLeft: 2 })} ${catalogs.en.delivery.printSmsHint}`);
-    expect((await on.session()).pendingSlideshow).toEqual({ jobId: "job_00000001", group: false, print: true });
+    expect((await on.session()).pendingSlideshow).toMatchObject({ jobId: "job_00000001", group: false, print: true });
 
     // No prints left (printed + reserved): the plain slideshow question.
     const full = await setup({ cfg: { printingEnabled: true, maxPrintsPerPerson: 2 }, to: "+447700900456", session: { counters: { delivered: 1, printed: 1, printsReserved: 1, inFlight: 1 } } });

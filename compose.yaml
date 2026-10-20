@@ -7,6 +7,8 @@ services:
     env_file: ${ENV_FILE:-.env.local}
     restart: unless-stopped
     environment:
+      # Fallback to Azurite if not in env_file. Values in env_file are loaded into the container, not into the compose process,
+      # so we use a docker-compose default here (evaluated from the shell env, which typically has nothing) with a fallback (BUG 18 note).
       AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}
     ports:
       - "${HOST_PORT:-3000}:3000"

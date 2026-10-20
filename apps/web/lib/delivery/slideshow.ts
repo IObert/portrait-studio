@@ -31,6 +31,9 @@ export function readSlideshowAnswer(session: Session, c: Catalog, input: { chann
     if (jobId) return { jobId, answer: "printonly" };
   }
   if (input.channel !== "sms" || !session.pendingSlideshow) return null;
+  // Slideshow questions expire after 10 minutes (no stale yes/ok, medium-priority bug).
+  const askedAt = new Date(session.pendingSlideshow.askedAt);
+  if (Date.now() - askedAt.getTime() > 10 * 60 * 1000) return null;
   if (session.pendingSlideshow.print && matchesKeyword(input.text, c.delivery.printKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "print" };
   if (matchesKeyword(input.text, c.delivery.yesKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "yes" };
   if (matchesKeyword(input.text, c.delivery.noKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "no" };

@@ -79,7 +79,7 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
     }
     left = printsLeft(event, counters);
     const delivered = [...s.delivered.filter((id) => id !== job.jobId), job.jobId].slice(-10);
-    return { ...s, counters, delivered, pendingSlideshow: { jobId: job.jobId, group, print: left > 0 } };
+    return { ...s, counters, delivered, pendingSlideshow: { jobId: job.jobId, group, print: left > 0, askedAt: now.toISOString() } };
   });
 
   // 4. Send (SPEC §6.1, §5.11).

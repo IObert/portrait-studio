@@ -223,13 +223,24 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
   const consentInput = { channel: msg.from.channel, text: msg.text, selection: msg.selection };
   const outcome = await decide(deps, current, event, c, consentInput, privacyUrl, msg, selfieBlob, unusableMedia, images.length);
 
+  // Run critical effects (opt-in) BEFORE writing the session so they can't fail after commitment (BUG 3).
+  const messages = [...outcome.messages];
+  const otherEffects = [];
+  for (const effect of outcome.effects) {
+    if (effect.type === "opt-in") {
+      const extra = await runEffect(deps, effect, { event, key, address: msg.from, now, session: outcome.session });
+      if (extra) messages.push(extra);
+    } else {
+      otherEffects.push(effect);
+    }
+  }
+
   // Write with If-Match against the revision we read. If another message for this
   // person changed the session meanwhile, this throws, the dedup claim is
   // released and handleInbound re-runs the message on the fresh state.
   await sessions.writeIfUnchanged(key, outcome.session, read?.revision ?? null);
 
-  const messages = [...outcome.messages];
-  for (const effect of outcome.effects) {
+  for (const effect of otherEffects) {
     const extra = await runEffect(deps, effect, { event, key, address: msg.from, now, session: outcome.session });
     if (extra) messages.push(extra);
   }

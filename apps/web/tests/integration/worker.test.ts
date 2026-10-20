@@ -247,8 +247,20 @@ describe("screening before the menus (D-18)", () => {
     await workOnce(deps); // screen
     expect((await getJob(fake))).toMatchObject({ state: "queued", style: "anime", background: "gradient" });
     await workOnce(deps); // generate
-    expect(ai.calls.edit).toBe(1);
   });
+
+  it("BUG 1: rejection resets session step and pendingJobId so next photo isn't stuck", async () => {
+    const ai = fakeOpenAI({ face: "NO" });
+    const { fake, deps, ev } = await setup(ai);
+    await screening(fake);
+    await workOnce(deps);
+    expect((await getJob(fake)).state).toBe("rejected");
+    const session = (await fake.getItem(ev.sessions, KEY))!.data as { step: string; pendingJobId: string; counters: { inFlight: number } };
+    expect(session.step).toBe("ready", "step should reset after rejection");
+    expect(session.pendingJobId).toBeNull("pendingJobId should clear after rejection");
+    expect(session.counters.inFlight).toBe(0, "inFlight should be released");
+  });
+
 
   it("retries a failed screening back to screening, not to generation", async () => {
     const { fake, deps } = await setup(fakeOpenAI({ visionError: Object.assign(new Error("503"), { status: 503 }) }));

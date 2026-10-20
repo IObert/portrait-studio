@@ -163,7 +163,10 @@ async function retryOrFail(deps: WorkerDeps, event: PortraitEvent, job: Job, err
   const status = (err as { status?: number }).status;
   const message = (err as Error).message?.slice(0, 300) ?? String(err);
   if (job.attempts < MAX_ATTEMPTS) {
-    const retryAfterMs = Number((err as { headers?: Record<string, string> }).headers?.["retry-after"]) * 1000 || undefined;
+    // OpenAI v7 errors have Headers objects; try .get() first, then bracket access for plain objects.
+    const errHeaders = (err as { headers?: Headers | Record<string, string> }).headers;
+    const retryAfterHeader = typeof errHeaders?.get === "function" ? errHeaders.get("retry-after") : (errHeaders as any)?.["retry-after"];
+    const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : undefined;
     const delay = backoffDelay(job.attempts, { baseMs: 5_000, maxMs: 60_000, minMs: 5_000 }, retryAfterMs);
     deps.log.warn({ event: "job_retry", slug: event.slug, jobId: job.jobId, attempt: job.attempts, status, error: message, delayMs: delay }, "job will be retried");
     // Back to the phase's waiting state; leaseUntil doubles as "not before" for the next attempt.
@@ -206,6 +209,10 @@ async function finish(deps: WorkerDeps, event: PortraitEvent, job: Job, outcome:
   // Not delivered: this attempt does not count toward quota (SPEC §4.3).
   await releaseInFlight(deps, event, job.address);
   await bump(deps.sync, event.slug, outcome === null ? "failed" : outcome.kind === "flagged" ? "flagged" : "rejected");
+  // Reset session step and pendingJobId so the attendee isn't stuck in "checking" (BUG 1).
+  await deps.sync.map(ev.sessions, SessionSchema).update(job.address, (s) =>
+    s?.pendingJobId === job.jobId ? { ...s, step: "ready", pendingJobId: null } : SKIP,
+  );
   const address = addressFromKey(job.address);
   if (!address) return;
   const c = catalogs[event.config.language];

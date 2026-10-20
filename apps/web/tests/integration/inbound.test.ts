@@ -337,7 +337,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
       outputBlobs: { printPng: "events/ev/generated/job_slide_02.print.png", deliveryJpeg: "events/ev/generated/job_slide_02.jpg" }, shareId: "R".repeat(24), state: "delivered", timestamps: {},
     }));
     const cur = (await w.fake.getItem(ev.sessions, key))!;
-    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_slide_02", group: false } });
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_slide_02", group: false, askedAt: new Date().toISOString() } });
     expect(await w.say(SMS, "yes please")).not.toContain(catalogs.en.delivery.slideshowThanksYes); // not an exact keyword
     expect(await w.say(SMS, "YES")).toEqual([catalogs.en.delivery.slideshowThanksYes]);
     expect(await w.fake.getItem(ev.slideshow, "job_slide_02")).not.toBeNull();
@@ -383,7 +383,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
       outputBlobs: { printPng: "events/ev/generated/job_print_03.print.png", deliveryJpeg: "events/ev/generated/job_print_03.jpg" }, shareId: "P".repeat(24), state: "delivered", timestamps: {},
     }));
     const cur = (await w.fake.getItem(ev.sessions, key))!;
-    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_print_03", group: false, print: true } });
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_print_03", group: false, print: true, askedAt: new Date().toISOString() } });
     expect(await w.say(SMS, "PRINT")).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 1 })]);
     expect(await w.fake.getItem(ev.print, "job_print_03")).not.toBeNull();
   });

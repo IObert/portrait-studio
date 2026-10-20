@@ -404,6 +404,11 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
         <button type="submit" disabled={pending} className={`${btn.base} ${btn.primary} min-w-24`}>
           {pending ? "Saving…" : submitLabel}
         </button>
+        {state.errors && Object.values(state.errors).some(Boolean) && (
+          <p className="text-sm text-danger" role="alert">
+            {Object.entries(state.errors).find(([, msg]) => msg)?.[1]}
+          </p>
+        )}
         {state.message && (
           <p className={`text-sm ${state.ok ? "text-go" : "text-danger"}`} role="status">
             {state.message}
