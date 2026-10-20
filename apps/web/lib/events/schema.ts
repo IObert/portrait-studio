@@ -27,7 +27,6 @@ export const FIXED_FRAMES = [
   "twilio-border-right",
 ] as const;
 export const FRAME_IDS = [...FIXED_FRAMES, "uploaded"] as const;
-export type FrameId = (typeof FRAME_IDS)[number];
 
 const text = (max: number) => z.string().trim().max(max);
 

@@ -5,12 +5,10 @@ export const InboundSchema = z
   .object({
     MessageSid: z.string().regex(/^(SM|MM)[0-9a-f]{32}$/),
     AccountSid: z.string().regex(/^AC[0-9a-f]{32}$/),
-    MessagingServiceSid: z.string().optional(),
     From: z.string().min(1),
     To: z.string().min(1),
     Body: z.string().default(""),
     NumMedia: z.coerce.number().int().min(0).default(0),
-    ProfileName: z.string().optional(),
     /** Quick-reply / list-picker selections carry the item id here. */
     ButtonPayload: z.string().optional(),
     ListId: z.string().optional(),

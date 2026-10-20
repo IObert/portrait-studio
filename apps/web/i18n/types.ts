@@ -56,7 +56,6 @@ export interface Catalog {
     codeLocked: (p: { resendKeyword: string }) => string;
     /** Localized keyword that sends a new code (SPEC §5.4). */
     resendKeywords: readonly string[];
-    optedIn: string;
   };
 
   selfie: {

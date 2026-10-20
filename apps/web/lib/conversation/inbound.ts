@@ -64,7 +64,6 @@ export interface Deps {
   memory: MemoryClient;
   verifier: EmailVerifier;
   fetchMedia: MediaFetch;
-  publicBaseUrl: string;
   /** Signed, long-lived link for a slideshow image (D-17). */
   slideUrl: (blobPath: string) => string;
   /** Signed link for the print agent to download a print PNG (D-24). */

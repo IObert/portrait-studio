@@ -88,7 +88,6 @@ async function world(): Promise<World> {
     memory: memory as unknown as MemoryClient,
     verifier: verifier as unknown as EmailVerifier,
     fetchMedia: async () => new Response(image, { headers: { "content-type": "image/jpeg" } }),
-    publicBaseUrl: "https://booth.test",
     slideUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
     mediaUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
     chat: { model: "fake-chat", client: fakeChat as unknown as ChatModel["client"] },

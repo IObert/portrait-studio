@@ -49,7 +49,6 @@ export const pt_BR = {
     codeResent: ({ email }) => `Enviamos um novo código para ${email}.`,
     codeLocked: ({ resendKeyword }) => `Muitas tentativas. Aguarde 10 minutos e responda ${resendKeyword} para receber um novo código.`,
     resendKeywords: ["reenviar", "novo código", "novo codigo"],
-    optedIn: "Tudo pronto!",
   },
 
   selfie: {

@@ -306,8 +306,7 @@ async function waitForJob(printer: Printer, printerJobId: string, signal: AbortS
   return "stopped";
 }
 
-/** Heartbeat and printer status every 15 s (SPEC §11.2, PROTOCOL.md §4). */
-/** Writes the heartbeat; true when Sync took it. */
+/** Writes the heartbeat and printer status (every 15 s, SPEC §11.2, PROTOCOL.md §4); true when Sync took it. */
 async function heartbeat(doc: SyncDocument, printer: Printer, printing: boolean): Promise<boolean> {
   try {
     const st = await printer.status();
