@@ -30,10 +30,13 @@ export async function markTopBand(png: Buffer): Promise<Buffer> {
 
 export const JUDGE_PROMPT = `This portrait has a red-tinted band across the top, ending at a solid red line. A decorative frame may cover that band, so nothing important may be inside it.
 
-Look only at what is inside the red band, above the red line. Does any person's head, hair, forehead, face, ears, a hat or raised hands reach into the band, or get cut off by the top edge of the image?
-Background, sky, ceiling, lights and scenery inside the band are fine.
+Look only at what is inside the red band, above the red line. FAIL if any of these reach into the band, or are cut off by it or by the top edge of the image:
+- a person's head, hair, forehead, face, ears, a hat, goggles or raised hands
+- recognisable content the picture is about: a landmark or building name, a sign or banner with readable text or a logo that is part of the scene
 
-Reply with only PASS if the band holds nothing but background. Otherwise reply FAIL: followed by what reaches into the band.`;
+Plain background is fine: sky, clouds, a ceiling, a dark or solid colour, lights, or scenery with no readable text. Anything lying only just under the red line is also fine.
+
+Reply with only PASS if the band holds nothing important. Otherwise reply FAIL: followed by what reaches into the band.`;
 
 export type Verdict = { pass: true } | { pass: false; reason: string };
 

@@ -46,3 +46,20 @@ describe("prompt builder (SPEC §9.3)", () => {
     for (const banned of ["STYLE LOCK", "CARICATURE", "Override from reviewer", "landscape", "Clothing:", "REMINDER: The art style"]) expect(all).not.toContain(banned);
   });
 });
+
+describe("top margin (D-40)", () => {
+  const scene = { subjects: 1, pet: null };
+  it("is in every prompt, with or without a frame or a brand, before the final reminder", () => {
+    for (const style of STYLE_IDS)
+      for (const bg of PLAIN_BACKGROUNDS) {
+        const p = buildPrompt(style, bg, scene);
+        expect(p, `${style} × ${bg}`).toContain("Keep the top 10% of the image free");
+        expect(p.indexOf("Top margin:")).toBeLessThan(p.indexOf("FINAL REMINDER"));
+      }
+  });
+  it("comes before the frame line, and the frame line still names its own larger share", () => {
+    const p = buildPrompt("anime", "gradient", scene, { top: 0.12, bottom: 0 });
+    expect(p.indexOf("Top margin:")).toBeLessThan(p.indexOf("Frame clearance:"));
+    expect(p).toContain("the top 15%");
+  });
+});

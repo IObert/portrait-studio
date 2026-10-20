@@ -484,11 +484,23 @@ second copy:
 - The judge is a vision model shown the image with the top 10% tinted and a red line under it, and answers
   `PASS` or `FAIL: …`. Before any image is generated it must call a synthetic head in the band a FAIL and a clear one a
   PASS, or the run stops: a judge that cannot tell them apart makes every result meaningless.
-- First run, current prompt (no clearance line without a frame): **0 of 12 reach into the band** (2 photos x original,
-  Crypto.com Arena, uploaded background x cartoon, watercolor). The model leaves the top free on its own for these
-  inputs, so **the prompt was not changed**. 12 images from 2 photos can rule out a frequent failure, not a rare one.
-  The tightest cases were the 3-person photos (hair just under the line).
-- If a run ever fails, the fix to try is an always-on clearance line in `lib/prompts/frame.ts`, next to the one that
-  D-27 adds for frames. Run the eval before and after; a prompt change risks the likeness that has been tuned.
+- **What counts (user):** people (head, hair, hats, goggles, raised hands) and anything the picture is about, such as the
+  "crypto.com ARENA" sign. Plain sky, ceiling or a dark background in the band is fine.
+- **Correction:** the first version of the judge only looked for people and passed the arena sign, so a first run
+  reported 0 of 12. That was wrong. The user's own examples (hair, goggles and the arena sign in the band) showed it. The
+  judge now fails all four of them, checked at full resolution, and `tests/live/top-clearance-judge.live.test.ts`
+  keeps it honest. The examples were regenerated without a frame, because the framed ones show the frame's own logo in
+  the band. They contain faces and stay in `.local/eval-examples/` (git-ignored).
+- Result with the corrected judge and the old prompt: **5 of 12 fail** (arena sign 3/4, the user's shelf of model
+  landmarks 2/4, uploaded 0/4). Two changes, both by the user's choice:
+  1. **An always-on prompt line** (`TOP_FREE_LINE` in `lib/prompts/frame.ts`, placed before the frame line). This
+     replaces D-27's "no frame, no change": every prompt now has the line, so all 30 snapshots gained exactly that line.
+     The frame line stays and names a larger share when a frame needs it.
+  2. **The arena reference photo moved down 14%**, with the sky above it continued by the image model, so the sign sits at
+     about 19–30% instead of 4–17%. The model redrew the whole picture (mean colour difference 13.7/255 from the old one),
+     so fine detail differs; portraits made with it look the same. The old file is in `.local/la-kings/`. The ice-rink
+     reference was not checked.
+- With both: **0 of 12** (looked at by eye: the sign clears the line in all four arena portraits). 12 images from 2 photos
+  can rule out a frequent failure, not a rare one.
 - Run it when the generation prompt, the style prompts, the brand scenes or the image model change, and by hand before
   an event. Not on every merge: nothing in a normal merge can change what the model draws.
