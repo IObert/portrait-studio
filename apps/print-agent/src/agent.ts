@@ -78,13 +78,21 @@ export async function runAgent(opts: AgentOptions): Promise<void> {
   while (!opts.signal.aborted) {
     try {
       await session(opts);
+      // Normal session end: reset backoff for next connection (BUG 7).
       backoff = 1_000;
     } catch (err) {
       if (err instanceof AgentUnauthorized) throw err;
       if (opts.signal.aborted) return;
-      log("warn", `Connection problem (${(err as Error).message}); retrying in ${Math.round(backoff / 1000)}s`);
-      await sleep(backoff, opts.signal);
-      backoff = Math.min(MAX_BACKOFF_MS, backoff * 2);
+      // "session ended" is expected (session() always throws it unless aborted); other errors are transient connection problems.
+      const isExpected = (err as Error).message === "session ended";
+      if (!isExpected) {
+        log("warn", `Connection problem (${(err as Error).message}); retrying in ${Math.round(backoff / 1000)}s`);
+        await sleep(backoff, opts.signal);
+        backoff = Math.min(MAX_BACKOFF_MS, backoff * 2);
+      } else {
+        // Normal reconnect cycle: no backoff increase, but small delay to avoid spin.
+        await sleep(100, opts.signal);
+      }
     }
   }
 }
@@ -164,7 +172,8 @@ async function session(opts: AgentOptions): Promise<void> {
 
 type Work = { jobId: string; resume: boolean };
 
-/** A print already at the printer from before a restart comes first; then the oldest claimable item. */
+/** A print already at the printer from before a restart comes first; then the oldest claimable item.
+ * TODO(BUG 8): Only reads first 100 items; settled items pile up over 7 days (D-25), so new prints can be missed on busy events. Use pagination. */
 async function nextWork(queue: SyncMap): Promise<Work | null> {
   const page = await queue.getItems({ pageSize: 100 });
   const now = new Date();
@@ -305,7 +314,14 @@ function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> 
 
 function sleep(ms: number, signal: AbortSignal) {
   return new Promise<void>((resolve) => {
-    const t = setTimeout(resolve, ms);
-    signal.addEventListener("abort", () => (clearTimeout(t), resolve()), { once: true });
+    const t = setTimeout(() => {
+      signal.removeEventListener("abort", handler);
+      resolve();
+    }, ms);
+    const handler = () => {
+      clearTimeout(t);
+      resolve();
+    };
+    signal.addEventListener("abort", handler, { once: true });
   });
 }
