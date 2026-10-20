@@ -499,7 +499,7 @@ second copy:
   2. **The arena reference photo moved down 14%**, with the sky above it continued by the image model, so the sign sits at
      about 19–30% instead of 4–17%. The model redrew the whole picture (mean colour difference 13.7/255 from the old one),
      so fine detail differs; portraits made with it look the same. The old file is in `.local/la-kings/`. The ice-rink
-     reference was not checked.
+     reference was left as it is (user: fine).
 - With both: **0 of 12** (looked at by eye: the sign clears the line in all four arena portraits). 12 images from 2 photos
   can rule out a frequent failure, not a rare one.
 - Run it when the generation prompt, the style prompts, the brand scenes or the image model change, and by hand before
