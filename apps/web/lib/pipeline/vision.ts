@@ -26,7 +26,7 @@ export interface VisionConfig {
 
 const dataUrl = (jpeg: Buffer) => `data:image/jpeg;base64,${jpeg.toString("base64")}`;
 
-async function ask(client: OpenAI, cfg: VisionConfig, images: { jpeg: Buffer; detail: "low" | "high" }[], text: string): Promise<string> {
+export async function ask(client: OpenAI, cfg: VisionConfig, images: { jpeg: Buffer; detail: "low" | "high" }[], text: string): Promise<string> {
   const r = await client.responses.create({
     model: cfg.model,
     reasoning: { effort: cfg.effort },

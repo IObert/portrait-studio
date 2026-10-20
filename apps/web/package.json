@@ -16,6 +16,7 @@
     "stats:reset": "node --conditions=react-server --import tsx scripts/stats-reset.ts",
     "leads:export": "node --conditions=react-server --import tsx scripts/leads-export.ts",
     "setup:twilio": "node --conditions=react-server --import tsx scripts/setup-twilio.ts",
+    "eval:top-clearance": "node --conditions=react-server --import tsx evals/top-clearance.eval.ts",
     "previews:styles": "node --conditions=react-server --import tsx scripts/style-previews.ts"
   },
   "dependencies": {

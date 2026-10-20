@@ -397,18 +397,13 @@ lock), for one brand.*
   - `docs/deployment.md` leaves out `AZURE_WEB_APP_NAME`, `AZURE_WORKER_APP_NAME` and `IMAGE_NAME`, and the deploy
     smoke test checks `/healthz`, not `/healthz/ready`. `app/healthz/route.ts` still says readiness is "coming".
 
-- **Eval: portraits must keep the top 10% of the image free** (user, 2026-10-20): a frame can cover that strip, so
-  nothing important may be generated there. Build an eval over generated images, for the original background and for an
-  added one such as the Crypto.com Arena (`lib/prompts/scene.ts`, `lib/image/frame-clearance.ts`). Check that no subject
-  (head, hair, hands) reaches the top 10%, and fail the run if one does. Run it against the live model like
-  `tests/live/pipeline.live.test.ts`, since the prompt's clearance line (D-27) is the only thing enforcing it today.
-
 - **Print agent reads only the first 100 queue items** (user, 2026-10-20): left as it is for now. Settled items
   stay for 7 days, so on a long, busy event a new print can sort after the first 100 and be missed. Marked
   `TODO(print-queue-pagination)` in `apps/print-agent/src/agent.ts`. Page through `getItems` with `nextPage()`.
 
 ### Closed
 
+- **Eval: portraits keep the top 10% free** (user, 2026-10-20): built, see D-40.
 - **`setup:twilio` script** (2026-10-16): written, see D-39.
 - **README** (2026-10-16): rewritten with setup, architecture, env table, booth printer steps and the test checklist.
 
@@ -478,3 +473,22 @@ second copy:
 - Templates are named `portrait_studio_delivery_<host hash>_<lang>`: WhatsApp fixes the URLs at approval, so a new
   `PUBLIC_BASE_URL` host gets new templates and the old ones keep working for the old host.
 - `--dry-run` reports and changes nothing.
+
+### D-40 Eval: the top 10% of a portrait stays free (user decision)
+*2026-10-20.*
+- Rule (user): in every portrait, with or without a frame, no head, hair or face reaches into the top 10% of the
+  image, because a frame may cover it. The band is checked on the generated image, before any frame is applied.
+- `pnpm --filter @portrait-studio/web eval:top-clearance` (`evals/`) generates with the real prompt builder and judges
+  the result. It calls the OpenAI API, costs about $3 for 12 images and is not part of `pnpm test`.
+  `--dry-run` prints the plan and the cost, `--calibrate-only` runs just the judge check (cents).
+- The judge is a vision model shown the image with the top 10% tinted and a red line under it, and answers
+  `PASS` or `FAIL: …`. Before any image is generated it must call a synthetic head in the band a FAIL and a clear one a
+  PASS, or the run stops: a judge that cannot tell them apart makes every result meaningless.
+- First run, current prompt (no clearance line without a frame): **0 of 12 reach into the band** (2 photos x original,
+  Crypto.com Arena, uploaded background x cartoon, watercolor). The model leaves the top free on its own for these
+  inputs, so **the prompt was not changed**. 12 images from 2 photos can rule out a frequent failure, not a rare one.
+  The tightest cases were the 3-person photos (hair just under the line).
+- If a run ever fails, the fix to try is an always-on clearance line in `lib/prompts/frame.ts`, next to the one that
+  D-27 adds for frames. Run the eval before and after; a prompt change risks the likeness that has been tuned.
+- Run it when the generation prompt, the style prompts, the brand scenes or the image model change, and by hand before
+  an event. Not on every merge: nothing in a normal merge can change what the model draws.
