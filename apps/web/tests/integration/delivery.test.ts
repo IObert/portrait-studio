@@ -115,6 +115,26 @@ describe("delivery (SPEC §6.1)", () => {
     expect(await w.fake.getItem(Global.shares, "S".repeat(24))).not.toBeNull();
   });
 
+  it("BUG 5: a send that throws is not lost: the job is retried, not left 'delivered' with nothing sent", async () => {
+    const w = await setup();
+    const create = (w.deps.messenger as unknown as { api: { createMessage: ReturnType<typeof vi.fn> } }).api.createMessage;
+    create.mockRejectedValueOnce(new Error("Twilio 503"));
+    await expect(deliver(w.deps, w.event, w.job, w.address)).rejects.toThrow("Twilio 503");
+    const state = async () => JobSchema.parse((await w.fake.getItem(eventObjects("ev").jobs, w.job.jobId))!.data).state;
+    expect(await state(), "claimable again").toBe("processing");
+    expect((await w.session()).counters.delivered, "not counted as delivered").toBe(0);
+
+    expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("sent");
+    expect(await state()).toBe("delivered");
+    expect((await w.session()).counters.delivered).toBe(1);
+  });
+
+  it("BUG 5: when nothing could be sent (outside the window, no template) the portrait is not counted as delivered", async () => {
+    const w = await setup({ session: { lastInboundAt: STALE } });
+    expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("skipped");
+    expect((await readStats(w.sync, "ev")).imagesDelivered ?? 0).toBe(0);
+  });
+
   it("counts quota once, releases the in-flight slot and records stats", async () => {
     const w = await setup();
     await deliver(w.deps, w.event, w.job, w.address);

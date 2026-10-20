@@ -128,4 +128,49 @@ describe("admin review (SPEC §10.3)", () => {
     const w = await setup({ printingEnabled: false }, { state: "delivered" });
     await expect(reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001")).rejects.toThrow(/Printing is off/);
   });
+
+  const printItem = (over: object = {}) => ({ jobId: "job_00000001", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {}, ...over });
+
+  it("BUG 14: approve whose delivery fails leaves the job flagged, so Approve can be tried again", async () => {
+    const w = await setup();
+    (w.delivery.messenger as unknown as { api: { createMessage: ReturnType<typeof vi.fn> } }).api.createMessage.mockRejectedValueOnce(new Error("Twilio 503"));
+    await expect(approveFlagged({ sync: w.sync, delivery: w.delivery, log: w.log }, w.event, "job_00000001")).rejects.toThrow();
+    expect((await w.getJob()).state).toBe("flagged");
+    expect(await approveFlagged({ sync: w.sync, delivery: w.delivery, log: w.log }, w.event, "job_00000001")).toBe("sent");
+  });
+
+  it("BUG 14: approve with an invalid address changes nothing", async () => {
+    const w = await setup({}, { address: "carrier-pigeon:1" });
+    await expect(approveFlagged({ sync: w.sync, delivery: w.delivery, log: w.log }, w.event, "job_00000001")).rejects.toBeInstanceOf(ReviewError);
+    expect((await w.getJob()).state).toBe("flagged");
+  });
+
+  it("BUG 14: a remove whose file delete failed can be run again to finish the cleanup", async () => {
+    const w = await setup({}, { state: "delivered" });
+    const blob = new FakeBlob();
+    for (const p of ["s", "events/ev/generated/job_00000001.print.png", "events/ev/generated/job_00000001.jpg"]) await blob.put(p, Buffer.from("x"), "image/jpeg");
+    const del = blob.delete.bind(blob);
+    let fail = true;
+    blob.delete = async (p: string) => { if (fail && p.endsWith(".jpg")) throw new Error("storage down"); return del(p); };
+    await expect(removePortrait({ sync: w.sync, blob, log: w.log }, w.event, "job_00000001")).rejects.toThrow(/could not be deleted/);
+    expect((await w.getJob()).state).toBe("removed_by_admin");
+    fail = false;
+    await expect(removePortrait({ sync: w.sync, blob, log: w.log }, w.event, "job_00000001")).resolves.toBeDefined();
+    expect(blob.blobs.size).toBe(0);
+  });
+
+  it("BUG 15: reprint does not overwrite a finished print that the server has not counted yet", async () => {
+    const w = await setup({ printingEnabled: true }, { state: "delivered" });
+    await w.fake.createItem(w.ev.print, "job_00000001", printItem({ state: "printed" }));
+    await expect(reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001")).rejects.toThrow(ReviewError);
+    expect((await w.fake.getItem(w.ev.print, "job_00000001"))!.data).toMatchObject({ state: "printed", reprint: false });
+  });
+
+  it("BUG 15: removing a failed print that was not settled yet still releases its reservation", async () => {
+    const w = await setup({ printingEnabled: true }, { state: "delivered" });
+    await w.fake.createItem(w.ev.print, "job_00000001", printItem({ state: "failed" }));
+    expect((await w.counters()).printsReserved).toBe(1);
+    await removeFromPrintQueue({ sync: w.sync, log: w.log }, w.event, "job_00000001");
+    expect((await w.counters()).printsReserved).toBe(0);
+  });
 });

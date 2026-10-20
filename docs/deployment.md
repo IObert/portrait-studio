@@ -268,7 +268,7 @@ bumped by hand (`ARG NODE_VERSION` in the Dockerfile); `deploy.sh` copies the ne
 
 ```sh
 cp .env.example .env.local      # if you haven't yet
-docker compose up --build       # or: podman compose up --build
+docker compose --env-file .env.local up --build       # or: podman compose ...
 curl localhost:3000/healthz
 ```
 

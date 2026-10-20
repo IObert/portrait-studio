@@ -65,12 +65,34 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
   const styleName = c.styles[job.style].name;
   const media = deps.mediaUrl(job.outputBlobs.deliveryJpeg, MEDIA_LINK_TTL);
 
-  // 3. Session: quota (not for admin approvals) and the in-flight slot. Nothing is
-  // printed here: the attendee chooses which portraits to print (D-24).
+  // 3. Send first (SPEC §6.1, §5.11): the quota and the stats below only count a portrait the
+  // attendee can actually have. If the send throws, the claim is released so the job is retried.
   const sessions = deps.sync.map(ev.sessions, SessionSchema);
+  const current = await sessions.get(job.address);
+  const ctx = { lastInboundAt: current?.lastInboundAt ?? null, locale, from: event.config.qrSender };
+  let result: "sent" | "skipped";
+  try {
+    if (address.channel === "whatsapp") {
+      if (insideWindow(current?.lastInboundAt, now)) {
+        result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.caption({ styleName, shareUrl }), mediaUrl: media }, ctx)).status;
+      } else {
+        result = await sendTemplate(deps, address, locale, { media, shareId: job.shareId }, event);
+      }
+    } else if (supportsMms(address.e164)) {
+      result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.caption({ styleName, shareUrl }), mediaUrl: media }, ctx)).status;
+    } else {
+      result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.linkOnly({ styleName, shareUrl }) }, ctx)).status;
+    }
+  } catch (err) {
+    await jobs.update(job.jobId, (cur) => (cur?.state === "delivered" ? { ...cur, state: from, leaseUntil: null } : SKIP));
+    throw err;
+  }
+
+  // 4. Session: quota (not for admin approvals) and the in-flight slot. Nothing is
+  // printed here: the attendee chooses which portraits to print (D-24).
   const group = (job.subjects ?? 1) > 1;
   let left = 0;
-  const session = await sessions.update(job.address, (s) => {
+  await sessions.update(job.address, (s) => {
     if (!s) return SKIP;
     const counters = { ...s.counters };
     if (!opts.approvedByAdmin) {
@@ -82,26 +104,13 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
     return { ...s, counters, delivered, pendingSlideshow: { jobId: job.jobId, group, print: left > 0, askedAt: now.toISOString() } };
   });
 
-  // 4. Send (SPEC §6.1, §5.11).
-  const ctx = { lastInboundAt: session?.lastInboundAt ?? null, locale, from: event.config.qrSender };
-  let result: "sent" | "skipped";
-  if (address.channel === "whatsapp") {
-    if (insideWindow(session?.lastInboundAt, now)) {
-      result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.caption({ styleName, shareUrl }), mediaUrl: media }, ctx)).status;
-    } else {
-      result = await sendTemplate(deps, address, locale, { media, shareId: job.shareId }, event);
+  // 5. Stats (SPEC §10.5): only for a portrait that was sent.
+  if (result === "sent") {
+    await bump(deps.sync, event.slug, opts.approvedByAdmin ? "approvedByAdmin" : "imagesDelivered");
+    if (!opts.approvedByAdmin && job.timestamps.queued) {
+      await bump(deps.sync, event.slug, "deliveryMsTotal", now.getTime() - Date.parse(job.timestamps.queued));
+      await bump(deps.sync, event.slug, "deliveryCount");
     }
-  } else if (supportsMms(address.e164)) {
-    result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.caption({ styleName, shareUrl }), mediaUrl: media }, ctx)).status;
-  } else {
-    result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.linkOnly({ styleName, shareUrl }) }, ctx)).status;
-  }
-
-  // 5. Stats (SPEC §10.5).
-  await bump(deps.sync, event.slug, opts.approvedByAdmin ? "approvedByAdmin" : "imagesDelivered");
-  if (!opts.approvedByAdmin && job.timestamps.queued) {
-    await bump(deps.sync, event.slug, "deliveryMsTotal", now.getTime() - Date.parse(job.timestamps.queued));
-    await bump(deps.sync, event.slug, "deliveryCount");
   }
 
   // 6. One question, inside the window only (SPEC §5.8, §5.11, D-24): print and

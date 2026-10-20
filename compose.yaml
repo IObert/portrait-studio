@@ -1,5 +1,10 @@
 # Local development stack (works with `docker compose` and `podman compose`).
-# Copy .env.example to .env.local first (override with ENV_FILE=...).
+# Copy .env.example to .env.local first, and start with
+#   docker compose --env-file .env.local up --build     (or: podman compose ...)
+# --env-file is required: Compose fills ${...} below from that file, so a real
+# AZURE_STORAGE_CONNECTION_STRING in it is used, and an empty one falls back to Azurite.
+# Without the flag Compose reads only .env and the shell, and always uses Azurite.
+# (Another file: ENV_FILE=.env.staging docker compose --env-file .env.staging up)
 services:
   web:
     build: .
@@ -7,8 +12,6 @@ services:
     env_file: ${ENV_FILE:-.env.local}
     restart: unless-stopped
     environment:
-      # Fallback to Azurite if not in env_file. Values in env_file are loaded into the container, not into the compose process,
-      # so we use a docker-compose default here (evaluated from the shell env, which typically has nothing) with a fallback (BUG 18 note).
       AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;}
     ports:
       - "${HOST_PORT:-3000}:3000"

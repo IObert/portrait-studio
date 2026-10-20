@@ -382,6 +382,31 @@ lock), for one brand.*
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
   with `git grep -n "TODO(profile-deletion)"`.
 
+- **Update SPEC.md and the docs to match the code** (user, 2026-10-20): not done yet. The code and decisions are right;
+  the SPEC is stale in these places:
+  - §4.1 and §5: bindings are removed when an event ends. Kept since D-13.
+  - §9.2 step 7: six review criteria. There are five (D-15). `lib/prompts/review.ts` says "six" in a comment too.
+  - §9.2 step 5 and §9.3: no brand blocks, no style lock, "the selfie only". Brand blocks, reference images and the
+    frame-clearance line exist (D-27, D-36).
+  - §9.1: the job states have no `screening` or `awaiting_choice` (D-18), and `aiReview` is `{reason}` only.
+  - §4.4 and §10.2: delete is confirmed by typing the slug. It is the event name (D-35).
+  - §10.3: "remove from slideshow" and "reprints count against quota". It is a full remove (D-16), and reprints do not
+    count (Q5). The review audit lines also carry no admin name, although the SPEC and a code comment say they do.
+  - §10.5: the CSV download became the `leads:export` script (D-31).
+  - `PROTOCOL.md` §2 says the agent refreshes its token on a 401 from Sync. It reconnects with a new token instead.
+  - `docs/deployment.md` leaves out `AZURE_WEB_APP_NAME`, `AZURE_WORKER_APP_NAME` and `IMAGE_NAME`, and the deploy
+    smoke test checks `/healthz`, not `/healthz/ready`. `app/healthz/route.ts` still says readiness is "coming".
+
+- **Eval: portraits must keep the top 10% of the image free** (user, 2026-10-20): a frame can cover that strip, so
+  nothing important may be generated there. Build an eval over generated images, for the original background and for an
+  added one such as the Crypto.com Arena (`lib/prompts/scene.ts`, `lib/image/frame-clearance.ts`). Check that no subject
+  (head, hair, hands) reaches the top 10%, and fail the run if one does. Run it against the live model like
+  `tests/live/pipeline.live.test.ts`, since the prompt's clearance line (D-27) is the only thing enforcing it today.
+
+- **Print agent reads only the first 100 queue items** (user, 2026-10-20): left as it is for now. Settled items
+  stay for 7 days, so on a long, busy event a new print can sort after the first 100 and be missed. Marked
+  `TODO(print-queue-pagination)` in `apps/print-agent/src/agent.ts`. Page through `getItems` with `nextPage()`.
+
 ### Closed
 
 - **`setup:twilio` script** (2026-10-16): written, see D-39.

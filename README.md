@@ -104,7 +104,7 @@ pnpm dev                                    # web on http://localhost:3000
 pnpm --filter web worker                    # worker, second terminal
 ```
 
-Or everything in containers: `docker compose up --build` (or `podman compose up --build`).
+Or everything in containers: `docker compose --env-file .env.local up --build` (or `podman compose --env-file .env.local up --build`).
 
 To test messages against your laptop, point the Messaging Service at the tunnel with
 `pnpm --filter web setup:twilio --take-over-inbound`, and back at the deployed app the same way afterwards. While it

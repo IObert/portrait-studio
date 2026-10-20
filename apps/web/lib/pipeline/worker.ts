@@ -117,6 +117,14 @@ async function process(deps: WorkerDeps, event: PortraitEvent, job: Job): Promis
     return afterScreening(deps, event, job, screened);
   }
 
+  // Reviewed and stored on an earlier attempt, but never handed to delivery: deliver that result
+  // instead of generating (and paying for) another image.
+  if (job.outputBlobs && job.aiReview?.reason === "") {
+    clearInterval(heartbeat);
+    deps.log.info({ event: "job_redelivery", ...log }, "delivering a reviewed result left behind");
+    return handOff(deps, event, job);
+  }
+
   let outcome: PipelineOutcome;
   try {
     outcome = await runPipeline({ ...deps.pipeline, signal: controller.signal }, event, job);
@@ -144,7 +152,8 @@ async function afterScreening(deps: WorkerDeps, event: PortraitEvent, job: Job, 
     const state = ready ? "queued" : "awaiting_choice";
     return { ...cur, state, style, background, subjects: s.subjects, pet: s.pet, leaseUntil: null, attempts: 0, error: null, timestamps: { ...cur.timestamps, [state]: now } };
   });
-  if (!updated || ready) return; // generation is picked up on the next pass
+  // `update` returns the stored job when the write was skipped (superseded, reclaimed): then it is not ours.
+  if (!updated || updated.state !== (ready ? "queued" : "awaiting_choice") || ready) return; // generation is picked up on the next pass
 
   // Open the first menu the attendee still has to answer (SPEC §5.5).
   const address = addressFromKey(job.address);
@@ -156,6 +165,15 @@ async function afterScreening(deps: WorkerDeps, event: PortraitEvent, job: Job, 
   await deps.messenger.send(address, msg, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: event.config.qrSender });
 }
 
+/** The server's `retry-after` (seconds) from an OpenAI error, whose headers are a `Headers` object (a plain object in older SDKs). */
+export function retryAfterOf(err: unknown): number | undefined {
+  const headers = (err as { headers?: Headers | Record<string, string | undefined> } | null)?.headers;
+  if (!headers) return undefined;
+  const raw = typeof (headers as Headers).get === "function" ? (headers as Headers).get("retry-after") : (headers as Record<string, string | undefined>)["retry-after"];
+  const seconds = Number(raw);
+  return raw && Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : undefined;
+}
+
 /** Transient errors retry with backoff; after MAX_ATTEMPTS the job fails (SPEC §9.1, fail closed). */
 async function retryOrFail(deps: WorkerDeps, event: PortraitEvent, job: Job, err: unknown): Promise<void> {
   const jobs = deps.sync.map(eventObjects(event.slug).jobs, JobSchema);
@@ -163,10 +181,7 @@ async function retryOrFail(deps: WorkerDeps, event: PortraitEvent, job: Job, err
   const status = (err as { status?: number }).status;
   const message = (err as Error).message?.slice(0, 300) ?? String(err);
   if (job.attempts < MAX_ATTEMPTS) {
-    // OpenAI v7 errors have Headers objects; try .get() first, then bracket access for plain objects.
-    const errHeaders = (err as { headers?: Headers | Record<string, string> }).headers;
-    const retryAfterHeader = typeof errHeaders?.get === "function" ? errHeaders.get("retry-after") : (errHeaders as any)?.["retry-after"];
-    const retryAfterMs = retryAfterHeader ? Number(retryAfterHeader) * 1000 : undefined;
+    const retryAfterMs = retryAfterOf(err);
     const delay = backoffDelay(job.attempts, { baseMs: 5_000, maxMs: 60_000, minMs: 5_000 }, retryAfterMs);
     deps.log.warn({ event: "job_retry", slug: event.slug, jobId: job.jobId, attempt: job.attempts, status, error: message, delayMs: delay }, "job will be retried");
     // Back to the phase's waiting state; leaseUntil doubles as "not before" for the next attempt.
@@ -190,7 +205,9 @@ async function finish(deps: WorkerDeps, event: PortraitEvent, job: Job, outcome:
     return {
       ...cur,
       state,
-      leaseUntil: null,
+      // A reviewed job stays `processing` until delivery claims it. Keeping a lease means a failed
+      // or lost hand-off expires and is retaken (below), instead of waiting forever.
+      leaseUntil: outcome?.kind === "ready" ? new Date(Date.parse(now) + LEASE_MS).toISOString() : null,
       error: outcome === null ? job.error : outcome.kind === "rejected" ? outcome.reason : null,
       subjects: outcome && outcome.kind !== "rejected" ? outcome.subjects : cur.subjects,
       outputBlobs: outcome && outcome.kind !== "rejected" ? outcome.outputBlobs : cur.outputBlobs,
@@ -198,13 +215,10 @@ async function finish(deps: WorkerDeps, event: PortraitEvent, job: Job, outcome:
       timestamps: state === "processing" ? cur.timestamps : { ...cur.timestamps, [state]: now },
     };
   });
-  if (!updated) return;
+  // Skipped writes return the stored job, which is then not in the state we just set.
+  if (!updated || updated.state !== state) return;
 
-  if (outcome?.kind === "ready") {
-    // Passed review: delivery counts the quota and releases the slot.
-    await deps.onReady(event, updated);
-    return;
-  }
+  if (outcome?.kind === "ready") return handOff(deps, event, updated);
 
   // Not delivered: this attempt does not count toward quota (SPEC §4.3).
   await releaseInFlight(deps, event, job.address);
@@ -228,6 +242,11 @@ async function finish(deps: WorkerDeps, event: PortraitEvent, job: Job, outcome:
             : c.job.noFace;
   const session = await deps.sync.map(ev.sessions, SessionSchema).get(job.address);
   await deps.messenger.send(address, { kind: "text", body }, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: event.config.qrSender });
+}
+
+/** Passed review: delivery counts the quota and releases the slot. */
+async function handOff(deps: WorkerDeps, event: PortraitEvent, job: Job): Promise<void> {
+  await deps.onReady(event, job);
 }
 
 export async function releaseInFlight(deps: Pick<WorkerDeps, "sync">, event: PortraitEvent, addressKey: string): Promise<void> {

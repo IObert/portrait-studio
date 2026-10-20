@@ -40,7 +40,8 @@ export async function settlePrints(deps: PrintDeps): Promise<number> {
   for (const event of (await deps.events.list()).filter((e) => e.state !== "draft" && e.config.printingEnabled)) {
     const map = deps.sync.map(eventObjects(event.slug).print, Settled);
     const items: SettledJob[] = [];
-    for await (const [, item] of map.entries()) items.push(item);
+    // One malformed item must not stop settlement for every event: skip and log it.
+    for await (const [, item] of map.entries((key, err) => deps.log.warn({ event: "print_item_invalid", slug: event.slug, key, error: err.message }, "skipping invalid print item"))) items.push(item);
     for (const item of items) {
       // Items from before signed links existed get one, so the agent can download them.
       if (item.state === "queued" && !item.url && deps.mediaUrl) {

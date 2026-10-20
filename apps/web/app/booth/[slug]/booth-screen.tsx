@@ -36,6 +36,7 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
     };
 
     const start = async () => {
+      if (stopped) return;
       try {
         client = new SyncClient(await fetchToken(slug));
         client.on("connectionStateChanged", (state: ConnectionState) => setOnline(state === "connected"));
@@ -52,6 +53,8 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
         const booth = await client.document({ id: `ev_${slug.replaceAll("-", "_")}_booth`, mode: "open_existing" });
         setDoc(booth.data as BoothDoc);
         booth.on("updated", (e: { data: BoothDoc }) => setDoc(e.data));
+        // The document is deleted when the event goes back to draft or is deleted: stop advertising it.
+        booth.on("removed", () => setDoc((prev) => ({ ...prev, state: "ended" })));
 
         const map = await client.map({ id: `ev_${slug.replaceAll("-", "_")}_slideshow`, mode: "open_existing" });
         const page = await map.getItems({ pageSize: 50 });
@@ -77,6 +80,8 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
       void client?.shutdown().catch(() => {});
       client = null;
       if (stopped) return;
+      // tokenExpired and a failed start() can both land here: only one retry may be pending.
+      clearTimeout(retry);
       retry = setTimeout(() => void start(), backoff.current);
       backoff.current = Math.min(MAX_BACKOFF_MS, backoff.current * 2);
     };

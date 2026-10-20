@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 interface Props {
   imageUrl: string;
@@ -14,7 +14,12 @@ interface Props {
  */
 export function ShareButtons({ imageUrl, shareText, labels }: Props) {
   const [copied, setCopied] = useState(false);
-  const [canShareFiles] = useState(() => typeof navigator !== "undefined" && typeof navigator.canShare === "function");
+  // Browser capability: false on the server and during hydration, so the markup matches; the real value follows.
+  const canShareFiles = useSyncExternalStore(
+    () => () => {},
+    () => typeof navigator.canShare === "function",
+    () => false,
+  );
 
   async function share() {
     const res = await fetch(imageUrl);

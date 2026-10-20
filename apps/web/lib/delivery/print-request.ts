@@ -64,7 +64,14 @@ export async function requestPrint(
   if (left < 0) return { status: "none-left" };
 
   // 2. Queue it. Personal data is not allowed: masked address only (SPEC §11.3).
-  if (existing) await print.delete(jobId, existing.revision).catch(() => {});
+  if (existing) {
+    await print.delete(jobId, existing.revision).catch(() => {});
+    // A failed print that the server has not settled yet still holds its reservation, and the
+    // settlement can no longer see it once it is replaced: give it back here.
+    if (existing.data.state === "failed" && !existing.data.settledAt && !existing.data.reprint) {
+      await sessions.update(addressKey, (s) => (s && s.counters.printsReserved > 0 ? { ...s, counters: { ...s.counters, printsReserved: s.counters.printsReserved - 1 } } : SKIP));
+    }
+  }
   const created = await print.create(jobId, {
     jobId,
     blobPath: job.outputBlobs.printPng,

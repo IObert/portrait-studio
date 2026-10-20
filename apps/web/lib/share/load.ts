@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { getEventRepo } from "../admin/context";
 import { SessionSchema } from "../conversation/session";
@@ -45,7 +46,9 @@ export async function shareTarget(rawId: string): Promise<{ event: PortraitEvent
  * Resolves a share id to what the page shows, or null if it is unknown,
  * expired or deleted (SPEC §6.2). No personal data is returned.
  */
-export async function loadShare(rawId: string): Promise<ShareView | ShareGone> {
+export const loadShare = cache(loadShareUncached);
+
+async function loadShareUncached(rawId: string): Promise<ShareView | ShareGone> {
   const unavailable: ShareGone = { gone: "unavailable", locale: "en" };
   const id = SHARE_ID.safeParse(rawId);
   if (!id.success) return unavailable;
@@ -61,7 +64,7 @@ export async function loadShare(rawId: string): Promise<ShareView | ShareGone> {
   const age = Date.now() - Date.parse(share.createdAt);
   if (age > SEVEN_DAYS_MS || !job || job.state !== "delivered" || !job.outputBlobs) return { gone: "unavailable", locale };
   // The blob may already be gone (lifecycle rule or deletion request).
-  if (!(await blob.get(job.outputBlobs.deliveryJpeg))) return { gone: "unavailable", locale };
+  if (!(await blob.exists(job.outputBlobs.deliveryJpeg))) return { gone: "unavailable", locale };
   const env = requireEnv(getEnv(), ["MEDIA_SIGNING_SECRET", "PUBLIC_BASE_URL"]);
   const ttl = Math.max(60, Math.floor((SEVEN_DAYS_MS - age) / 1000));
   let print: ShareView["print"] = null;

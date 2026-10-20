@@ -7,12 +7,10 @@ import { BlobPaths } from "../blob/paths";
 import { generatePrinterToken } from "../auth/printer-token";
 import { deleteEvent } from "../events/delete";
 import { eventIdCandidate, eventIdFromName } from "../events/event-id";
-import { kingsBackgrounds } from "../events/kings";
 import { EventNotFound, InvalidTransition, SlugTaken } from "../events/repo";
 import {
   BACKGROUND_IDS,
   crossCheckUploads,
-  EventConfigInputSchema,
   FRAME_IDS,
   LOCALES,
   type EventConfigInput,
@@ -22,6 +20,7 @@ import { log } from "../log";
 import { getServices } from "../services";
 import { SlugSchema } from "../sync/names";
 import { STYLE_IDS } from "../prompts/styles";
+import { parseConfig } from "./parse-config";
 import { requireAdmin } from "./guard";
 import { revalidateEvent } from "./revalidate";
 import { getDeleteHooks, getEventRepo } from "./context";
@@ -89,39 +88,6 @@ function echo(form: FormData): ActionState["values"] {
       ctaText: { headline: str("ctaHeadline"), steps: form.getAll("ctaStep").map(String) },
     },
   };
-}
-
-/** Parses the shared event form. Checkbox groups arrive as repeated fields. */
-function parseConfig(form: FormData): EventConfigInput {
-  const bool = (k: string) => form.get(k) === "on" || form.get(k) === "true";
-  const num = (k: string) => Number(form.get(k) ?? Number.NaN);
-  const list = <T extends readonly string[]>(k: string, allowed: T) =>
-    form.getAll(k).map(String).filter((v): v is T[number] => (allowed as readonly string[]).includes(v));
-  const laKings = bool("laKings");
-  return EventConfigInputSchema.parse({
-    name: String(form.get("name") ?? ""),
-    language: z.enum(LOCALES).parse(form.get("language")),
-    leadChannel: z.enum(["whatsapp", "sms"]).parse(form.get("leadChannel")),
-    qrSender: String(form.get("qrSender") ?? "").trim(),
-    qrText: String(form.get("qrText") ?? "").trim(),
-    styles: list("styles", STYLE_IDS),
-    backgrounds: kingsBackgrounds(list("backgrounds", BACKGROUND_IDS), laKings),
-    uploadedBackgroundName: String(form.get("uploadedBackgroundName") ?? ""),
-    frame: z.enum(FRAME_IDS).parse(form.get("frame")),
-    laKings,
-    leadCollection: bool("leadCollection"),
-    emailPromoCode: String(form.get("emailPromoCode") ?? "").trim(),
-    emailShowSnippet: bool("emailShowSnippet"),
-    maxImagesPerPerson: num("maxImagesPerPerson"),
-    printingEnabled: bool("printingEnabled"),
-    maxPrintsPerPerson: num("maxPrintsPerPerson"),
-    promo: { enabled: bool("promoEnabled"), text: String(form.get("promoText") ?? "") },
-    shareText: String(form.get("shareText") ?? ""),
-    ctaText: {
-      headline: String(form.get("ctaHeadline") ?? ""),
-      steps: form.getAll("ctaStep").map(String).map((s) => s.trim()).filter(Boolean),
-    },
-  });
 }
 
 export async function createEventAction(_prev: ActionState, form: FormData): Promise<ActionState> {

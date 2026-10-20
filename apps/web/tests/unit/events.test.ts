@@ -94,6 +94,7 @@ describe("deleteEvent", () => {
     const ev = eventObjects("ev");
     for (const m of ev.allMaps()) await sync.ensureMap(m);
     await fake.putDocument(ev.printer, { status: "idle" });
+    await fake.putDocument(ev.booth, { state: "live" }); // a kiosk may still be open on it
     await sync.ensureMap(eventObjects("other").jobs);
     const blob = new FakeBlob();
     await blob.put("events/ev/selfies/a.jpg", Buffer.from("x"), "image/jpeg");
@@ -106,6 +107,7 @@ describe("deleteEvent", () => {
 
     expect([...fake.maps.keys()].filter((m) => m.startsWith(ev.prefix))).toEqual([]);
     expect(fake.docs.has(ev.printer)).toBe(false);
+    expect(fake.docs.has(ev.booth), "the booth document goes with the event").toBe(false);
     expect(fake.maps.has(eventObjects("other").jobs)).toBe(true);
     expect([...blob.blobs.keys()]).toEqual(["events/other/selfies/a.jpg"]);
     expect(await events.get("ev")).toBeNull();

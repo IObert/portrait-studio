@@ -64,4 +64,15 @@ describe("requestPrint (D-24, D-26)", () => {
     expect(results.map((r) => r.status).sort()).toEqual(["already", "queued"]);
     expect(((await w.fake.getItem(w.ev.sessions, KEY))!.data as { counters: { printsReserved: number } }).counters.printsReserved).toBe(1);
   });
+
+  it("BUG 15: asking again for a failed print that was not settled yet does not leak the old reservation", async () => {
+    const w = await setup(3);
+    expect(await w.go()).toMatchObject({ status: "queued" });
+    const item = (await w.fake.getItem(w.ev.print, "job_share_01"))!.data as object;
+    // The agent reported a failure; the server has not settled it (released the reservation) yet.
+    await w.fake.updateItem(w.ev.print, "job_share_01", { ...item, state: "failed", error: "out of paper" });
+    expect(await w.go()).toMatchObject({ status: "queued" }); // a failed print may be asked for again
+    const counters = ((await w.fake.getItem(w.ev.sessions, KEY))!.data as { counters: { printsReserved: number } }).counters;
+    expect(counters.printsReserved, "the failed print's reservation was given back; one print, one reservation").toBe(1);
+  });
 });

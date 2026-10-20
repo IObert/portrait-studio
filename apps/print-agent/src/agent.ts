@@ -10,6 +10,8 @@ export const AGENT_VERSION = "0.1.0";
 const HEARTBEAT_MS = 15_000;
 const RENEW_MS = 30_000;
 const MAX_BACKOFF_MS = 60_000;
+/** A session that lasted this long counts as healthy: the next reconnect starts with the shortest wait. */
+const HEALTHY_SESSION_MS = 60_000;
 const POLL_MS = 2_000;
 /** A job that makes no progress this long while the printer says it is ready is cancelled and retried. */
 export const STALLED_MS = 10 * 60 * 1000;
@@ -73,26 +75,21 @@ export interface AgentOptions {
  * connection problem it reconnects with back-off and carries on with what is
  * still queued.
  */
-export async function runAgent(opts: AgentOptions): Promise<void> {
+export async function runAgent(opts: AgentOptions, connect: (opts: AgentOptions) => Promise<void> = session): Promise<void> {
   let backoff = 1_000;
   while (!opts.signal.aborted) {
+    const startedAt = Date.now();
     try {
-      await session(opts);
-      // Normal session end: reset backoff for next connection (BUG 7).
-      backoff = 1_000;
+      await connect(opts);
     } catch (err) {
       if (err instanceof AgentUnauthorized) throw err;
       if (opts.signal.aborted) return;
-      // "session ended" is expected (session() always throws it unless aborted); other errors are transient connection problems.
-      const isExpected = (err as Error).message === "session ended";
-      if (!isExpected) {
-        log("warn", `Connection problem (${(err as Error).message}); retrying in ${Math.round(backoff / 1000)}s`);
-        await sleep(backoff, opts.signal);
-        backoff = Math.min(MAX_BACKOFF_MS, backoff * 2);
-      } else {
-        // Normal reconnect cycle: no backoff increase, but small delay to avoid spin.
-        await sleep(100, opts.signal);
-      }
+      // A session that ran for a while was healthy until it dropped: start the back-off over.
+      // Only quick failures (cannot connect, token refused) keep doubling the wait.
+      if (Date.now() - startedAt >= HEALTHY_SESSION_MS) backoff = 1_000;
+      log("warn", `Connection problem (${(err as Error).message}); retrying in ${Math.round(backoff / 1000)}s`);
+      await sleep(backoff, opts.signal);
+      backoff = Math.min(MAX_BACKOFF_MS, backoff * 2);
     }
   }
 }
@@ -173,7 +170,9 @@ async function session(opts: AgentOptions): Promise<void> {
 type Work = { jobId: string; resume: boolean };
 
 /** A print already at the printer from before a restart comes first; then the oldest claimable item.
- * TODO(BUG 8): Only reads first 100 items; settled items pile up over 7 days (D-25), so new prints can be missed on busy events. Use pagination. */
+ *
+ * TODO(print-queue-pagination): reads only the first 100 items. Settled items stay for 7 days (D-25), so on a long,
+ * busy event a new print can sort after them and be missed. Page through with `nextPage()`. */
 async function nextWork(queue: SyncMap): Promise<Work | null> {
   const page = await queue.getItems({ pageSize: 100 });
   const now = new Date();
@@ -243,7 +242,13 @@ export async function printOne(queue: Pick<SyncMap, "mutate">, work: Work, print
     const outcome = await waitForJob(printer, printerJobId, signal);
     if (outcome === "stopped") return; // agent stopping: resumed on the next start
     if (outcome.kind === "done") {
-      await transition(queue, jobId, (cur) => printed(cur, new Date()));
+      // The copy is out of the printer. If recording it keeps failing (network), leave the item
+      // `printing` with its printer job id: the next start resumes it and records it. Failing it
+      // here would cancel nothing, requeue it and print a second copy (D-25).
+      if (!(await recordPrinted(queue, jobId, signal))) {
+        log("warn", `Printed ${jobId}, but could not record it; it is recorded on the next start`);
+        return;
+      }
       log("info", `Printed ${jobId}`);
       return;
     }
@@ -257,6 +262,21 @@ export async function printOne(queue: Pick<SyncMap, "mutate">, work: Work, print
   } finally {
     clearInterval(renewal);
   }
+}
+
+/** Writes `printed`, retrying a few times with a pause. False if it never went through. */
+async function recordPrinted(queue: Pick<SyncMap, "mutate">, jobId: string, signal: AbortSignal): Promise<boolean> {
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      await transition(queue, jobId, (cur) => printed(cur, new Date()));
+      return true;
+    } catch (err) {
+      log("warn", `Recording ${jobId} as printed failed (${attempt}/5): ${(err as Error).message}`);
+      if (signal.aborted) return false;
+      await sleep(Math.min(1_000 * 2 ** (attempt - 1), 8_000), signal);
+    }
+  }
+  return false;
 }
 
 /**

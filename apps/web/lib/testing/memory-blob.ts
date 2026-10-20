@@ -12,6 +12,9 @@ export class FakeBlob implements BlobStore {
   async get(path: string) {
     return this.blobs.get(path)?.data ?? null;
   }
+  async exists(path: string) {
+    return this.blobs.has(path);
+  }
   async delete(path: string) {
     this.blobs.delete(path);
   }

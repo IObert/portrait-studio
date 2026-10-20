@@ -38,3 +38,14 @@ export function csvCell(v: string): string {
   const safe = /^[=+\-@\t\r]/.test(v) && !/^\+\d{6,15}$/.test(v) ? `'${v}` : v;
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
+
+/** Number of data rows (header excluded) in a CSV made by `leadsCsv`. Quoted cells may contain line breaks and `""`. */
+export function csvDataRows(csv: string): number {
+  let inQuotes = false;
+  let lines = 0;
+  for (let i = 0; i < csv.length; i++) {
+    if (csv[i] === '"') inQuotes = !inQuotes; // an escaped "" toggles twice, so it cancels out
+    else if (!inQuotes && csv[i] === "\r" && csv[i + 1] === "\n") lines++;
+  }
+  return Math.max(0, lines - 1);
+}

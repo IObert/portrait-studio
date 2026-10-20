@@ -11,6 +11,9 @@ import type { Channel } from "../messaging/address";
  */
 export const SlideshowItemSchema = z.object({ blobPath: z.string(), addedAt: z.iso.datetime(), url: z.string().url().optional() });
 
+/** How long after the question a typed keyword still counts as the answer (SMS has no buttons). */
+const SLIDESHOW_ANSWER_WINDOW_MS = 10 * 60 * 1000;
+
 /** `print` means print it and show it on the booth screen (D-24). */
 export type SlideshowAnswer = { jobId: string; answer: "print" | "printonly" | "yes" | "no" } | null;
 
@@ -31,9 +34,9 @@ export function readSlideshowAnswer(session: Session, c: Catalog, input: { chann
     if (jobId) return { jobId, answer: "printonly" };
   }
   if (input.channel !== "sms" || !session.pendingSlideshow) return null;
-  // Slideshow questions expire after 10 minutes (no stale yes/ok, medium-priority bug).
-  const askedAt = new Date(session.pendingSlideshow.askedAt);
-  if (Date.now() - askedAt.getTime() > 10 * 60 * 1000) return null;
+  // A bare "ok" must answer a recent question, not one ignored long ago.
+  const askedAt = session.pendingSlideshow.askedAt ? Date.parse(session.pendingSlideshow.askedAt) : 0;
+  if (Date.now() - askedAt > SLIDESHOW_ANSWER_WINDOW_MS) return null;
   if (session.pendingSlideshow.print && matchesKeyword(input.text, c.delivery.printKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "print" };
   if (matchesKeyword(input.text, c.delivery.yesKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "yes" };
   if (matchesKeyword(input.text, c.delivery.noKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "no" };
