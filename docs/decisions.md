@@ -384,7 +384,7 @@ lock), for one brand.*
 - **Eval: portraits keep the top 10% free** (user, 2026-10-20): built, see D-40.
 - **Frame safe zone** (user, 2026-10-20): measured on the DS620, frames fixed, eval built, see D-41.
 - **`setup:twilio` script** (2026-10-16): written, see D-39.
-- **README** (2026-10-16): rewritten with setup, architecture, env table, booth printer steps and the test checklist.
+- **README** (2026-10-16): rewritten with setup, architecture, env table and booth printer steps. The real-life test checklist is in SPEC §16, not in the README (user, 2026-10-21).
 
 - **DS620 borderless prints** (2026-10-16): confirmed on paper, no white edge and nothing cropped.
 - **Fewer settings per page in the admin** (2026-10-16): not needed; the event form stays one page.
