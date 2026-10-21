@@ -522,3 +522,16 @@ second copy:
   and the `.jpg` suffix the `/m/<token>` route used to ignore for the template's media URL. The runtime quick-reply and
   list-picker templates (SPEC §6.3) are unaffected: they are created inside the window and need no approval.
 - If the user ever wants late deliveries, this is the list of what to bring back; D-39 describes the template.
+
+### D-43 Messages go out from the number the person wrote to (found while testing)
+*2026-10-21. Follows D-11.*
+- **Problem:** a WhatsApp 24-hour window belongs to a sender number. Replies to an incoming message already used the
+  number the person wrote to (D-11), but the worker sent the portrait, the print question, the style menu, rejection
+  messages and the promo from the event's configured QR number. When a person had written to a different booth number,
+  WhatsApp rejected those messages with error 63016 (outside the messaging window) while Twilio had accepted the request,
+  so the app logged `sent`. The person saw "Give us a moment to check it" and then nothing.
+- **Fix:** the session remembers the booth number the person last wrote to (`boothNumber`, set on every inbound message
+  and never erased by one without a recipient). `senderFor()` gives that number to the four worker paths, and falls back
+  to the QR number for a session from before this.
+- **Left as is:** a person who writes to two booth numbers at one event is answered from the one they used last.
+
