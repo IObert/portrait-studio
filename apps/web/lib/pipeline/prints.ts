@@ -1,4 +1,4 @@
-import { SessionSchema } from "../conversation/session";
+import { SessionSchema, senderFor } from "../conversation/session";
 import { PrintJobSchema, type PrintJob } from "../delivery/print-schema";
 import type { EventRepo } from "../events/repo";
 import { type PortraitEvent, withEventName } from "../events/schema";
@@ -100,7 +100,7 @@ async function sendPromo(deps: PrintDeps, event: PortraitEvent, addressKey: stri
   const address = addressFromKey(addressKey);
   if (!address) return;
   const session = await deps.sync.map(eventObjects(event.slug).sessions, SessionSchema).get(addressKey);
-  const r = await deps.messenger.send(address, { kind: "text", body: withEventName(event.config.promo.text, event.config.name) }, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: event.config.qrSender });
+  const r = await deps.messenger.send(address, { kind: "text", body: withEventName(event.config.promo.text, event.config.name) }, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: senderFor(session, event) });
   if (r.status === "skipped") deps.log.info({ event: "promo_skipped", slug: event.slug, jobId: item.jobId, reason: r.reason }, "promo skipped");
 }
 

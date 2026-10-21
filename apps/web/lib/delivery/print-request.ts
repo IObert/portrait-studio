@@ -1,6 +1,7 @@
 import { SessionSchema } from "../conversation/session";
 import type { PortraitEvent } from "../events/schema";
 import { JobSchema } from "../jobs/schema";
+import { printerStatus, printerWillPrint } from "../admin/printer-status";
 import { mask, type Address } from "../messaging/address";
 import { eventObjects } from "../sync/names";
 import { SKIP, type SyncStore } from "../sync/store";
@@ -9,7 +10,8 @@ import { PrintJobSchema } from "./print-schema";
 const SEVEN_DAYS = 7 * 24 * 60 * 60;
 
 export type PrintRequestResult =
-  | { status: "queued"; printsLeft: number }
+  /** `printerReady` is false when no print would come out right now (no agent, or the printer is off or out of paper); the print waits in the queue. */
+  | { status: "queued"; printsLeft: number; printerReady: boolean }
   | { status: "none-left" }
   | { status: "already" }
   | { status: "unavailable" };
@@ -89,5 +91,5 @@ export async function requestPrint(
     await sessions.update(addressKey, (s) => (s && s.counters.printsReserved > 0 ? { ...s, counters: { ...s.counters, printsReserved: s.counters.printsReserved - 1 } } : SKIP));
     return { status: "already" };
   }
-  return { status: "queued", printsLeft: left };
+  return { status: "queued", printsLeft: left, printerReady: printerWillPrint(await printerStatus(deps.sync, event.slug, now)) };
 }

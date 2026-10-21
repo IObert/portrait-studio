@@ -97,7 +97,7 @@ printer says it is ready is cancelled and retried.
 
 ## 4. Printer status: Sync Document `ev_<slug>_printer`
 
-The agent writes this every 15 s (SPEC §11.2). The admin UI shows it.
+The agent writes this every 15 s (SPEC §11.2). The admin UI shows it and polls it every 30 s. The attendee-facing reply to a print request reads it too: with no document, a `heartbeatAt` older than 45 s, or a `status` of `offline`, `paused`, `out_of_paper` or `error`, the person is told the printer seems offline (D-44). The print is queued either way.
 
 ```json
 {

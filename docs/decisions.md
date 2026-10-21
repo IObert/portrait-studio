@@ -522,3 +522,32 @@ second copy:
   and the `.jpg` suffix the `/m/<token>` route used to ignore for the template's media URL. The runtime quick-reply and
   list-picker templates (SPEC §6.3) are unaffected: they are created inside the window and need no approval.
 - If the user ever wants late deliveries, this is the list of what to bring back; D-39 describes the template.
+
+### D-43 Messages go out from the number the person wrote to (found while testing)
+*2026-10-21. Follows D-11.*
+- **Problem:** a WhatsApp 24-hour window belongs to a sender number. Replies to an incoming message already used the
+  number the person wrote to (D-11), but the worker sent the portrait, the print question, the style menu, rejection
+  messages and the promo from the event's configured QR number. When a person had written to a different booth number,
+  WhatsApp rejected those messages with error 63016 (outside the messaging window) while Twilio had accepted the request,
+  so the app logged `sent`. The person saw "Give us a moment to check it" and then nothing.
+- **Fix:** the session remembers the booth number the person last wrote to (`boothNumber`, set on every inbound message
+  and never erased by one without a recipient). `senderFor()` gives that number to the four worker paths, and falls back
+  to the QR number for a session from before this.
+- **Left as is:** a person who writes to two booth numbers at one event is answered from the one they used last.
+
+### D-44 Tell the attendee when the printer looks offline; keep the admin printer line current (user decision)
+*2026-10-21. Found while testing: with the printer off, a print request still said "It's on its way to the printer".*
+- **Attendee reply.** A print request is always queued. The reply now depends on whether a print would come out right now
+  (`printerWillPrint`): an agent is connected (heartbeat younger than 45 s) and its printer is not `offline`, `paused`,
+  `out_of_paper` or `error`. The simulator counts as ready, because it prints to a folder. If not, the person is told the
+  print is queued but the printer seems offline and will print when it is back (`printQueuedPrinterOffline`, en and
+  pt_BR). It applies to the chat and to the print button on the share page (`requestPrint` returns `printerReady`).
+- **Admin line.** The printer status in the event header polls `GET /admin/events/<id>/printer` every 30 seconds
+  (user's choice), pauses while the tab is hidden and refreshes when it is shown. A failed request keeps the last known
+  status instead of claiming the printer is offline; after two failures in a row it adds "(not refreshing)". "Last seen
+  N min ago" is recounted every 15 s without a request. The events list and the stats page are not live: they are
+  opened by navigating, so they are current on arrival.
+- **Not done:** a live push over Sync, as the booth screen uses. It would show a change within a second, but needs a
+  token endpoint, ACL grants and the Sync SDK in the admin bundle, and an agent that dies still has to be noticed by a
+  timer. Polling every 30 s was chosen as enough; the lag is up to 30 s.
+

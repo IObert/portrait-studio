@@ -5,7 +5,7 @@ import { countFlagged } from "@/lib/review/list";
 import { getServices } from "@/lib/services";
 import { StateControls } from "./controls";
 import { EventTabs } from "./event-tabs";
-import { PrinterSummary } from "./printer-summary";
+import { LivePrinterSummary } from "./live-printer-summary";
 import { StateBadge } from "./state-badge";
 
 const backLink = (
@@ -31,7 +31,7 @@ export async function EventHeader({ event }: { event: PortraitEvent }) {
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate">
             <span className="font-mono text-xs">{event.slug}</span>
-            <PrinterSummary printingEnabled={event.config.printingEnabled} printer={printer} />
+            <LivePrinterSummary slug={event.slug} printingEnabled={event.config.printingEnabled} initial={printer} />
           </div>
         </div>
         <StateControls slug={event.slug} state={event.state} />

@@ -102,6 +102,7 @@ export const en = {
     printKeywords: ["print"],
     printSmsHint: "Reply PRINT to print it and show it on the screen, YES to only show it, or NO.",
     printQueued: ({ printsLeft }) => `It's on its way to the printer! Pick it up at the booth. Prints left: ${printsLeft}.`,
+    printQueuedPrinterOffline: ({ printsLeft }) => `Your print is queued, but the printer seems to be offline right now. It will print as soon as it is back; ask the booth team if it takes long. Prints left: ${printsLeft}.`,
     printNoneLeft: "You've used all your prints for this event, so this one stays digital.",
     printAlready: "This portrait is already on its way to the printer.",
     printUnavailable: "Printing isn't available right now, so this one stays digital.",

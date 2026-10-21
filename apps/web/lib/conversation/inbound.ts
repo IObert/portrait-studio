@@ -215,7 +215,7 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
   const unusableMedia = msg.media.length > 0 && images.length === 0;
 
   const read = await sessions.getVersioned(key);
-  const current: Session = { ...(read?.data ?? newSession(locale, now)), locale, lastInboundAt: now.toISOString(), updatedAt: now.toISOString() };
+  const current: Session = { ...(read?.data ?? newSession(locale, now)), locale, lastInboundAt: now.toISOString(), boothNumber: msg.to ?? read?.data.boothNumber ?? null, updatedAt: now.toISOString() };
 
   // Side effects (Verify, Memory) need answers before the state can be decided, so
   // they run first and their results feed the pure step functions.
@@ -466,9 +466,9 @@ async function runEffect(
         // Print + show (D-24): the print is requested first; the portrait is shown either way.
         const d = catalogs[ctx.event.config.language].delivery;
         const r = await requestPrint({ sync, mediaUrl: deps.mediaUrl }, ctx.event, ctx.key, ctx.address, effect.jobId, ctx.now);
-        const body = r.status === "queued" ? d.printQueued({ printsLeft: r.printsLeft }) : r.status === "none-left" ? d.printNoneLeft : r.status === "already" ? d.printAlready : d.printUnavailable;
+        const body = r.status === "queued" ? (r.printerReady ? d.printQueued : d.printQueuedPrinterOffline)({ printsLeft: r.printsLeft }) : r.status === "none-left" ? d.printNoneLeft : r.status === "already" ? d.printAlready : d.printUnavailable;
         printReply = { kind: "text", body };
-        deps.log.info({ event: "print_requested", slug: ctx.event.slug, jobId: effect.jobId, result: r.status }, "print requested");
+        deps.log.info({ event: "print_requested", slug: ctx.event.slug, jobId: effect.jobId, result: r.status, ...(r.status === "queued" ? { printerReady: r.printerReady } : {}) }, "print requested");
       }
       // Print only (the print menu) leaves the screen choice as it was.
       if (effect.answer !== "printonly") await addToSlideshow(deps, ctx, effect.jobId);

@@ -121,6 +121,8 @@ export interface Catalog {
     /** SMS hint listing the keywords for the combined question. */
     printSmsHint: string;
     printQueued: (p: { printsLeft: number }) => string;
+    /** The print is queued, but no printer looks ready (no agent, or it is off or out of paper): say so, so nobody waits at the booth for nothing. */
+    printQueuedPrinterOffline: (p: { printsLeft: number }) => string;
     printNoneLeft: string;
     printAlready: string;
     printUnavailable: string;

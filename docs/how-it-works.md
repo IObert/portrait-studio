@@ -95,7 +95,9 @@ prints left) it is a plain "show on the booth screen?" yes/no.
 - **Booth screen**: the portrait joins the slideshow at once (Twilio Sync push).
 - **Print**: each person has `maxPrintsPerPerson` prints. The print agent on the booth laptop prints it on the DS620;
   after a successful print the attendee gets the event's promo message once. Prints can also be asked for later, by
-  typing **print** in the chat or with the button on the share page (D-26, D-28).
+  typing **print** in the chat or with the button on the share page (D-26, D-28). If no print agent is connected, or its
+  printer is off or out of paper, the reply says the print is queued but the printer seems offline (D-44). The printer
+  line on the admin event page updates by itself every 30 seconds.
 
 ## 9. Afterwards
 
