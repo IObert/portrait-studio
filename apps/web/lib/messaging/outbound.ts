@@ -83,7 +83,7 @@ export class Messenger {
    */
   async send(to: Address, msg: OutboundMessage, ctx: { lastInboundAt: string | null; locale: string; from?: string }): Promise<SendResult> {
     if (to.channel === "whatsapp" && !insideWindow(ctx.lastInboundAt, this.now())) {
-      // Outside the window only the approved delivery template may go out (SPEC §5.11, §6.3).
+      // Outside the window nothing is sent (SPEC §5.11, D-42).
       this.log.warn({ event: "send_skipped", reason: "outside-24h-window", to: mask(to), kind: msg.kind }, "message skipped");
       return { status: "skipped", reason: "outside-24h-window" };
     }
@@ -100,22 +100,6 @@ export class Messenger {
     }
     const contentSid = await this.contentSidFor(msg, ctx.locale);
     const r = await this.api.createMessage({ ...base, contentSid });
-    return { status: "sent", sid: r.sid };
-  }
-
-  /**
-   * Sends an approved Content template; the only thing allowed outside the
-   * WhatsApp 24h window (SPEC §5.11, §6.3).
-   */
-  async sendTemplate(to: Address, contentSid: string, variables: Record<string, string>, ctx: { from?: string }): Promise<SendResult> {
-    const from = to.channel === "whatsapp" && ctx.from ? `whatsapp:${ctx.from.replace(/^whatsapp:/, "")}` : undefined;
-    const r = await this.api.createMessage({
-      to: twilioAddress(to),
-      messagingServiceSid: this.messagingServiceSid,
-      ...(from ? { from } : {}),
-      contentSid,
-      contentVariables: JSON.stringify(variables),
-    });
     return { status: "sent", sid: r.sid };
   }
 

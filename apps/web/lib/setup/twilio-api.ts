@@ -1,7 +1,7 @@
 import { twilioClient } from "../twilio/client";
-import type { ContentInfo, MemoryStoreInfo, SetupApi, TraitDef } from "./twilio";
+import type { MemoryStoreInfo, SetupApi, TraitDef } from "./twilio";
 
-/** The real Twilio calls for `runSetup`: SDK for Sync, Verify and Messaging; REST JSON for Content and Memory. */
+/** The real Twilio calls for `runSetup`: SDK for Sync, Verify and Messaging; REST JSON for Memory. */
 export function createTwilioSetupApi(cfg: { accountSid: string; apiKeySid: string; apiKeySecret: string }): SetupApi {
   const client = twilioClient(cfg, { autoRetry: true, maxRetries: 3 });
   const auth = "Basic " + Buffer.from(`${cfg.apiKeySid}:${cfg.apiKeySecret}`).toString("base64");
@@ -59,21 +59,6 @@ export function createTwilioSetupApi(cfg: { accountSid: string; apiKeySid: strin
     // POST, and the service URL wins over each number's own webhook (SPEC §15).
     setInboundUrl: async (sid, url) => void (await client.messaging.v1.services(sid).update({ inboundRequestUrl: url, inboundMethod: "POST", useInboundWebhookOnNumber: false })),
 
-    async listContents(namePattern) {
-      type Page = { contents: { sid: string; friendly_name: string; language: string; approval_requests?: { status?: string; rejection_reason?: string } | null }[]; meta: { next_page_url: string | null } };
-      const out: ContentInfo[] = [];
-      let url: string | null = `https://content.twilio.com/v2/ContentAndApprovals?PageSize=500&ContentName=${encodeURIComponent(namePattern)}`;
-      while (url) {
-        const page: Page = await rest<Page>("GET", url);
-        for (const c of page.contents)
-          out.push({ sid: c.sid, friendlyName: c.friendly_name, language: c.language, approval: { status: c.approval_requests?.status ?? "unsubmitted", rejectionReason: c.approval_requests?.rejection_reason ?? "" } });
-        url = page.meta.next_page_url;
-      }
-      return out;
-    },
-    createContent: (body) => rest<{ sid: string }>("POST", "https://content.twilio.com/v1/Content", body),
-    submitWhatsAppApproval: (sid, p) => rest<{ status: string }>("POST", `https://content.twilio.com/v1/Content/${sid}/ApprovalRequests/whatsapp`, p),
-
     async listMemoryStores() {
       const out: MemoryStoreInfo[] = [];
       let token: string | null = null;
@@ -95,9 +80,5 @@ export function createTwilioSetupApi(cfg: { accountSid: string; apiKeySid: strin
     addTraits: async (storeId, group, traits) => void (await rest("PATCH", `${memory}/${encodeURIComponent(storeId)}/TraitGroups/${encodeURIComponent(group)}`, { traits })),
     listIdentifierTypes: async (storeId) =>
       (await rest<{ identifierConfigs: { idType: string }[] }>("GET", `${memory}/${encodeURIComponent(storeId)}/IdentityResolutionSettings`)).identifierConfigs.map((c) => c.idType),
-    isPublicImage: (url) =>
-      fetch(url, { method: "HEAD", signal: AbortSignal.timeout(10_000) })
-        .then((r) => r.ok && (r.headers.get("content-type") ?? "").startsWith("image/"))
-        .catch(() => false),
   };
 }

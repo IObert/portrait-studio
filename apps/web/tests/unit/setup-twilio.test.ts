@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  type ContentInfo,
-  deliveryTemplate,
-  deliveryTemplateName,
   MEMORY_TRAITS,
   type MemoryStoreInfo,
   type MessagingServiceInfo,
@@ -26,12 +23,10 @@ function fakeAccount() {
     sync: [] as SyncServiceInfo[],
     verify: [] as VerifyServiceInfo[],
     messaging: [{ sid: MG, friendlyName: "Portrait Studio", inboundRequestUrl: null, inboundMethod: "POST", useInboundWebhookOnNumber: false }] as MessagingServiceInfo[],
-    contents: [] as ContentInfo[],
     stores: [] as MemoryStoreInfo[],
     traits: {} as Record<string, Record<string, TraitDef>>,
     identifiers: {} as Record<string, string[]>,
     writes: [] as string[],
-    sampleOnline: true,
   };
   const api: SetupApi = {
     listSyncServices: async () => state.sync,
@@ -59,19 +54,6 @@ function fakeAccount() {
       state.writes.push("inbound");
       Object.assign(state.messaging.find((s) => s.sid === sid)!, { inboundRequestUrl: url, inboundMethod: "POST", useInboundWebhookOnNumber: false });
     },
-    listContents: async (pattern) => state.contents.filter((c) => new RegExp(pattern).test(c.friendlyName)),
-    createContent: async (body) => {
-      state.writes.push("content");
-      const b = body as { friendly_name: string; language: string };
-      const c = { sid: id("HX"), friendlyName: b.friendly_name, language: b.language, approval: { status: "unsubmitted", rejectionReason: "" } };
-      state.contents.push(c);
-      return { sid: c.sid };
-    },
-    submitWhatsAppApproval: async (sid) => {
-      state.writes.push("submit");
-      state.contents.find((c) => c.sid === sid)!.approval.status = "received";
-      return { status: "received" };
-    },
     listMemoryStores: async () => state.stores,
     fetchMemoryStore: async (sid) => state.stores.find((s) => s.id === sid) ?? null,
     createMemoryStore: async (p) => {
@@ -87,7 +69,6 @@ function fakeAccount() {
       Object.assign(state.traits[storeId]!, traits);
     },
     listIdentifierTypes: async (storeId) => state.identifiers[storeId] ?? [],
-    isPublicImage: async () => state.sampleOnline,
   };
   return { api, state };
 }
@@ -106,15 +87,13 @@ describe("setup:twilio (SPEC §15)", () => {
   it("creates everything on a fresh account and prints the values", async () => {
     const { api, state } = fakeAccount();
     const r = await runSetup(api, opts());
-    expect(state.writes.sort()).toEqual(["content", "content", "inbound", "store", "submit", "submit", "sync", "traits", "verify"]);
+    expect(state.writes.sort()).toEqual(["inbound", "store", "sync", "traits", "verify"]);
     expect(state.sync[0]).toMatchObject({ friendlyName: "Portrait Studio", aclEnabled: true });
     expect(state.verify[0]).toMatchObject({ codeLength: 6, lookupEnabled: false });
     expect(state.stores[0]!.displayName).toBe("Portrait-Studio");
     expect(Object.keys(state.traits[state.stores[0]!.id]!)).toEqual(Object.keys(MEMORY_TRAITS));
     expect(state.messaging[0]!.inboundRequestUrl).toBe(`${BASE}/api/twilio/inbound`);
     expect(r.env).toMatchObject({ TWILIO_SYNC_SERVICE_SID: state.sync[0]!.sid, TWILIO_VERIFY_SERVICE_SID: state.verify[0]!.sid, TWILIO_MEMORY_STORE_ID: state.stores[0]!.id });
-    // Templates are not usable until WhatsApp approves them.
-    expect(r.env.TWILIO_TEMPLATE_DELIVERY_EN).toBeUndefined();
     expect(r.manual.join("\n")).toMatch(/SendGrid email integration/);
   });
 
@@ -129,29 +108,6 @@ describe("setup:twilio (SPEC §15)", () => {
     expect(state.sync).toHaveLength(1);
     expect(state.verify).toHaveLength(1);
     expect(state.stores).toHaveLength(1);
-    expect(state.contents).toHaveLength(2);
-  });
-
-  it("hands out the template SIDs once WhatsApp has approved them", async () => {
-    const { api, state } = fakeAccount();
-    await runSetup(api, opts());
-    for (const c of state.contents) c.approval.status = "approved";
-    const r = await runSetup(api, opts());
-    const en = state.contents.find((c) => c.language === "en")!.sid;
-    const pt = state.contents.find((c) => c.language === "pt_BR")!.sid;
-    expect(r.env).toMatchObject({ TWILIO_TEMPLATE_DELIVERY_EN: en, TWILIO_TEMPLATE_DELIVERY_PT_BR: pt });
-    expect(r.changes).toEqual([]);
-  });
-
-  it("resubmits a template that was created but never submitted, and reports a rejection without recreating it", async () => {
-    const { api, state } = fakeAccount();
-    await runSetup(api, opts());
-    state.contents[0]!.approval.status = "unsubmitted";
-    state.contents[1]!.approval = { status: "rejected", rejectionReason: "INVALID_FORMAT" };
-    state.writes.length = 0;
-    const r = await runSetup(api, opts());
-    expect(state.writes).toEqual(["submit"]);
-    expect(r.manual.join("\n")).toMatch(/rejected by WhatsApp: "INVALID_FORMAT"/);
   });
 
   it("a dry run reports what it would do and writes nothing", async () => {
@@ -225,44 +181,11 @@ describe("setup:twilio (SPEC §15)", () => {
     expect(r.manual.join("\n")).toMatch(/each number's own webhook/);
   });
 
-  it("skips the inbound URL and templates without a public https base URL", async () => {
+  it("skips the inbound URL without a public https base URL", async () => {
     const { api, state } = fakeAccount();
     const r = await runSetup(api, opts({ publicBaseUrl: "http://localhost:3000" }));
     expect(state.writes).not.toContain("inbound");
-    expect(state.writes).not.toContain("content");
     expect(r.manual.join("\n")).toMatch(/PUBLIC_BASE_URL/);
   });
 
-  it("does not submit while the sample image is unreachable, since WhatsApp would reject it", async () => {
-    const { api, state } = fakeAccount();
-    state.sampleOnline = false;
-    const r = await runSetup(api, opts());
-    expect(state.writes).not.toContain("content");
-    expect(r.manual.join("\n")).toMatch(/samples\/delivery\.jpg is not reachable. Deploy the app/);
-    state.sampleOnline = true;
-    await runSetup(api, opts());
-    expect(state.contents).toHaveLength(2);
-  });
-
-  it("a new public host gets its own templates, since WhatsApp fixes the URLs at approval", async () => {
-    const { api, state } = fakeAccount();
-    await runSetup(api, opts());
-    await runSetup(api, opts({ publicBaseUrl: "https://new.example.com" }));
-    expect(state.contents).toHaveLength(4);
-    expect(new Set(state.contents.map((c) => c.friendlyName)).size).toBe(4);
-  });
-});
-
-describe("delivery template (SPEC §6.3)", () => {
-  it("has an image header and a share button, with URLs WhatsApp can approve", () => {
-    const t = deliveryTemplate(BASE + "/", "pt_BR");
-    const card = t.types["twilio/card"];
-    expect(card.media).toEqual([`${BASE}/{{1}}`]);
-    expect(card.actions).toEqual([{ type: "URL", title: "Ver e compartilhar", url: `${BASE}/s/{{2}}` }]);
-    expect(card.actions[0]!.title.length).toBeLessThanOrEqual(20);
-    // The sample must end in a file type and resolve on the app (public/samples).
-    expect(t.variables["1"]).toMatch(/^samples\/.+\.jpg$/);
-    expect(t.friendly_name).toBe(deliveryTemplateName(BASE, "pt_BR"));
-    expect(t.friendly_name).toMatch(/^portrait_studio_delivery_[0-9a-f]{8}_pt_br$/);
-  });
 });

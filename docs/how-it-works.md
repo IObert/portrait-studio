@@ -81,8 +81,9 @@ at once. A fail is **held for admin review**: the attendee is asked for another 
 
 ## 7. Delivery
 
-- **WhatsApp**: the image with a share link. Outside WhatsApp's 24-hour window only the approved delivery template can
-  be sent; without one the portrait stays on the share page.
+- **WhatsApp**: the image with a share link. WhatsApp only allows messages within 24 hours of the person's last message. A
+  portrait that finishes after that is not sent (it takes more than a day, so it is not worth it); it stays on the share
+  page (D-42).
 - **SMS**: MMS with the image where carriers support it (US, CA, AU), otherwise the link only.
 - The **share page** (`/s/<id>`) lets anyone with the link view, download and share it.
 

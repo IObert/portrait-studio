@@ -15,7 +15,7 @@ const NOW = new Date("2026-10-12T12:00:00Z");
 const RECENT = "2026-10-12T11:30:00Z";
 const STALE = "2026-10-10T11:30:00Z";
 
-async function setup(o: { cfg?: Partial<EventConfigInput>; session?: Partial<Session>; templates?: DeliveryDeps["templates"]; to?: string } = {}) {
+async function setup(o: { cfg?: Partial<EventConfigInput>; session?: Partial<Session>; to?: string } = {}) {
   const fake = new FakeSync();
   const log = { info: vi.fn(), warn: vi.fn() };
   const sync = new SyncStore(fake, log, { baseDelayMs: 1, maxDelayMs: 2 });
@@ -59,7 +59,6 @@ async function setup(o: { cfg?: Partial<EventConfigInput>; session?: Partial<Ses
     messenger,
     mediaUrl: (p) => `https://booth.test/m/${encodeURIComponent(p)}`,
     publicBaseUrl: "https://booth.test",
-    templates: o.templates ?? {},
     log,
     now: () => NOW,
   };
@@ -98,20 +97,11 @@ describe("delivery (SPEC §6.1)", () => {
     expect(w.sent[1]!.body).toContain("(YES / NO)"); // SMS slideshow question with keywords
   });
 
-  it("WhatsApp outside the window: uses the approved template (SPEC §5.7, §6.3)", async () => {
-    const tpl = "HX" + "d".repeat(32);
-    const w = await setup({ session: { lastInboundAt: STALE }, templates: { en: tpl } });
-    expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("sent");
-    expect(w.sent).toHaveLength(1); // no free-form slideshow question outside the window
-    expect(w.sent[0]).toMatchObject({ contentSid: tpl, from: "whatsapp:+13203780782" });
-    expect(JSON.parse(w.sent[0]!.contentVariables!)).toEqual({ "1": expect.stringMatching(/^m\/[^/]+\.jpg$/), "2": "S".repeat(24) });
-  });
-
-  it("WhatsApp outside the window without a template: skipped and logged, share page still works", async () => {
+  it("WhatsApp outside the 24h window: not sent, by design (D-42); logged, and the share page still works", async () => {
     const w = await setup({ session: { lastInboundAt: STALE } });
     expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("skipped");
     expect(w.sent).toEqual([]);
-    expect(w.log.warn).toHaveBeenCalledWith(expect.objectContaining({ reason: "no-delivery-template" }), expect.any(String));
+    expect(w.log.warn).toHaveBeenCalledWith(expect.objectContaining({ reason: "outside-24h-window" }), expect.any(String));
     expect(await w.fake.getItem(Global.shares, "S".repeat(24))).not.toBeNull();
   });
 

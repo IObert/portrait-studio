@@ -369,15 +369,6 @@ lock), for one brand.*
 
 ## Open TODOs after the last milestone
 
-- **WhatsApp delivery templates** (user, 2026-10-16): do this after `minor-improvements` is merged and deployed.
-  Until then, WhatsApp portraits finished outside the 24-hour window are not sent (share page only, logged).
-  1. Check the deployed app serves the sample: `curl -I https://<azure host>/samples/delivery.jpg` must be 200.
-  2. `pnpm --filter web setup:twilio --public-base-url https://<azure host>` creates and submits both (D-39). The
-     templates must name the Azure host: WhatsApp fixes their URLs at approval. The script refuses to submit while the
-     sample image is unreachable.
-  3. After approval (minutes to 24 hours), run it again, put `TWILIO_TEMPLATE_DELIVERY_EN` / `_PT_BR` into
-     `.env.local` and the deploy's secrets, and deploy once more.
-
 - **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
   with `git grep -n "TODO(profile-deletion)"`.
@@ -388,6 +379,7 @@ lock), for one brand.*
 
 ### Closed
 
+- **WhatsApp delivery templates** (user, 2026-10-21): not needed, and removed. A portrait that finishes after WhatsApp's 24-hour window is not sent, by design. See D-42.
 - **SPEC and docs aligned with the code** (user, 2026-10-21): SPEC.md rewritten to the current state, the other docs checked against the code. The old section 17 (open questions) is removed; code comments and tests now cite the SPEC section that holds each answer.
 - **Eval: portraits keep the top 10% free** (user, 2026-10-20): built, see D-40.
 - **Frame safe zone** (user, 2026-10-20): measured on the DS620, frames fixed, eval built, see D-41.
@@ -431,7 +423,7 @@ The build specification ended with eight open questions. Their answers are below
 | Lead email | Any valid email is accepted (no business-only rule) |
 | Smart-reply prompts | Drop G2's "Instruções adicionais do evento" line. Add a language-lock line and a deletion-tool line to G1 and G2. |
 | Copy | I write the new en and pt_BR text. No native-speaker review (user decision, 2026-10-16). |
-| Delivery template | Submitted as UTILITY. If Meta reclassifies it, the user is told; nothing is changed automatically. |
+| Delivery template | Removed (D-42). It was submitted as UTILITY. |
 | QR sender list | The Messaging Service's phone numbers plus WhatsApp senders from the Channels Senders API, falling back to entering the number by hand |
 | Local Blob Storage | Azurite in compose |
 | Local Sync | A real dev Sync Service. Tests use mocks. |
@@ -456,7 +448,7 @@ second copy:
 - It goes further than SPEC §15: it also finds or creates the Memory store, since the Memory API can. A store it did not
   create (such as the shared one, D-10) is only checked, never changed.
 - The inbound URL is never taken from another app without `--take-over-inbound` (the cut-over, D-10).
-- **Delivery template variables changed:** WhatsApp only approves a media header like `https://host/{{1}}` whose
+- **Delivery template variables changed** (the template was removed again, D-42): WhatsApp only approves a media header like `https://host/{{1}}` whose
   sample ends in a file type. `{{1}}` is now `m/<token>.jpg` (the media route ignores `.jpg`) instead of the full URL,
   and `{{2}}` stays the share id. The sample image is `public/samples/delivery.jpg`.
 - Templates are named `portrait_studio_delivery_<host hash>_<lang>`: WhatsApp fixes the URLs at approval, so a new
@@ -515,3 +507,18 @@ second copy:
   (or the files given) and exits 1 on a violation. It needs no API key and costs nothing; it is not part of `pnpm test`.
   Run it whenever a frame is added or changed. `scripts/frame-safe-zone-fix.ts` makes the shift described above.
 - **Not redone:** the admin thumbnails in `public/previews/frames/` still show the old logo position (a few pixels).
+
+### D-42 No delivery template: a portrait outside WhatsApp's 24-hour window is not sent (user decision)
+*2026-10-21. Replaces the delivery template of SPEC §6.3 and D-39, and the open TODO about creating it.*
+- WhatsApp allows free-form messages only within 24 hours of the person's last message. After that only an approved
+  template can be sent. A portrait is normally ready in about a minute, so this only happens when generation takes more
+  than a day or an admin approves a flagged image that long afterwards. The user decided a delivery that late is not
+  worth sending, and that this is the intended behaviour, not a gap.
+- **Behaviour:** `Messenger.send` skips a WhatsApp message outside the window and logs it (`send_skipped`,
+  `outside-24h-window`). `deliver()` returns `skipped`; the portrait is not counted as delivered or in the stats. It stays
+  on its share page. For an admin approval the review page says it was not sent.
+- **Removed:** the `delivery` template and its Twilio setup step in `setup:twilio`, `TWILIO_TEMPLATE_DELIVERY_EN` and
+  `_PT_BR` (env, CI, `deploy.sh`, `.env.example`), `Messenger.sendTemplate`, the sample image `public/samples/delivery.jpg`,
+  and the `.jpg` suffix the `/m/<token>` route used to ignore for the template's media URL. The runtime quick-reply and
+  list-picker templates (SPEC §6.3) are unaffected: they are created inside the window and need no approval.
+- If the user ever wants late deliveries, this is the list of what to bring back; D-39 describes the template.

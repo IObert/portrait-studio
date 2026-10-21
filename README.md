@@ -65,7 +65,7 @@ for another project is never used by mistake.
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Console → Account info |
 | `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET` | Console → API keys & tokens → Create API key (Standard) |
 | `TWILIO_MESSAGING_SERVICE_SID` | The Messaging Service with the booth's SMS numbers and WhatsApp senders (see step 3) |
-| `TWILIO_SYNC_SERVICE_SID`, `TWILIO_VERIFY_SERVICE_SID`, `TWILIO_MEMORY_STORE_ID`, `TWILIO_TEMPLATE_DELIVERY_EN` / `_PT_BR` | Printed by `setup:twilio` (step 3) |
+| `TWILIO_SYNC_SERVICE_SID`, `TWILIO_VERIFY_SERVICE_SID`, `TWILIO_MEMORY_STORE_ID` | Printed by `setup:twilio` (step 3) |
 | `OPENAI_API_KEY` | platform.openai.com → API keys. Models default to the values in `.env.example` |
 | `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER` | Empty locally (Azurite); `./deploy.sh` creates them on Azure |
 
@@ -88,13 +88,9 @@ pnpm --filter web setup:twilio --public-base-url https://<deployed host>
 ```
 
 It finds or creates the Sync Service, Verify Service and Memory store, points the Messaging Service at
-`/api/twilio/inbound`, and submits the WhatsApp delivery templates. It is safe to run again and never creates
-duplicates; it never changes a shared Memory store, and only takes inbound traffic from another app with
-`--take-over-inbound`. Copy the values it prints into `.env.local`. **Run it again after WhatsApp approves the
-templates** (minutes to 24 hours) to get their SIDs. Details: [docs/deployment.md](docs/deployment.md) §4, D-39.
-
-Use the deployed host for templates: WhatsApp fixes their URLs at approval, so templates made for a tunnel only work
-on that tunnel.
+`/api/twilio/inbound`. It is safe to run again and never creates duplicates; it never changes a shared Memory store,
+and only takes inbound traffic from another app with `--take-over-inbound`. Copy the values it prints into `.env.local`.
+Details: [docs/deployment.md](docs/deployment.md) §4, D-39.
 
 ### 4. Run locally
 

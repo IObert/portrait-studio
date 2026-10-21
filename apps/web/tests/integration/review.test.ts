@@ -34,7 +34,7 @@ async function setup(cfg: Partial<EventConfigInput> = {}, jobOver: Partial<Job> 
     shareId: "S".repeat(24), state: "flagged", aiReview: { reason: "1. likeness" }, timestamps: {}, ...jobOver,
   });
   await fake.createItem(ev.jobs, job.jobId, job);
-  const delivery: DeliveryDeps = { sync, messenger, mediaUrl: (p) => `https://booth.test/m/${p}`, publicBaseUrl: "https://booth.test", templates: {}, log };
+  const delivery: DeliveryDeps = { sync, messenger, mediaUrl: (p) => `https://booth.test/m/${p}`, publicBaseUrl: "https://booth.test", log };
   const getJob = async () => JobSchema.parse((await fake.getItem(ev.jobs, "job_00000001"))!.data);
   const counters = async () => ((await fake.getItem(ev.sessions, KEY))!.data as { counters: Record<string, number> }).counters;
   return { fake, sync, log, sent, event, delivery, getJob, counters, ev };

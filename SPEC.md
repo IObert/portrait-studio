@@ -150,7 +150,7 @@ Other documents: [PROMPTS.md](PROMPTS.md) holds the AI prompts taken word for wo
 | Service | Used for |
 |---|---|
 | Twilio Messaging Service | One service holding several SMS and WhatsApp senders. All inbound traffic goes to one webhook, so the channel an attendee uses does not matter. |
-| Twilio Content API | Quick replies and list pickers created at runtime, plus one approved WhatsApp delivery template (§6.3) |
+| Twilio Content API | Quick replies and list pickers, created at runtime (§6.3) |
 | Twilio Sync | All application state (§3.4) |
 | Twilio Conversation Memory | Recognizing attendees across events. Stores name, verified email and channel addresses. It is the source for lead exports. The store is shared with other activations (D-10, D-12). |
 | Twilio Verify, email channel (via SendGrid) | Email verification code during lead collection |
@@ -363,7 +363,7 @@ In every case that is not a delivery the person can send another photo straight 
 ### 5.7 Admin approval of a flagged image
 - When an admin approves a flagged image, it is delivered just like a normal result (§6), together with the question of §5.8.
 - If the attendee has already received a newer portrait, they still get both.
-- **Outside the WhatsApp 24h window,** use the approved delivery template (§6.3).
+- **Outside the WhatsApp 24h window,** the portrait is not sent (§5.11, D-42). The job is still marked approved and delivered, and the admin is told it was not sent.
 - Approval does not count toward quota.
 - If sending fails, the image stays flagged and Approve can be tried again.
 
@@ -383,7 +383,7 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
 - Sent only when printing is on, the promo is enabled, and that job's print **succeeded**.
 - The promo text is sent to everyone. There is no marketing opt-out (§5.4).
 - It is sent once per printed job, triggered by the print-success event and not by a timer.
-- If the attendee is outside the WhatsApp window, skip it and log the skip. There is no template for it.
+- If the attendee is outside the WhatsApp window, skip it and log the skip (§5.11).
 - Admin reprints do not trigger a promo (§10.3).
 
 ### 5.10 Free text, chatty replies and data deletion
@@ -412,8 +412,8 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
   - Its replies never change state, except through the deletion tool.
 
 ### 5.11 WhatsApp 24h window
-- Free-form messages (including runtime quick replies and list pickers) are sent only inside the 24h window since the person's last inbound message.
-- Outside the window, only the approved delivery template is sent (§6.3). Anything else is skipped and logged.
+- Every WhatsApp message (including runtime quick replies and list pickers) is sent only inside the 24h window since the person's last inbound message.
+- **Outside the window nothing is sent, on purpose (D-42).** A portrait that arrives that late is not worth sending, so there is no approved template to fall back on. The message is skipped and logged (`send_skipped`, `outside-24h-window`), and the portrait stays on its share page. This only happens when generation or an admin approval takes more than a day; normally a portrait is ready in about a minute.
 
 ---
 
@@ -429,7 +429,7 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
   - increment the stats
   - count the delivery toward quota
   - send the question of §5.8 (nothing is printed until the person chooses)
-- **The send comes first.** The portrait is counted as delivered only once it was sent. If sending fails, the job is retried; if it could not be sent at all (outside the WhatsApp window with no template), it is not counted and the share page still works.
+- **The send comes first.** The portrait is counted as delivered only once it was sent. If sending fails, the job is retried; if it could not be sent at all (outside the WhatsApp window, §5.11), it is not counted and the share page still works.
 
 ### 6.2 Share page `/s/[shareId]` (public)
 - `shareId` is an unguessable random ID.
@@ -444,11 +444,8 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
 - No tracking pixels and no short links.
 
 ### 6.3 WhatsApp templates
-- **One approved template, `delivery`, in `en` and `pt_BR`, category UTILITY.**
-  - It has a media header (the image) and a URL button to the share page. The header variable `{{1}}` is `m/<token>.jpg` and `{{2}}` is the share ID (D-39).
-  - It is used only for out-of-window deliveries (§5.7). Templates are named for the host in `PUBLIC_BASE_URL`, because WhatsApp fixes the URLs at approval.
-- **Everything else** (quick replies and list pickers) is created at runtime with the Content API and cached in `content_cache`.
-- A setup script creates the template and submits it for approval (§15).
+- **No approved templates (D-42).** Nothing is sent outside the 24h window (§5.11), so the app has none to maintain or to get approved.
+- **Quick replies and list pickers** are created at runtime with the Content API, inside the window, and cached in `content_cache`. They need no approval.
 
 ---
 
@@ -761,7 +758,6 @@ The real-life test checklist (§16) belongs with it.
 | `TWILIO_SYNC_SERVICE_SID` | Sync Service |
 | `TWILIO_VERIFY_SERVICE_SID` | Verify Service with the email channel set up (SendGrid integration and template) |
 | `TWILIO_MEMORY_STORE_ID` | Conversation Memory store |
-| `TWILIO_TEMPLATE_DELIVERY_EN`, `TWILIO_TEMPLATE_DELIVERY_PT_BR` | Approved delivery template SIDs |
 | `OPENAI_API_KEY`, `OPENAI_IMAGE_MODEL`, `OPENAI_VISION_MODEL`, `OPENAI_CHAT_MODEL` | OpenAI |
 | `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER` | Blob Storage. Empty locally: compose then uses Azurite. |
 | `MEDIA_SIGNING_SECRET` | Signs the `/m/<token>` media links (§7) |
@@ -783,13 +779,11 @@ The authoritative list, with defaults, is `apps/web/lib/env.ts` and `.env.exampl
 - **Sync Service.**
 - **Conversation Memory store:** its identifiers for phone and WhatsApp, and its traits (first name, last name, email).
 - **Verify Service** with the email channel: a SendGrid API key, a dynamic template in EN and PT, and the Verify email integration.
-- **Content template** `delivery` (EN and PT_BR) and its approval.
 
 **Script `pnpm --filter web setup:twilio`** (D-39). It is safe to run again and never creates a second copy: a SID in the environment pins its resource (one that does not exist stops the run), otherwise it finds by exact name (`Portrait Studio`, `--name` to change); two with the same name stop the run. It:
 1. creates or finds the Sync Service, the Verify Service and the Memory store (a store it did not create, such as the shared one, is only checked)
 2. sets the Messaging Service's inbound URL. It never takes the URL from another app without `--take-over-inbound`.
-3. creates and submits the delivery templates, named for the host of `PUBLIC_BASE_URL`. It refuses to submit while the sample image is unreachable.
-4. prints the environment variable values to copy
+3. prints the environment variable values to copy
 
 `--dry-run` reports and changes nothing.
 

@@ -3,13 +3,12 @@
  *   [--public-base-url https://<deployed host>]` (SPEC §15).
  *
  * Finds or creates the Sync Service, Verify Service and Memory store, points
- * the Messaging Service's inbound URL at this app, creates and submits the
- * WhatsApp delivery templates, then prints the environment values and the
- * steps only the Console can do. Safe to run again: see lib/setup/twilio.ts.
- * Run it again after WhatsApp approves the templates to get their SIDs.
+ * the Messaging Service's inbound URL at this app, then prints the
+ * environment values and the steps only the Console can do. Safe to run
+ * again: see lib/setup/twilio.ts.
  *
  * `--public-base-url` overrides PUBLIC_BASE_URL: in development `.env.local`
- * wins over the shell and usually points at a tunnel, but the templates and
+ * wins over the shell and usually points at a tunnel, but the
  * inbound URL must name the deployed host.
  */
 export {};
@@ -43,8 +42,6 @@ try {
       TWILIO_VERIFY_SERVICE_SID: env.TWILIO_VERIFY_SERVICE_SID,
       TWILIO_MEMORY_STORE_ID: env.TWILIO_MEMORY_STORE_ID,
       TWILIO_MESSAGING_SERVICE_SID: env.TWILIO_MESSAGING_SERVICE_SID,
-      TWILIO_TEMPLATE_DELIVERY_EN: env.TWILIO_TEMPLATE_DELIVERY_EN,
-      TWILIO_TEMPLATE_DELIVERY_PT_BR: env.TWILIO_TEMPLATE_DELIVERY_PT_BR,
     },
     publicBaseUrl: values["public-base-url"] ?? env.PUBLIC_BASE_URL,
     dryRun: values["dry-run"],

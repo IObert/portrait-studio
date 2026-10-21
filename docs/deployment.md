@@ -123,10 +123,7 @@ resource named in `.env.local` is only checked, otherwise it is found by name an
    and checks the store's Contact traits and identifiers. A shared store is never changed, only checked.
 2. sets the Messaging Service inbound URL to `$PUBLIC_BASE_URL/api/twilio/inbound`. If another app's URL is set
    there, it only does so with `--take-over-inbound` (that app then stops getting messages).
-3. creates the WhatsApp `delivery` templates (en, pt_BR) and submits them as UTILITY. They are named after the public
-   host, because WhatsApp fixes their URLs at approval. It only submits once `/samples/delivery.jpg` answers on that
-   host, so deploy first. **Run it again after approval** to get their SIDs.
-4. prints the environment values and what is still to do by hand.
+3. prints the environment values and what is still to do by hand.
 
 **What it cannot do** (Console only):
 - create the Messaging Service and register its senders (WhatsApp self sign-up); set `TWILIO_MESSAGING_SERVICE_SID`
@@ -134,8 +131,6 @@ resource named in `.env.local` is only checked, otherwise it is found by name an
   `apps/web/assets/email/verification-email.html` (D-10, D-20)
 - create the API key the script itself runs with
 - add traits or identifier rules to a shared Memory store
-- get WhatsApp's approval itself; it can take minutes to 24 hours. `PUBLIC_BASE_URL` must be live when it is
-  submitted, because WhatsApp fetches the sample image `/samples/delivery.jpg`.
 
 ## 5. Verify
 
@@ -232,8 +227,8 @@ for k in ADMIN_PASSWORD NEXT_SERVER_ACTIONS_ENCRYPTION_KEY MEDIA_SIGNING_SECRET 
   [ -n "${!k:-}" ] && printf '%s' "${!k}" | gh secret set $k --repo $REPO --env production
 done
 for k in PUBLIC_BASE_URL ADMIN_USER LOG_LEVEL TWILIO_ACCOUNT_SID TWILIO_API_KEY_SID TWILIO_MESSAGING_SERVICE_SID \
-  TWILIO_SYNC_SERVICE_SID TWILIO_VERIFY_SERVICE_SID TWILIO_MEMORY_STORE_ID TWILIO_TEMPLATE_DELIVERY_EN \
-  TWILIO_TEMPLATE_DELIVERY_PT_BR OPENAI_IMAGE_MODEL OPENAI_VISION_MODEL OPENAI_CHAT_MODEL AZURE_STORAGE_CONTAINER; do
+  TWILIO_SYNC_SERVICE_SID TWILIO_VERIFY_SERVICE_SID TWILIO_MEMORY_STORE_ID \
+  OPENAI_IMAGE_MODEL OPENAI_VISION_MODEL OPENAI_CHAT_MODEL AZURE_STORAGE_CONTAINER; do
   [ -n "${!k:-}" ] && gh variable set $k --repo $REPO --env production --body "${!k}"
 done
 TENANT=$(az account show --query tenantId -o tsv)
