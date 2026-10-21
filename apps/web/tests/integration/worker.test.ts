@@ -209,6 +209,32 @@ describe("worker pipeline (SPEC §9)", () => {
   });
 });
 
+describe("a reviewed job whose hand-off to delivery failed", () => {
+  it("BUG 6: is picked up again and delivered, not stranded in processing", async () => {
+    const { fake, deps, onReady } = await setup();
+    await queue(fake);
+    onReady.mockRejectedValueOnce(new Error("Twilio unreachable")); // the hand-off fails once (or the worker dies here)
+    await expect(workOnce(deps)).rejects.toThrow("Twilio unreachable");
+    expect((await getJob(fake)).state).toBe("processing"); // reviewed and stored, not yet delivered
+
+    const t = Date.now() + 10 * 60 * 1000; // past any lease
+    deps.now = () => new Date(t);
+    expect(await workOnce(deps)).toBe(1);
+    expect(onReady).toHaveBeenCalledTimes(2);
+  });
+
+  it("BUG 6: the retry delivers the stored result without generating (and paying for) another image", async () => {
+    const ai = fakeOpenAI();
+    const { fake, deps, onReady } = await setup(ai);
+    await queue(fake);
+    onReady.mockRejectedValueOnce(new Error("Twilio unreachable"));
+    await expect(workOnce(deps)).rejects.toThrow();
+    deps.now = () => new Date(Date.now() + 10 * 60 * 1000);
+    await workOnce(deps);
+    expect(ai.calls.edit).toBe(1);
+  });
+});
+
 describe("screening before the menus (D-18)", () => {
   const screening = (fake: FakeSync) => queue(fake, { state: "screening", subjects: null, style: null, background: null, timestamps: { screening: new Date().toISOString() } });
 
@@ -247,7 +273,41 @@ describe("screening before the menus (D-18)", () => {
     await workOnce(deps); // screen
     expect((await getJob(fake))).toMatchObject({ state: "queued", style: "anime", background: "gradient" });
     await workOnce(deps); // generate
-    expect(ai.calls.edit).toBe(1);
+  });
+
+  it("BUG 1: rejection resets session step and pendingJobId so next photo isn't stuck", async () => {
+    const ai = fakeOpenAI({ face: "NO" });
+    const { fake, deps, ev } = await setup(ai);
+    await screening(fake);
+    // As inbound leaves the session when it queues the photo for screening.
+    const cur = (await fake.getItem(ev.sessions, KEY))!;
+    await fake.updateItem(ev.sessions, KEY, { ...(cur.data as object), step: "screening", pendingJobId: "job_00000001" });
+    await workOnce(deps);
+    expect((await getJob(fake)).state).toBe("rejected");
+    const session = (await fake.getItem(ev.sessions, KEY))!.data as { step: string; pendingJobId: string; counters: { inFlight: number } };
+    expect(session.step).toBe("ready");
+    expect(session.pendingJobId).toBeNull();
+    expect(session.counters.inFlight).toBe(0);
+  });
+
+
+  it("BUG 2: a screening result for a job that was superseded meanwhile is dropped, the session is left alone", async () => {
+    const ai = fakeOpenAI();
+    const { fake, deps, ev, sent } = await setup(ai);
+    await screening(fake);
+    // While the worker screens (the vision call), the attendee sends a newer photo.
+    const original = ai.client.responses.create.getMockImplementation()!;
+    ai.client.responses.create.mockImplementationOnce(async (req) => {
+      const cur = await getJob(fake);
+      await fake.updateItem(ev.jobs, cur.jobId, { ...cur, state: "rejected", error: "superseded" });
+      const s = (await fake.getItem(ev.sessions, KEY))!;
+      await fake.updateItem(ev.sessions, KEY, { ...(s.data as object), step: "screening", pendingJobId: "job_00000002" });
+      return original(req);
+    });
+    await workOnce(deps);
+    expect((await getJob(fake)).state).toBe("rejected");
+    expect(sent).toEqual([]); // no menu for the old photo
+    expect(((await fake.getItem(ev.sessions, KEY))!.data as { pendingJobId: string }).pendingJobId).toBe("job_00000002");
   });
 
   it("retries a failed screening back to screening, not to generation", async () => {
@@ -255,5 +315,31 @@ describe("screening before the menus (D-18)", () => {
     await screening(fake);
     await workOnce(deps);
     expect((await getJob(fake))).toMatchObject({ state: "screening", attempts: 1, subjects: null });
+  });
+});
+
+describe("retry-after from an OpenAI error", () => {
+  it("is read from a Headers object (OpenAI SDK v7) and from a plain object", async () => {
+    const { retryAfterOf } = await import("@/lib/pipeline/worker");
+    expect(retryAfterOf({ headers: new Headers({ "retry-after": "17" }) })).toBe(17_000);
+    expect(retryAfterOf({ headers: { "retry-after": "3" } })).toBe(3_000);
+  });
+  it("is ignored when absent or not a positive number", async () => {
+    const { retryAfterOf } = await import("@/lib/pipeline/worker");
+    expect(retryAfterOf(new Error("x"))).toBeUndefined();
+    expect(retryAfterOf({ headers: new Headers() })).toBeUndefined();
+    expect(retryAfterOf({ headers: new Headers({ "retry-after": "soon" }) })).toBeUndefined();
+    expect(retryAfterOf(null)).toBeUndefined();
+  });
+  it("makes the worker wait at least that long before retrying", async () => {
+    const { fake, deps } = await setup(fakeOpenAI({ visionError: Object.assign(new Error("429"), { status: 429, headers: new Headers({ "retry-after": "50" }) }) }));
+    await queue(fake);
+    const t = Date.now();
+    deps.now = () => new Date(t);
+    await workOnce(deps);
+    deps.now = () => new Date(t + 40_000); // past the 5 s floor, before the 50 s the server asked for
+    expect(await workOnce(deps)).toBe(0);
+    deps.now = () => new Date(t + 51_000);
+    expect(await workOnce(deps)).toBe(1);
   });
 });

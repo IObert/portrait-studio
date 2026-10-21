@@ -5,8 +5,8 @@ import { ACTION_SLIDESHOW } from "../conversation/actions";
 import { SessionSchema } from "../conversation/session";
 import type { PortraitEvent } from "../events/schema";
 import { type Job, JobSchema } from "../jobs/schema";
-import { type Address, mask, supportsMms } from "../messaging/address";
-import { insideWindow, type Messenger, type OutboundMessage } from "../messaging/outbound";
+import { type Address, supportsMms } from "../messaging/address";
+import type { Messenger, OutboundMessage } from "../messaging/outbound";
 import { bump } from "../stats";
 import { eventObjects, Global } from "../sync/names";
 import { SKIP, type SyncStore } from "../sync/store";
@@ -24,8 +24,6 @@ export interface DeliveryDeps {
   /** Public URL of the delivery JPEG for Twilio (signed /m/<token> link). */
   mediaUrl: (blobPath: string, ttlSeconds: number) => string;
   publicBaseUrl: string;
-  /** Approved `delivery` template SIDs (SPEC §6.3); absent until they are configured. */
-  templates: Partial<Record<"en" | "pt_BR", string>>;
   log: { info(o: object, m: string): void; warn(o: object, m: string): void };
   now?: () => Date;
 }
@@ -65,12 +63,30 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
   const styleName = c.styles[job.style].name;
   const media = deps.mediaUrl(job.outputBlobs.deliveryJpeg, MEDIA_LINK_TTL);
 
-  // 3. Session: quota (not for admin approvals) and the in-flight slot. Nothing is
-  // printed here: the attendee chooses which portraits to print (D-24).
+  // 3. Send first (SPEC §6.1, §5.11): the quota and the stats below only count a portrait the
+  // attendee can actually have. If the send throws, the claim is released so the job is retried.
   const sessions = deps.sync.map(ev.sessions, SessionSchema);
+  const current = await sessions.get(job.address);
+  const ctx = { lastInboundAt: current?.lastInboundAt ?? null, locale, from: event.config.qrSender };
+  let result: "sent" | "skipped";
+  try {
+    // WhatsApp outside the 24h window: the messenger skips and logs it. A portrait that late is not sent (D-42);
+    // it stays on the share page.
+    if (address.channel === "whatsapp" || supportsMms(address.e164)) {
+      result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.caption({ styleName, shareUrl }), mediaUrl: media }, ctx)).status;
+    } else {
+      result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.linkOnly({ styleName, shareUrl }) }, ctx)).status;
+    }
+  } catch (err) {
+    await jobs.update(job.jobId, (cur) => (cur?.state === "delivered" ? { ...cur, state: from, leaseUntil: null } : SKIP));
+    throw err;
+  }
+
+  // 4. Session: quota (not for admin approvals) and the in-flight slot. Nothing is
+  // printed here: the attendee chooses which portraits to print (D-24).
   const group = (job.subjects ?? 1) > 1;
   let left = 0;
-  const session = await sessions.update(job.address, (s) => {
+  await sessions.update(job.address, (s) => {
     if (!s) return SKIP;
     const counters = { ...s.counters };
     if (!opts.approvedByAdmin) {
@@ -79,29 +95,16 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
     }
     left = printsLeft(event, counters);
     const delivered = [...s.delivered.filter((id) => id !== job.jobId), job.jobId].slice(-10);
-    return { ...s, counters, delivered, pendingSlideshow: { jobId: job.jobId, group, print: left > 0 } };
+    return { ...s, counters, delivered, pendingSlideshow: { jobId: job.jobId, group, print: left > 0, askedAt: now.toISOString() } };
   });
 
-  // 4. Send (SPEC §6.1, §5.11).
-  const ctx = { lastInboundAt: session?.lastInboundAt ?? null, locale, from: event.config.qrSender };
-  let result: "sent" | "skipped";
-  if (address.channel === "whatsapp") {
-    if (insideWindow(session?.lastInboundAt, now)) {
-      result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.caption({ styleName, shareUrl }), mediaUrl: media }, ctx)).status;
-    } else {
-      result = await sendTemplate(deps, address, locale, { media, shareId: job.shareId }, event);
+  // 5. Stats (SPEC §10.5): only for a portrait that was sent.
+  if (result === "sent") {
+    await bump(deps.sync, event.slug, opts.approvedByAdmin ? "approvedByAdmin" : "imagesDelivered");
+    if (!opts.approvedByAdmin && job.timestamps.queued) {
+      await bump(deps.sync, event.slug, "deliveryMsTotal", now.getTime() - Date.parse(job.timestamps.queued));
+      await bump(deps.sync, event.slug, "deliveryCount");
     }
-  } else if (supportsMms(address.e164)) {
-    result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.caption({ styleName, shareUrl }), mediaUrl: media }, ctx)).status;
-  } else {
-    result = (await deps.messenger.send(address, { kind: "text", body: c.delivery.linkOnly({ styleName, shareUrl }) }, ctx)).status;
-  }
-
-  // 5. Stats (SPEC §10.5).
-  await bump(deps.sync, event.slug, opts.approvedByAdmin ? "approvedByAdmin" : "imagesDelivered");
-  if (!opts.approvedByAdmin && job.timestamps.queued) {
-    await bump(deps.sync, event.slug, "deliveryMsTotal", now.getTime() - Date.parse(job.timestamps.queued));
-    await bump(deps.sync, event.slug, "deliveryCount");
   }
 
   // 6. One question, inside the window only (SPEC §5.8, §5.11, D-24): print and
@@ -138,24 +141,4 @@ function followUp(c: Catalog, jobId: string, group: boolean, printsLeft: number)
     ],
     smsBody: `${body} (${yes} / ${no})`,
   };
-}
-
-/** Out-of-window WhatsApp delivery with the approved template (SPEC §5.7, §6.3). */
-async function sendTemplate(
-  deps: DeliveryDeps,
-  address: Address,
-  locale: "en" | "pt_BR",
-  vars: { media: string; shareId: string },
-  event: PortraitEvent,
-): Promise<"sent" | "skipped"> {
-  const sid = deps.templates[locale];
-  if (!sid) {
-    // No delivery template configured. The portrait stays on the share page.
-    deps.log.warn({ event: "send_skipped", reason: "no-delivery-template", to: mask(address), slug: event.slug }, "outside 24h window and no delivery template configured");
-    return "skipped";
-  }
-  // The template's URLs are `<base>/{{1}}` and `<base>/s/{{2}}` (scripts/setup-twilio.ts).
-  const media = `${new URL(vars.media).pathname.slice(1)}.jpg`;
-  const r = await deps.messenger.sendTemplate(address, sid, { "1": media, "2": vars.shareId }, { from: event.config.qrSender });
-  return r.status;
 }

@@ -41,12 +41,14 @@ attendees are recognised through Conversation Memory and skip what they already 
 ## 3. Photo checks
 
 A selfie becomes a job and goes to the worker straight away, before any menu, so nobody picks a style for an unusable
-photo (D-18). The worker checks, and replies at once if a check fails:
+photo (D-18). Before the job is created, the **quota** is checked. The worker then checks, and replies at once if a
+check fails:
 
 - **Moderation**: unsafe images are refused.
 - **A face** must be visible.
 - **1 to 4 people**: the people count is kept for generation and for group-photo wording later.
-- **Quota**: each person gets `maxImagesPerPerson` portraits per event (counted per channel address).
+
+Each person gets `maxImagesPerPerson` portraits per event (counted per channel address).
 
 A new photo during the menus replaces the old one.
 
@@ -64,9 +66,12 @@ One image call builds the portrait from the selfie and a prompt assembled from [
   exactly onto the uploaded image.
 - the **sponsor jersey**, when the event has the LA Kings promotion on: everyone wears the Kings jersey, with the
   reference images sent along (D-36)
+- **free top margin**: the top 10% of the image stays free of heads, hair and readable signs, with or without a frame
+  (D-40)
 - **frame clearance**, so heads stay out of the area the frame covers (D-27)
 
-Then the event's **frame** is applied, and two files are stored: a 4x6 print PNG and a delivery JPEG.
+Then the event's **frame** is applied (its logos and text sit at least 60 px inside every edge, because the printer
+cuts a few millimetres off the paper, D-41), and two files are stored: a 4x6 print PNG and a delivery JPEG.
 
 ## 6. AI review
 
@@ -76,8 +81,9 @@ at once. A fail is **held for admin review**: the attendee is asked for another 
 
 ## 7. Delivery
 
-- **WhatsApp**: the image with a share link. Outside WhatsApp's 24-hour window only the approved delivery template can
-  be sent; without one the portrait stays on the share page.
+- **WhatsApp**: the image with a share link. WhatsApp only allows messages within 24 hours of the person's last message. A
+  portrait that finishes after that is not sent (it takes more than a day, so it is not worth it); it stays on the share
+  page (D-42).
 - **SMS**: MMS with the image where carriers support it (US, CA, AU), otherwise the link only.
 - The **share page** (`/s/<id>`) lets anyone with the link view, download and share it.
 

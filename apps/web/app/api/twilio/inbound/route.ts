@@ -43,12 +43,15 @@ export async function POST(request: Request) {
   }
   const m = parsed.data;
 
-  const deps = await getInboundDeps();
+  const to = m.To.replace(/^whatsapp:/, "");
+  let deps: Awaited<ReturnType<typeof getInboundDeps>> | undefined;
   try {
+    // Inside the try: a missing key or service must not become a bare 500 without a reply to the attendee.
+    deps = await getInboundDeps();
     await handleInbound(deps, {
       messageSid: m.MessageSid,
       from,
-      to: m.To.replace(/^whatsapp:/, ""),
+      to,
       text: m.Body,
       selection: selectionOf(m),
       media: mediaOf(params, m.NumMedia),
@@ -56,7 +59,8 @@ export async function POST(request: Request) {
   } catch (err) {
     // Fail closed: nothing proceeds, the attendee gets a localized apology (SPEC §5.6).
     log.error({ event: "inbound_failed", messageSid: m.MessageSid, err: (err as Error).message }, "inbound processing failed");
-    await apologize(deps, from, m.To.replace(/^whatsapp:/, ""));
+    // Without deps (misconfiguration) there is no Messenger to apologize with; Twilio still gets its 200.
+    if (deps) await apologize(deps, from, to);
   }
   return twiml();
 }

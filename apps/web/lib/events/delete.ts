@@ -4,10 +4,6 @@ import { eventObjects } from "../sync/names";
 import type { SyncStore } from "../sync/store";
 import type { EventRepo } from "./repo";
 
-export interface AuditLogger {
-  info(obj: object, msg: string): void;
-}
-
 /**
  * Parts of the cascade owned by later modules (attendee bindings, Conversation
  * Memory). Each must be idempotent: a failed delete is simply run again.
@@ -25,7 +21,7 @@ export interface DeleteHooks {
  * UI and the delete can be retried. Stats are deleted with the event.
  */
 export async function deleteEvent(
-  deps: { sync: SyncStore; blob: BlobStore; events: EventRepo; hooks: DeleteHooks; audit: AuditLogger },
+  deps: { sync: SyncStore; blob: BlobStore; events: EventRepo; hooks: DeleteHooks; audit: { info(obj: object, msg: string): void } },
   slug: string,
 ): Promise<void> {
   const { sync, blob, events, hooks, audit } = deps;
@@ -36,7 +32,7 @@ export async function deleteEvent(
   await hooks.unlinkProfiles(slug);
   await hooks.removeBindings(slug);
   await Promise.all(ev.allMaps().map((m) => sync.deleteMap(m)));
-  await sync.deleteDocument(ev.printer);
+  await Promise.all([sync.deleteDocument(ev.printer), sync.deleteDocument(ev.booth)]);
   const [images, assets] = await Promise.all([
     blob.deletePrefix(BlobPaths.eventPrefix(slug)),
     blob.deletePrefix(BlobPaths.assetPrefix(slug)),

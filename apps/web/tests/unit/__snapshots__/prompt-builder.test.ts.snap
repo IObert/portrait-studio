@@ -12,6 +12,7 @@ Lighting: Bright, clean anime-style lighting with defined shadows and crisp high
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Clean soft gradient, light and uncluttered, suitable for printing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -29,6 +30,7 @@ Lighting: Bright, clean anime-style lighting with defined shadows and crisp high
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Recreate the background environment from the original photo in the same art style.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -46,6 +48,7 @@ Lighting: Bright, clean anime-style lighting with defined shadows and crisp high
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid black background, dramatic and clean.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -63,6 +66,7 @@ Lighting: Bright, clean anime-style lighting with defined shadows and crisp high
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid white background, clean and minimal.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -80,6 +84,7 @@ Lighting: Bright, clean anime-style lighting with defined shadows and crisp high
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them an expressive, confident pose.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -99,6 +104,7 @@ Lighting: Warm cinematic Pixar-style lighting — soft key light with golden ton
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Clean soft gradient, light and uncluttered, suitable for printing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -118,6 +124,7 @@ Lighting: Warm cinematic Pixar-style lighting — soft key light with golden ton
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Recreate the background environment from the original photo in the same art style.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -137,6 +144,7 @@ Lighting: Warm cinematic Pixar-style lighting — soft key light with golden ton
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid black background, dramatic and clean.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -156,6 +164,7 @@ Lighting: Warm cinematic Pixar-style lighting — soft key light with golden ton
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid white background, clean and minimal.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -175,6 +184,7 @@ Lighting: Warm cinematic Pixar-style lighting — soft key light with golden ton
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo. Give them a warm, friendly expression.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -192,6 +202,7 @@ Lighting: Simple, clean lighting appropriate for pixel art with defined highligh
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Clean soft gradient, light and uncluttered, suitable for printing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -209,6 +220,7 @@ Lighting: Simple, clean lighting appropriate for pixel art with defined highligh
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Recreate the background environment from the original photo in the same art style.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -226,6 +238,7 @@ Lighting: Simple, clean lighting appropriate for pixel art with defined highligh
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid black background, dramatic and clean.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -243,6 +256,7 @@ Lighting: Simple, clean lighting appropriate for pixel art with defined highligh
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid white background, clean and minimal.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -260,6 +274,7 @@ Lighting: Simple, clean lighting appropriate for pixel art with defined highligh
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -277,6 +292,7 @@ Lighting: Flat, graphic lighting with strong shadows rendered as solid color blo
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Clean soft gradient, light and uncluttered, suitable for printing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -294,6 +310,7 @@ Lighting: Flat, graphic lighting with strong shadows rendered as solid color blo
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Recreate the background environment from the original photo in the same art style.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -311,6 +328,7 @@ Lighting: Flat, graphic lighting with strong shadows rendered as solid color blo
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid black background, dramatic and clean.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -328,6 +346,7 @@ Lighting: Flat, graphic lighting with strong shadows rendered as solid color blo
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid white background, clean and minimal.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -345,6 +364,7 @@ Lighting: Flat, graphic lighting with strong shadows rendered as solid color blo
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -362,6 +382,7 @@ Lighting: Strong directional lighting that creates clear highlights and shadows 
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Clean soft gradient, light and uncluttered, suitable for printing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -379,6 +400,7 @@ Lighting: Strong directional lighting that creates clear highlights and shadows 
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Recreate the background environment from the original photo in the same art style.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -396,6 +418,7 @@ Lighting: Strong directional lighting that creates clear highlights and shadows 
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid black background, dramatic and clean.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -413,6 +436,7 @@ Lighting: Strong directional lighting that creates clear highlights and shadows 
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid white background, clean and minimal.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -430,6 +454,7 @@ Lighting: Strong directional lighting that creates clear highlights and shadows 
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -447,6 +472,7 @@ Lighting: Soft, diffused natural lighting with gentle shadows built through laye
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Clean soft gradient, light and uncluttered, suitable for printing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -464,6 +490,7 @@ Lighting: Soft, diffused natural lighting with gentle shadows built through laye
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Recreate the background environment from the original photo in the same art style.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -481,6 +508,7 @@ Lighting: Soft, diffused natural lighting with gentle shadows built through laye
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid black background, dramatic and clean.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -498,6 +526,7 @@ Lighting: Soft, diffused natural lighting with gentle shadows built through laye
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: Pure solid white background, clean and minimal.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."
@@ -515,6 +544,7 @@ Lighting: Soft, diffused natural lighting with gentle shadows built through laye
 Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.
 This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.
 Background: The area around the subject must be fully transparent with no environment, no floor, no shadow cast onto a surface, and no color fill. Render only the subject as a cut-out. The transparent area will be replaced with the actual background image in post-processing.
+Top margin: Keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip, with only plain background in it. Scale and position the subjects and the scene so nothing important touches the top edge.
 
 
 FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person."

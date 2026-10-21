@@ -1,7 +1,11 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { solidifyAlpha } from "@/lib/image/alpha";
-import { CANVAS, compositeOnBackground, solidBackground } from "@/lib/image/composite";
+import { CANVAS, compositeOnBackground } from "@/lib/image/composite";
+
+/** Solid-colour canvas, for edge inspection over dark and light backgrounds. */
+const solidBackground = (hex: string) =>
+  sharp({ create: { width: CANVAS.width, height: CANVAS.height, channels: 3, background: hex } }).png().toBuffer();
 
 /** Fixture: transparent canvas with an opaque red ellipse in the middle. */
 async function cutoutFixture(): Promise<Buffer> {

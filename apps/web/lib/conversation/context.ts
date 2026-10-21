@@ -48,7 +48,6 @@ async function build(): Promise<Deps> {
     memory: createMemoryClient({ storeId: env.TWILIO_MEMORY_STORE_ID, username: creds.apiKeySid, password: creds.apiKeySecret }),
     verifier: createEmailVerifier({ ...creds, serviceSid: env.TWILIO_VERIFY_SERVICE_SID }),
     fetchMedia: twilioMediaFetch(creds.apiKeySid, creds.apiKeySecret),
-    publicBaseUrl: env.PUBLIC_BASE_URL,
     slideUrl,
     // 10 s: a tool call measured 6.6 s live. Twilio waits 15 s; a slow answer falls back to the selfie prompt.
     chat: { client: new OpenAI({ apiKey: env.OPENAI_API_KEY, maxRetries: 0, timeout: 10_000 }), model: env.OPENAI_CHAT_MODEL },

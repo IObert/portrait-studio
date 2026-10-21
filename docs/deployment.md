@@ -22,7 +22,9 @@ Sync leases.
 - a copy of the `node` base image in that registry (`base/node`), refreshed on every deploy. Image builds use this
   copy, because public registries rate-limit anonymous pulls. If a refresh is rate-limited, the last copy is used.
 - a Log Analytics workspace and a Container Apps environment
-- a Storage account, the blob container and the **7-day lifecycle rule** on `events/` (SPEC §7)
+- a Storage account, the blob container and the **7-day lifecycle rule** on `events/` (SPEC §7). The rule is merged
+  into the account's existing lifecycle policy: other rules are kept, only a rule with the same name
+  (`expire-event-images-7d`) is replaced.
 - the two Container Apps. Secrets are stored as Container App secrets.
 
 The image is built without secrets. All configuration is read at runtime from environment variables.
@@ -59,7 +61,9 @@ Don't mix the two setups: re-running `./deploy.sh` re-creates the separate worke
 cp .env.example .env.local
 ```
 
-Fill in the values. Every variable is explained in `.env.example` and in the README.
+Fill in the values. Every variable is explained in `.env.example` and in the README. `deploy.sh` reads the file as
+data, not as shell, so a value with `;` (a connection string) needs no quotes. Lines the CI writes with shell quoting
+are accepted too.
 `AZURE_STORAGE_CONNECTION_STRING` can stay empty: the script then creates a storage account and uses it.
 
 ## 2. Sign in
@@ -90,8 +94,12 @@ in `.env.local` or exporting them before you run it:
 | `AZURE_STORAGE_ACCOUNT` | `portraitstudioblob` (must be globally unique) |
 | `AZURE_STORAGE_CONTAINER` | `portrait-studio` |
 | `WEB_MIN_REPLICAS` / `WEB_MAX_REPLICAS` | `1` / `3` |
+| `AZURE_WEB_APP_NAME` / `AZURE_WORKER_APP_NAME` | `<AZURE_APP_NAME>-web` / `<AZURE_APP_NAME>-worker` |
 | `WORKER_REPLICAS` | `1` |
+| `WORKER_CONCURRENCY` | not set; the app default (2, range 1–8) applies. Passed to both apps when set. |
+| `IMAGE_NAME` | `portrait-studio` |
 | `IMAGE_TAG` | the current git short SHA |
+| `FORCE_BUILD` | unset; set `1` to rebuild even if the registry has the image for `IMAGE_TAG` |
 | `ENV_FILE` | `.env.local` |
 
 When it finishes, the script prints the app URL:
@@ -101,8 +109,9 @@ App URL:           https://<fqdn>
 Twilio inbound:    https://<fqdn>/api/twilio/inbound
 ```
 
-**First deploy:** set `PUBLIC_BASE_URL=https://<fqdn>` (or your custom domain) in `.env.local` and run
-`./deploy.sh` again. Webhook signature validation and share links depend on it.
+**First deploy:** if `PUBLIC_BASE_URL` is empty, the script sets it to `https://<fqdn>` on both apps. Add it to
+`.env.local` (or use your custom domain there) so later runs keep it. Webhook signature validation and share links
+depend on it.
 
 ## 4. Configure Twilio
 
@@ -114,10 +123,7 @@ resource named in `.env.local` is only checked, otherwise it is found by name an
    and checks the store's Contact traits and identifiers. A shared store is never changed, only checked.
 2. sets the Messaging Service inbound URL to `$PUBLIC_BASE_URL/api/twilio/inbound`. If another app's URL is set
    there, it only does so with `--take-over-inbound` (that app then stops getting messages).
-3. creates the WhatsApp `delivery` templates (en, pt_BR) and submits them as UTILITY. They are named after the public
-   host, because WhatsApp fixes their URLs at approval. It only submits once `/samples/delivery.jpg` answers on that
-   host, so deploy first. **Run it again after approval** to get their SIDs.
-4. prints the environment values and what is still to do by hand.
+3. prints the environment values and what is still to do by hand.
 
 **What it cannot do** (Console only):
 - create the Messaging Service and register its senders (WhatsApp self sign-up); set `TWILIO_MESSAGING_SERVICE_SID`
@@ -125,14 +131,12 @@ resource named in `.env.local` is only checked, otherwise it is found by name an
   `apps/web/assets/email/verification-email.html` (D-10, D-20)
 - create the API key the script itself runs with
 - add traits or identifier rules to a shared Memory store
-- get WhatsApp's approval itself; it can take minutes to 24 hours. `PUBLIC_BASE_URL` must be live when it is
-  submitted, because WhatsApp fetches the sample image `/samples/delivery.jpg`.
 
 ## 5. Verify
 
 ```sh
 curl -i https://<fqdn>/healthz          # liveness
-curl -i https://<fqdn>/healthz/ready    # Sync and Blob reachable
+curl -i https://<fqdn>/healthz/ready    # Sync and Blob reachable (what deploy.sh checks)
 az containerapp logs show -g rg-portrait-studio -n portrait-studio-web --follow
 az containerapp logs show -g rg-portrait-studio -n portrait-studio-worker --follow
 ```
@@ -223,8 +227,8 @@ for k in ADMIN_PASSWORD NEXT_SERVER_ACTIONS_ENCRYPTION_KEY MEDIA_SIGNING_SECRET 
   [ -n "${!k:-}" ] && printf '%s' "${!k}" | gh secret set $k --repo $REPO --env production
 done
 for k in PUBLIC_BASE_URL ADMIN_USER LOG_LEVEL TWILIO_ACCOUNT_SID TWILIO_API_KEY_SID TWILIO_MESSAGING_SERVICE_SID \
-  TWILIO_SYNC_SERVICE_SID TWILIO_VERIFY_SERVICE_SID TWILIO_MEMORY_STORE_ID TWILIO_TEMPLATE_DELIVERY_EN \
-  TWILIO_TEMPLATE_DELIVERY_PT_BR OPENAI_IMAGE_MODEL OPENAI_VISION_MODEL OPENAI_CHAT_MODEL AZURE_STORAGE_CONTAINER; do
+  TWILIO_SYNC_SERVICE_SID TWILIO_VERIFY_SERVICE_SID TWILIO_MEMORY_STORE_ID \
+  OPENAI_IMAGE_MODEL OPENAI_VISION_MODEL OPENAI_CHAT_MODEL AZURE_STORAGE_CONTAINER; do
   [ -n "${!k:-}" ] && gh variable set $k --repo $REPO --env production --body "${!k}"
 done
 TENANT=$(az account show --query tenantId -o tsv)
@@ -268,11 +272,15 @@ bumped by hand (`ARG NODE_VERSION` in the Dockerfile); `deploy.sh` copies the ne
 
 ```sh
 cp .env.example .env.local      # if you haven't yet
-docker compose up --build       # or: podman compose up --build
+docker compose --env-file .env.local up --build       # or: podman compose ...
 curl localhost:3000/healthz
 ```
 
-Overrides: `ENV_FILE=path/to/env` and `HOST_PORT=8080`.
+`--env-file .env.local` is required. Compose fills the storage setting from that file: a real
+`AZURE_STORAGE_CONNECTION_STRING` in it is used, and an empty one falls back to the Azurite container. Without the
+flag it always uses Azurite.
+
+Overrides: `ENV_FILE=path/to/env` (pass the same file to `--env-file`) and `HOST_PORT=8080`.
 
 ## Troubleshooting
 
@@ -281,7 +289,7 @@ Overrides: `ENV_FILE=path/to/env` and `HOST_PORT=8080`.
 | `RequestDisallowedByPolicy` mentioning `tags['created_by']` | Set `AZURE_USER=you@example.com` and re-run. |
 | `The registry ... is already in use` / storage name taken | Set `AZURE_ACR_NAME` / `AZURE_STORAGE_ACCOUNT` to a unique name. |
 | Revision fails with an image pull error right after the first deploy | The `AcrPull` role assignment can take a minute to apply. Re-run `./deploy.sh`. |
-| `AuthorizationFailed` on `roleAssignments/write` | The deploying identity needs User Access Administrator (see step 6). |
+| `AuthorizationFailed` on `roleAssignments/write` | The deploying identity needs permission to assign `AcrPull` (see "One-time setup" in step 6). |
 | Container Apps 404 page at the URL | Ingress must be external on port 3000: `az containerapp ingress enable -g <rg> -n <app>-web --type external --target-port 3000` |
 | Twilio returns 11200 / signature errors | `PUBLIC_BASE_URL` must exactly match the public origin Twilio calls. |
 | Worker restarts in a loop | Check `az containerapp logs show ... -n <app>-worker`. Usually a missing env var, which the zod validation names. |

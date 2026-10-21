@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 /**
  * `setup:twilio` (SPEC §15): finds or creates the Twilio resources the app
  * needs and prints the environment values. Safe to run again:
@@ -11,8 +9,6 @@ import { createHash } from "node:crypto";
  *   script is only checked (D-09, D-10), and the Messaging Service's inbound
  *   URL is only taken over from another app with `takeOverInbound` (the
  *   cut-over, D-10).
- * - Delivery templates are keyed by the public host, because WhatsApp fixes
- *   the URLs at approval. A new host gets new templates; old ones stay.
  */
 
 export interface SyncServiceInfo {
@@ -33,13 +29,6 @@ export interface MessagingServiceInfo {
   inboundRequestUrl: string | null;
   inboundMethod: string;
   useInboundWebhookOnNumber: boolean;
-}
-export interface ContentInfo {
-  sid: string;
-  friendlyName: string;
-  language: string;
-  /** WhatsApp approval: unsubmitted, received, pending, approved, rejected, paused, disabled. */
-  approval: { status: string; rejectionReason: string };
 }
 export interface MemoryStoreInfo {
   id: string;
@@ -62,17 +51,12 @@ export interface SetupApi {
   createVerifyService(p: { friendlyName: string; codeLength: number; lookupEnabled: boolean }): Promise<VerifyServiceInfo>;
   fetchMessagingService(sid: string): Promise<MessagingServiceInfo | null>;
   setInboundUrl(sid: string, url: string): Promise<void>;
-  listContents(namePattern: string): Promise<ContentInfo[]>;
-  createContent(body: unknown): Promise<{ sid: string }>;
-  submitWhatsAppApproval(sid: string, p: { name: string; category: "UTILITY" }): Promise<{ status: string }>;
   listMemoryStores(): Promise<MemoryStoreInfo[]>;
   fetchMemoryStore(id: string): Promise<MemoryStoreInfo | null>;
   createMemoryStore(p: { displayName: string; description: string }): Promise<void>;
   fetchTraitGroup(storeId: string, group: string): Promise<Record<string, TraitDef> | null>;
   addTraits(storeId: string, group: string, traits: Record<string, TraitDef>): Promise<void>;
   listIdentifierTypes(storeId: string): Promise<string[]>;
-  /** True when the URL answers 200 with an image (WhatsApp fetches the template's sample). */
-  isPublicImage(url: string): Promise<boolean>;
 }
 
 export interface SetupOptions {
@@ -91,12 +75,10 @@ export type EnvKey =
   | "TWILIO_SYNC_SERVICE_SID"
   | "TWILIO_VERIFY_SERVICE_SID"
   | "TWILIO_MEMORY_STORE_ID"
-  | "TWILIO_MESSAGING_SERVICE_SID"
-  | "TWILIO_TEMPLATE_DELIVERY_EN"
-  | "TWILIO_TEMPLATE_DELIVERY_PT_BR";
+  | "TWILIO_MESSAGING_SERVICE_SID";
 
 export interface SetupReport {
-  /** Values to put in the environment. Templates only once approved. */
+  /** Values to put in the environment. */
   env: Partial<Record<EnvKey, string>>;
   /** What this run changed (or, with dryRun, would change). */
   changes: string[];
@@ -121,41 +103,6 @@ const MEMORY_IDENTIFIERS = ["phone", "whatsapp", "email"];
 /** Memory store names allow only letters, digits and dashes. */
 export const memoryStoreName = (name: string) => name.trim().replace(/[^A-Za-z0-9-]+/g, "-").replace(/^-|-$/g, "").slice(0, 32);
 
-/** `portrait_studio_delivery_<host hash>_<lang>`: unique per public host (see the module comment). */
-export function deliveryTemplateName(publicBaseUrl: string, language: "en" | "pt_BR"): string {
-  const host = new URL(publicBaseUrl).host.toLowerCase();
-  return `portrait_studio_delivery_${createHash("sha256").update(host).digest("hex").slice(0, 8)}_${language.toLowerCase()}`;
-}
-
-/** Sample image for the approval (public/samples), so the media URL resolves. */
-export const DELIVERY_SAMPLE_MEDIA = "samples/delivery.jpg";
-
-const DELIVERY_COPY = {
-  en: { title: "Your Portrait Studio artwork is ready! Tap below to see, download and share it.", button: "See and share" },
-  pt_BR: { title: "Sua arte do Portrait Studio está pronta! Toque abaixo para ver, baixar e compartilhar.", button: "Ver e compartilhar" },
-} as const;
-
-/**
- * The `delivery` template (SPEC §6.3): image header and a URL button to the
- * share page. `{{1}}` = `m/<token>.jpg`, `{{2}}` = share id (lib/delivery/deliver.ts).
- */
-export function deliveryTemplate(publicBaseUrl: string, language: "en" | "pt_BR") {
-  const origin = new URL(publicBaseUrl).origin;
-  const copy = DELIVERY_COPY[language];
-  return {
-    friendly_name: deliveryTemplateName(publicBaseUrl, language),
-    language,
-    variables: { "1": DELIVERY_SAMPLE_MEDIA, "2": "sample" },
-    types: {
-      "twilio/card": {
-        title: copy.title,
-        media: [`${origin}/{{1}}`],
-        actions: [{ type: "URL", title: copy.button, url: `${origin}/s/{{2}}` }],
-      },
-    },
-  };
-}
-
 export async function runSetup(api: SetupApi, opts: SetupOptions): Promise<SetupReport> {
   const report: SetupReport = { env: {}, changes: [], ok: [], manual: [] };
   const act = async (what: string, fn: () => Promise<unknown>) => {
@@ -167,7 +114,6 @@ export async function runSetup(api: SetupApi, opts: SetupOptions): Promise<Setup
   await setupVerify(api, opts, report, act);
   await setupMemory(api, opts, report, act);
   await setupMessaging(api, opts, report, act);
-  await setupTemplates(api, opts, report, act);
   return report;
 }
 
@@ -305,52 +251,5 @@ function publicHttpsBase(url: string | undefined): string | null {
     return u.origin;
   } catch {
     return null;
-  }
-}
-
-async function setupTemplates(api: SetupApi, opts: SetupOptions, report: SetupReport, act: Act) {
-  const base = publicHttpsBase(opts.publicBaseUrl);
-  if (!base) {
-    report.manual.push("Delivery templates not created: their image and button URLs need the public https:// PUBLIC_BASE_URL.");
-    return;
-  }
-  const existing = await api.listContents("^portrait_studio_delivery_");
-  for (const [language, key] of [["en", "TWILIO_TEMPLATE_DELIVERY_EN"], ["pt_BR", "TWILIO_TEMPLATE_DELIVERY_PT_BR"]] as const) {
-    const name = deliveryTemplateName(base, language);
-    const matches = existing.filter((c) => c.friendlyName === name && c.language === language);
-    if (matches.length > 1) {
-      report.manual.push(`${matches.length} templates are named ${name} (${matches.map((m) => m.sid).join(", ")}). Delete the extra ones in the Console (Messaging → Content Template Builder).`);
-      continue;
-    }
-    const tpl = matches[0];
-    const needsSubmit = !tpl || ["unsubmitted", ""].includes(tpl.approval.status.toLowerCase());
-    // WhatsApp fetches the sample image while reviewing; without it the template is rejected.
-    if (needsSubmit && !(await api.isPublicImage(`${base}/${DELIVERY_SAMPLE_MEDIA}`))) {
-      report.manual.push(`Delivery template ${name} not submitted: ${base}/${DELIVERY_SAMPLE_MEDIA} is not reachable. Deploy the app to that host first, then run again.`);
-      continue;
-    }
-    if (!tpl) {
-      let sid: string | undefined;
-      await act(`create delivery template ${name} and submit it to WhatsApp (UTILITY)`, async () => {
-        sid = (await api.createContent(deliveryTemplate(base, language))).sid;
-        await api.submitWhatsAppApproval(sid, { name, category: "UTILITY" });
-      });
-      if (sid) report.manual.push(`Delivery template ${name} (${sid}) was submitted. WhatsApp usually approves within minutes to 24 hours; run again to get its SID for ${key}.`);
-      continue;
-    }
-    const status = tpl.approval.status.toLowerCase();
-    if (status === "approved") {
-      report.env[key] = tpl.sid;
-      if (opts.env[key] && opts.env[key] !== tpl.sid) report.manual.push(`${key} is ${opts.env[key]}, but the approved template for ${base} is ${tpl.sid}. Update it.`);
-      else report.ok.push(`Delivery template ${name} (${tpl.sid}) approved`);
-    } else if (status === "unsubmitted" || status === "") {
-      await act(`submit delivery template ${name} (${tpl.sid}) to WhatsApp (UTILITY)`, () => api.submitWhatsAppApproval(tpl.sid, { name, category: "UTILITY" }));
-    } else if (status === "rejected") {
-      report.manual.push(
-        `Delivery template ${name} (${tpl.sid}) was rejected by WhatsApp: "${tpl.approval.rejectionReason || "no reason given"}". Fix the copy in lib/setup/twilio.ts, delete the template in the Console, and run again (a deleted name cannot be reused for 30 days, so change the name too).`,
-      );
-    } else {
-      report.manual.push(`Delivery template ${name} (${tpl.sid}) is ${status} at WhatsApp. Run again later for its SID (${key}).`);
-    }
   }
 }

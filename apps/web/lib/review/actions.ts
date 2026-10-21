@@ -31,6 +31,11 @@ function audit(log: AuditLog, action: string, slug: string, jobId: string, extra
  */
 export async function approveFlagged(deps: { sync: SyncStore; delivery: DeliveryDeps; log: AuditLog }, event: PortraitEvent, jobId: string) {
   const jobs = deps.sync.map(eventObjects(event.slug).jobs, JobSchema);
+  // Nothing changes for an address that cannot be delivered to.
+  const before = await jobs.get(jobId);
+  if (before?.state !== "flagged") throw new ReviewError("Only flagged images can be approved");
+  const address = addressFromKey(before.address);
+  if (!address) throw new ReviewError("Job has an invalid address");
   let approved: Job | null = null;
   await jobs.update(jobId, (cur) => {
     if (cur?.state !== "flagged") return SKIP;
@@ -39,9 +44,14 @@ export async function approveFlagged(deps: { sync: SyncStore; delivery: Delivery
   });
   if (!approved) throw new ReviewError("Only flagged images can be approved");
   const job = approved as Job;
-  const address = addressFromKey(job.address);
-  if (!address) throw new ReviewError("Job has an invalid address");
-  const result = await deliver(deps.delivery, event, job, address, { approvedByAdmin: true });
+  let result: Awaited<ReturnType<typeof deliver>>;
+  try {
+    result = await deliver(deps.delivery, event, job, address, { approvedByAdmin: true });
+  } catch (err) {
+    // Delivery failed (nothing was sent): back to flagged, so Approve can be tried again.
+    await jobs.update(jobId, (cur) => (cur?.state === "approved_by_admin" ? { ...cur, state: "flagged" } : SKIP));
+    throw err;
+  }
   audit(deps.log, "approve", event.slug, jobId, { result });
   return result;
 }
@@ -69,6 +79,11 @@ export async function removePortrait(deps: { sync: SyncStore; blob: BlobStore; l
   let removed: Job | null = null;
   // 1. State first: the share page and slideshow stop showing it at once, even if a file delete fails.
   await deps.sync.map(ev.jobs, JobSchema).update(jobId, (cur) => {
+    // A job that is already removed is run again to finish deleting files that failed before.
+    if (cur?.state === "removed_by_admin") {
+      removed = cur;
+      return SKIP;
+    }
     if (cur?.state !== "delivered") return SKIP;
     removed = { ...cur, state: "removed_by_admin", timestamps: { ...cur.timestamps, removed_by_admin: new Date().toISOString() } };
     return removed;
@@ -85,7 +100,7 @@ export async function removePortrait(deps: { sync: SyncStore; blob: BlobStore; l
   let printing = false;
   if (p && (p.data.state === "queued" || p.data.state === "failed")) {
     await print.delete(jobId, p.revision);
-    if (p.data.state === "queued" && !p.data.reprint) await releasePrintReservation(deps.sync, event, jobId);
+    if (holdsReservation(p.data)) await releasePrintReservation(deps.sync, event, jobId);
   } else if (p && (p.data.state === "claimed" || p.data.state === "printing")) {
     printing = true;
   }
@@ -107,13 +122,13 @@ export async function removeFromPrintQueue(deps: { sync: SyncStore; log: AuditLo
   if (v.data.state !== "queued" && v.data.state !== "failed") throw new ReviewError(`Cannot remove a print that is ${v.data.state}`);
   await print.delete(jobId, v.revision);
   // Release the quota reservation for a print that will never happen.
-  if (v.data.state === "queued" && !v.data.reprint) await releasePrintReservation(deps.sync, event, jobId);
+  if (holdsReservation(v.data)) await releasePrintReservation(deps.sync, event, jobId);
   audit(deps.log, "print_remove", event.slug, jobId);
 }
 
 /**
  * Reprint (SPEC §10.3). Does not count toward the attendee's print quota
- * (§17 Q5); logged with the admin's name.
+ * and sends no promo. The log line carries no admin name.
  */
 export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: (blobPath: string, ttlSeconds: number) => string }, event: PortraitEvent, jobId: string) {
   if (!event.config.printingEnabled) throw new ReviewError("Printing is off for this event");
@@ -122,9 +137,14 @@ export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: 
   const ev = eventObjects(event.slug);
   await deps.sync.ensureMap(ev.print);
   const print = deps.sync.map(ev.print, PrintJobSchema, { ttlSeconds: 7 * 24 * 60 * 60 });
-  const cur = await print.get(jobId);
+  const existing = await print.getVersioned(jobId);
+  const cur = existing?.data;
   if (cur && (cur.state === "queued" || cur.state === "claimed" || cur.state === "printing")) throw new ReviewError("A print for this image is already pending");
-  await print.put(jobId, {
+  // A finished print the server has not counted yet would be overwritten and never counted.
+  if (cur && (cur.state === "printed" || cur.state === "failed") && !cur.settledAt) throw new ReviewError("The last print of this image is still being recorded; try again in a few seconds");
+  // Replace only the item we just looked at (If-Match), so a print an attendee queued meanwhile is not clobbered.
+  if (existing) await print.delete(jobId, existing.revision);
+  const created = await print.create(jobId, {
     jobId,
     blobPath: job.outputBlobs.printPng,
     url: deps.mediaUrl(job.outputBlobs.printPng, 7 * 24 * 60 * 60),
@@ -136,7 +156,13 @@ export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: 
     reprint: true,
     timestamps: { queued: new Date().toISOString() },
   });
+  if (!created) throw new ReviewError("A print for this image is already pending");
   audit(deps.log, "reprint", event.slug, jobId);
+}
+
+/** Whether deleting this print item must give its quota reservation back: a queued print, or a failed one the server has not settled (settling releases it). */
+function holdsReservation(item: { state: string; reprint?: boolean; settledAt?: string }): boolean {
+  return !item.reprint && (item.state === "queued" || (item.state === "failed" && !item.settledAt));
 }
 
 async function releasePrintReservation(sync: SyncStore, event: PortraitEvent, jobId: string) {

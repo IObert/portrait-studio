@@ -50,7 +50,6 @@ export const en = {
     codeResent: ({ email }) => `We've sent a new code to ${email}.`,
     codeLocked: ({ resendKeyword }) => `Too many attempts. Please wait 10 minutes, then reply ${resendKeyword} for a new code.`,
     resendKeywords: ["resend", "new code"],
-    optedIn: "You're all set!",
   },
 
   selfie: {

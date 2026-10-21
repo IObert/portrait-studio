@@ -13,10 +13,6 @@ import { addressFromKey } from "./worker";
 export const STUCK_AFTER_MS = 5 * 60 * 1000;
 export const MAX_PRINT_ATTEMPTS = 3;
 
-// `settledAt` (on PrintJobSchema) marks a finished print as handled, so counting and the promo happen once.
-const Settled = PrintJobSchema;
-type SettledJob = PrintJob;
-
 export interface PrintDeps {
   sync: SyncStore;
   events: EventRepo;
@@ -38,9 +34,10 @@ export async function settlePrints(deps: PrintDeps): Promise<number> {
   const now = deps.now?.() ?? new Date();
   let handled = 0;
   for (const event of (await deps.events.list()).filter((e) => e.state !== "draft" && e.config.printingEnabled)) {
-    const map = deps.sync.map(eventObjects(event.slug).print, Settled);
-    const items: SettledJob[] = [];
-    for await (const [, item] of map.entries()) items.push(item);
+    const map = deps.sync.map(eventObjects(event.slug).print, PrintJobSchema);
+    const items: PrintJob[] = [];
+    // One malformed item must not stop settlement for every event: skip and log it.
+    for await (const [, item] of map.entries((key, err) => deps.log.warn({ event: "print_item_invalid", slug: event.slug, key, error: err.message }, "skipping invalid print item"))) items.push(item);
     for (const item of items) {
       // Items from before signed links existed get one, so the agent can download them.
       if (item.state === "queued" && !item.url && deps.mediaUrl) {
@@ -60,11 +57,11 @@ export async function settlePrints(deps: PrintDeps): Promise<number> {
   return handled;
 }
 
-async function settle(deps: PrintDeps, event: PortraitEvent, item: SettledJob, now: Date): Promise<boolean> {
+async function settle(deps: PrintDeps, event: PortraitEvent, item: PrintJob, now: Date): Promise<boolean> {
   const ev = eventObjects(event.slug);
   // Claim the settlement: only one worker gets past this.
   let mine = false;
-  await deps.sync.map(ev.print, Settled).update(item.jobId, (cur) => {
+  await deps.sync.map(ev.print, PrintJobSchema).update(item.jobId, (cur) => {
     mine = !!cur && !cur.settledAt && (cur.state === "printed" || cur.state === "failed");
     return mine ? { ...cur!, settledAt: now.toISOString() } : SKIP;
   });
@@ -74,7 +71,7 @@ async function settle(deps: PrintDeps, event: PortraitEvent, item: SettledJob, n
   if (!job) return true; // deleted meanwhile (event or data deletion)
 
   if (item.state === "printed") {
-    // Successful prints count toward maxPrintsPerPerson (SPEC §4.3); admin reprints do not (§17 Q5).
+    // Successful prints count toward maxPrintsPerPerson (SPEC §4.3); admin reprints do not (§10.3).
     if (!item.reprint) {
       await deps.sync.map(ev.sessions, SessionSchema).update(job.address, (s) =>
         s ? { ...s, counters: { ...s.counters, printed: s.counters.printed + 1, printsReserved: Math.max(0, s.counters.printsReserved - 1) } } : SKIP,
@@ -108,9 +105,9 @@ async function sendPromo(deps: PrintDeps, event: PortraitEvent, addressKey: stri
 }
 
 /** Stuck job (lease long expired): retry, or give up after the attempts (SPEC §11.2). */
-async function release(deps: PrintDeps, event: PortraitEvent, item: SettledJob, now: Date) {
+async function release(deps: PrintDeps, event: PortraitEvent, item: PrintJob, now: Date) {
   const ev = eventObjects(event.slug);
-  await deps.sync.map(ev.print, Settled).update(item.jobId, (cur) => {
+  await deps.sync.map(ev.print, PrintJobSchema).update(item.jobId, (cur) => {
     if (!cur || (cur.state !== "claimed" && cur.state !== "printing") || !cur.leaseUntil || cur.printerJobId) return SKIP;
     if (now.getTime() - Date.parse(cur.leaseUntil) <= STUCK_AFTER_MS) return SKIP;
     return cur.attempts >= MAX_PRINT_ATTEMPTS

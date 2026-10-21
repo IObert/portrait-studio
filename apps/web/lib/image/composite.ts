@@ -23,12 +23,3 @@ export async function compositeOnBackground(portraitPng: Buffer, background: Buf
     .toBuffer();
   return sharp(bg).composite([{ input: portrait, gravity: "centre" }]).png().toBuffer();
 }
-
-/** Solid-colour canvas, used for edge inspection over dark and light backgrounds. */
-export function solidBackground(hex: string): Promise<Buffer> {
-  return sharp({
-    create: { width: CANVAS.width, height: CANVAS.height, channels: 3, background: hex },
-  })
-    .png()
-    .toBuffer();
-}

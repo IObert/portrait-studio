@@ -82,7 +82,7 @@ export function beginConsent(
       effects: [],
     };
   }
-  // Case C: unknown person, lead collection off. No Memory profile is created (§17 Q2a).
+  // Case C: unknown person, lead collection off. No Memory profile is created (SPEC §5.4).
   return {
     session: { ...session, step: "awaiting_agree" },
     messages: [agreePrompt(c, channel, c.consent.agreeOnly({ eventName: event.config.name, privacyUrl }))],

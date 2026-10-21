@@ -32,6 +32,9 @@ export function createAzureBlobStore(connectionString: string, containerName: st
         throw err;
       }
     },
+    async exists(path) {
+      return container.getBlobClient(path).exists();
+    },
     async delete(path) {
       await container.getBlobClient(path).deleteIfExists({ deleteSnapshots: "include" });
     },

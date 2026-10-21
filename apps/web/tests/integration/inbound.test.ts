@@ -88,7 +88,6 @@ async function world(): Promise<World> {
     memory: memory as unknown as MemoryClient,
     verifier: verifier as unknown as EmailVerifier,
     fetchMedia: async () => new Response(image, { headers: { "content-type": "image/jpeg" } }),
-    publicBaseUrl: "https://booth.test",
     slideUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
     mediaUrl: (p: string) => `https://booth.test/m/${encodeURIComponent(p)}`,
     chat: { model: "fake-chat", client: fakeChat as unknown as ChatModel["client"] },
@@ -278,6 +277,26 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect((await jobs(w, "ev")).filter((j) => j.state !== "rejected")).toHaveLength(1);
   });
 
+  it("BUG 2: a photo sent while the first one is being screened supersedes it", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, styles: ["anime"], backgrounds: ["original"], maxImagesPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "", selfieMsg);
+    const [first] = await jobs(w, "ev");
+    // The worker has claimed it and is screening right now.
+    const ev = eventObjects("ev");
+    await w.fake.updateItem(ev.jobs, first!.jobId, { ...first!, state: "processing", leaseUntil: new Date(Date.now() + 60_000).toISOString(), attempts: 1 });
+
+    await w.say(WA, "", selfieMsg);
+
+    const all = await jobs(w, "ev");
+    const old = all.find((j) => j.jobId === first!.jobId)!;
+    const fresh = all.find((j) => j.jobId !== first!.jobId)!;
+    expect(old.state, "the photo being screened is superseded").toBe("rejected");
+    expect(fresh.state).toBe("screening");
+    expect(w.blob.blobs.has(old.selfieBlob), "its selfie is deleted").toBe(false);
+  });
+
   it("rejects non-image media and multiple photos", async () => {
     await liveEvent(w, "ev", { leadCollection: false });
     await w.say(WA, "#ev");
@@ -337,7 +356,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
       outputBlobs: { printPng: "events/ev/generated/job_slide_02.print.png", deliveryJpeg: "events/ev/generated/job_slide_02.jpg" }, shareId: "R".repeat(24), state: "delivered", timestamps: {},
     }));
     const cur = (await w.fake.getItem(ev.sessions, key))!;
-    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_slide_02", group: false } });
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_slide_02", group: false, askedAt: new Date().toISOString() } });
     expect(await w.say(SMS, "yes please")).not.toContain(catalogs.en.delivery.slideshowThanksYes); // not an exact keyword
     expect(await w.say(SMS, "YES")).toEqual([catalogs.en.delivery.slideshowThanksYes]);
     expect(await w.fake.getItem(ev.slideshow, "job_slide_02")).not.toBeNull();
@@ -372,6 +391,23 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(session.counters.printsReserved).toBe(1);
   });
 
+  it("a stale YES/OK to an old slideshow question is not an answer (it shows nothing)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(SMS, "#ev");
+    await w.say(SMS, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const key = "sms:+447700900456";
+    await w.fake.createItem(ev.jobs, "job_stale_01", JobSchema.parse({
+      jobId: "job_stale_01", address: key, channel: "sms", style: "anime", background: "gradient", selfieBlob: "s",
+      outputBlobs: { printPng: "events/ev/generated/job_stale_01.print.png", deliveryJpeg: "events/ev/generated/job_stale_01.jpg" }, shareId: "T".repeat(24), state: "delivered", timestamps: {},
+    }));
+    const cur = (await w.fake.getItem(ev.sessions, key))!;
+    const asked = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // asked half an hour ago, never answered
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_stale_01", group: false, askedAt: asked } });
+    await w.say(SMS, "ok");
+    expect(await w.fake.getItem(ev.slideshow, "job_stale_01")).toBeNull();
+  });
+
   it("print on SMS: PRINT answers the pending question only when printing was offered", async () => {
     await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 2 });
     await w.say(SMS, "#ev");
@@ -383,7 +419,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
       outputBlobs: { printPng: "events/ev/generated/job_print_03.print.png", deliveryJpeg: "events/ev/generated/job_print_03.jpg" }, shareId: "P".repeat(24), state: "delivered", timestamps: {},
     }));
     const cur = (await w.fake.getItem(ev.sessions, key))!;
-    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_print_03", group: false, print: true } });
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), pendingSlideshow: { jobId: "job_print_03", group: false, print: true, askedAt: new Date().toISOString() } });
     expect(await w.say(SMS, "PRINT")).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 1 })]);
     expect(await w.fake.getItem(ev.print, "job_print_03")).not.toBeNull();
   });

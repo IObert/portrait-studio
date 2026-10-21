@@ -1,5 +1,4 @@
 export interface BackoffOptions {
-  attempts: number;
   baseMs: number;
   maxMs: number;
 }

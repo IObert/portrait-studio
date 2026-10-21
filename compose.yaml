@@ -1,5 +1,10 @@
 # Local development stack (works with `docker compose` and `podman compose`).
-# Copy .env.example to .env.local first (override with ENV_FILE=...).
+# Copy .env.example to .env.local first, and start with
+#   docker compose --env-file .env.local up --build     (or: podman compose ...)
+# --env-file is required: Compose fills ${...} below from that file, so a real
+# AZURE_STORAGE_CONNECTION_STRING in it is used, and an empty one falls back to Azurite.
+# Without the flag Compose reads only .env and the shell, and always uses Azurite.
+# (Another file: ENV_FILE=.env.staging docker compose --env-file .env.staging up)
 services:
   web:
     build: .

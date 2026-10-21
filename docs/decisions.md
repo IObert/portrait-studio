@@ -176,7 +176,7 @@ keep-alive with a 5 s idle recycle. The callers' own retries (SyncStore, worker)
 stale socket costs seconds instead of 30 s. Covered by a unit test against a server that never answers, and by the
 live Sync tests.
 
-### D-22 Print agent uses the Sync SDK, confirmed on Node 22
+### D-22 Print agent uses the Sync SDK, confirmed on Node 22 (the agent now requires Node 24)
 *2026-10-14.* SPEC §11.1 asked for this check before relying on `twilio-sync`. Verified on real Node 22.22:
 the SDK connects, opens objects and receives pushes. One catch: it is CommonJS, so an esbuild ESM bundle needs a
 `createRequire` banner, otherwise it dies at start-up with "Dynamic require of events is not supported". CI now
@@ -193,7 +193,7 @@ API is needed.
 - Print items carry a **signed download link** (`/m/<token>`), so the agent needs no storage credentials.
 - The server settles prints (`lib/pipeline/prints.ts`): counts successes toward `maxPrintsPerPerson`, releases
   reservations, sends the promo once per printed job (§5.9), and requeues or fails jobs whose lease expired 5 min
-  ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (§17 Q5).
+  ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (Q5).
 - The admin command now defaults to `--simulate`, since it works with no printer attached.
 
 ### D-24 Attendees choose what to print (user decision)
@@ -244,7 +244,7 @@ when it was switched on.*
   `Frame clearance: A decorative frame will cover {the top N%| the bottom N%| both} of the image after generation.
   Keep that area free of the subjects: every head, all hair and every face must sit fully outside {…}, with only
   background there. Scale and position the subjects so nothing important is hidden.`
-- Shipped frames: tab top → top 15%; tab bottom / bottom left → bottom 20%; red borders (their own tilted window,
+- Shipped frames: tab top → top 20% (15% before the safe-zone fix of D-41 moved its logo down); tab bottom / bottom left → bottom 20%; red borders (their own tilted window,
   3–5% wedge) → no line. With no frame, or one that covers nothing, the prompt is exactly the PROMPTS.md prompt.
 - The model follows this most of the time, not always. If it is still not good enough, the fallback is to move the
   photo below the tab in the frame designs.
@@ -369,30 +369,31 @@ lock), for one brand.*
 
 ## Open TODOs after the last milestone
 
-- **WhatsApp delivery templates** (user, 2026-10-16): do this after `minor-improvements` is merged and deployed.
-  Until then, WhatsApp portraits finished outside the 24-hour window are not sent (share page only, logged).
-  1. Check the deployed app serves the sample: `curl -I https://<azure host>/samples/delivery.jpg` must be 200.
-  2. `pnpm --filter web setup:twilio --public-base-url https://<azure host>` creates and submits both (D-39). The
-     templates must name the Azure host: WhatsApp fixes their URLs at approval. The script refuses to submit while the
-     sample image is unreachable.
-  3. After approval (minutes to 24 hours), run it again, put `TWILIO_TEMPLATE_DELIVERY_EN` / `_PT_BR` into
-     `.env.local` and the deploy's secrets, and deploy once more.
-
 - **Profile deletion in the shared Memory store** (user, 2026-10-12): needs a broader discussion once the app is done.
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
   with `git grep -n "TODO(profile-deletion)"`.
 
+- **Print agent reads only the first 100 queue items** (user, 2026-10-20): left as it is for now. Settled items
+  stay for 7 days, so on a long, busy event a new print can sort after the first 100 and be missed. Marked
+  `TODO(print-queue-pagination)` in `apps/print-agent/src/agent.ts`. Page through `getItems` with `nextPage()`.
+
 ### Closed
 
+- **WhatsApp delivery templates** (user, 2026-10-21): not needed, and removed. A portrait that finishes after WhatsApp's 24-hour window is not sent, by design. See D-42.
+- **SPEC and docs aligned with the code** (user, 2026-10-21): SPEC.md rewritten to the current state, the other docs checked against the code. The old section 17 (open questions) is removed; code comments and tests now cite the SPEC section that holds each answer.
+- **Eval: portraits keep the top 10% free** (user, 2026-10-20): built, see D-40.
+- **Frame safe zone** (user, 2026-10-20): measured on the DS620, frames fixed, eval built, see D-41.
 - **`setup:twilio` script** (2026-10-16): written, see D-39.
-- **README** (2026-10-16): rewritten with setup, architecture, env table, booth printer steps and the test checklist.
+- **README** (2026-10-16): rewritten with setup, architecture, env table and booth printer steps. The real-life test checklist is in SPEC §16, not in the README (user, 2026-10-21).
 
 - **DS620 borderless prints** (2026-10-16): confirmed on paper, no white edge and nothing cropped.
 - **Fewer settings per page in the admin** (2026-10-16): not needed; the event form stays one page.
 - **Email templates for all activations** (2026-10-16): the SendGrid verification templates are updated. Portrait
   Studio's uses `event_name`, `promo_code` and `show_snippet` only (D-20).
 
-## Answers to SPEC §17
+## Answers to the original open questions
+
+The build specification ended with eight open questions. Their answers are below; the SPEC now states each one in the section that holds the behaviour.
 
 | Q | Decision |
 |---|---|
@@ -401,7 +402,7 @@ lock), for one brand.*
 | Q2b Returning profile without a verified email, at an event that collects leads | Greet them by name, skip the name step, then ask for email and code. |
 | Q3 Framing | Chest up for every style. Cartoon's hard-coded "waist up" is replaced by the shared composition text. `{preserve}` uses the settings text in PROMPTS.md §C. |
 | Q4 Fixed frames | Ship `none` plus one placeholder border, clearly marked as a placeholder, until real 1200×1800 PNGs are supplied. **Superseded 2026-10-14:** the five supplied Twilio frames are the fixed frames; the placeholder was removed. |
-| Q5 Admin reprints | They do not count toward `maxPrintsPerPerson`. They are logged with the admin's name. |
+| Q5 Admin reprints | They do not count toward `maxPrintsPerPerson` and send no promo. The log line carries no admin name. |
 | Q6 Models | `OPENAI_VISION_MODEL=gpt-6.1-sol`, `OPENAI_CHAT_MODEL=gpt-6-luna`. Both use the Responses API with reasoning effort `none`. |
 | Q7 Shared types | None. The two projects stay independent, with a contract in `PROTOCOL.md` and fixture-based contract tests. |
 | Q8 Auto-start | No. |
@@ -422,7 +423,7 @@ lock), for one brand.*
 | Lead email | Any valid email is accepted (no business-only rule) |
 | Smart-reply prompts | Drop G2's "Instruções adicionais do evento" line. Add a language-lock line and a deletion-tool line to G1 and G2. |
 | Copy | I write the new en and pt_BR text. No native-speaker review (user decision, 2026-10-16). |
-| Delivery template | Submitted as UTILITY. If Meta reclassifies it, the user is told; nothing is changed automatically. |
+| Delivery template | Removed (D-42). It was submitted as UTILITY. |
 | QR sender list | The Messaging Service's phone numbers plus WhatsApp senders from the Channels Senders API, falling back to entering the number by hand |
 | Local Blob Storage | Azurite in compose |
 | Local Sync | A real dev Sync Service. Tests use mocks. |
@@ -447,9 +448,77 @@ second copy:
 - It goes further than SPEC §15: it also finds or creates the Memory store, since the Memory API can. A store it did not
   create (such as the shared one, D-10) is only checked, never changed.
 - The inbound URL is never taken from another app without `--take-over-inbound` (the cut-over, D-10).
-- **Delivery template variables changed:** WhatsApp only approves a media header like `https://host/{{1}}` whose
+- **Delivery template variables changed** (the template was removed again, D-42): WhatsApp only approves a media header like `https://host/{{1}}` whose
   sample ends in a file type. `{{1}}` is now `m/<token>.jpg` (the media route ignores `.jpg`) instead of the full URL,
   and `{{2}}` stays the share id. The sample image is `public/samples/delivery.jpg`.
 - Templates are named `portrait_studio_delivery_<host hash>_<lang>`: WhatsApp fixes the URLs at approval, so a new
   `PUBLIC_BASE_URL` host gets new templates and the old ones keep working for the old host.
 - `--dry-run` reports and changes nothing.
+
+### D-40 Eval: the top 10% of a portrait stays free (user decision)
+*2026-10-20.*
+- Rule (user): in every portrait, with or without a frame, no head, hair or face reaches into the top 10% of the
+  image, because a frame may cover it. The band is checked on the generated image, before any frame is applied.
+- `pnpm --filter @portrait-studio/web eval:top-clearance` (`evals/`) generates with the real prompt builder and judges
+  the result. It calls the OpenAI API, costs about $3 for 12 images and is not part of `pnpm test`.
+  `--dry-run` prints the plan and the cost, `--calibrate-only` runs just the judge check (cents).
+- The judge is a vision model shown the image with the top 10% tinted and a red line under it, and answers
+  `PASS` or `FAIL: …`. Before any image is generated it must call a synthetic head in the band a FAIL and a clear one a
+  PASS, or the run stops: a judge that cannot tell them apart makes every result meaningless.
+- **What counts (user):** people (head, hair, hats, goggles, raised hands) and anything the picture is about, such as the
+  "crypto.com ARENA" sign. Plain sky, ceiling or a dark background in the band is fine.
+- **Correction:** the first version of the judge only looked for people and passed the arena sign, so a first run
+  reported 0 of 12. That was wrong. The user's own examples (hair, goggles and the arena sign in the band) showed it. The
+  judge now fails all four of them, checked at full resolution, and `tests/live/top-clearance-judge.live.test.ts`
+  keeps it honest. The examples were regenerated without a frame, because the framed ones show the frame's own logo in
+  the band. They contain faces and stay in `.local/eval-examples/` (git-ignored).
+- Result with the corrected judge and the old prompt: **5 of 12 fail** (arena sign 3/4, the user's shelf of model
+  landmarks 2/4, uploaded 0/4). Two changes, both by the user's choice:
+  1. **An always-on prompt line** (`TOP_FREE_LINE` in `lib/prompts/frame.ts`, placed before the frame line). This
+     replaces D-27's "no frame, no change": every prompt now has the line, so all 30 snapshots gained exactly that line.
+     The frame line stays and names a larger share when a frame needs it.
+  2. **The arena reference photo moved down 14%**, with the sky above it continued by the image model, so the sign sits at
+     about 19–30% instead of 4–17%. The model redrew the whole picture (mean colour difference 13.7/255 from the old one),
+     so fine detail differs; portraits made with it look the same. The old file is in `.local/la-kings/`. The ice-rink
+     reference was left as it is (user: fine).
+- With both: **0 of 12** (looked at by eye: the sign clears the line in all four arena portraits). 12 images from 2 photos
+  can rule out a frequent failure, not a rare one.
+- Run it when the generation prompt, the style prompts, the brand scenes or the image model change, and by hand before
+  an event. Not on every merge: nothing in a normal merge can change what the model draws.
+
+### D-41 Frames keep logos and text 60 px inside every edge (user decision)
+*2026-10-20.*
+- **Finding:** the DS620 prints borderless by scaling the image slightly past the paper and then cutting. Measured with a
+  calibration print (1200×1800, rings every 6–12 px, queue options exactly as the agent sends them): the **left and
+  right lose about 24 px (2 mm), the top about 30 px (2.5 mm) and the bottom about 36 px (3 mm)**. `fit-to-page` +
+  `print-scaling=fill` are correct; there is no white edge. The loss is the printer's, not a queue setting, so it cannot
+  be configured away. A Twilio tab logo 35 px from the top came out almost touching the edge.
+- **Rule:** anything that is not anchored to an edge, such as a logo, a wordmark or text, stays at least **60 px**
+  (`SAFE_ZONE_PX`, 5 mm) from every edge. Shapes that run off the canvas (the tab itself, a tower, a border) are fine
+  and must keep running off it, so the cut never shows a gap. 60 px is the worst edge (36 px) plus a margin for
+  paper-to-paper variation.
+- **Fixed, for `twilio-tab-*` only** (user): the logo in the top tab moved down from 35 to 67 px, and in both bottom tabs
+  up from 57 to 71 px. Done by stretching a plain-colour strip at the edge, so the tab outline and the logo are not
+  redrawn. `twilio-border-left/right` already pass (94 and 125 px) and were not touched. The London "Assemble" frame
+  supplied by the user was fixed the same way; its file is in `exports/london-assemble-safe-zone.png` and is not part of
+  the frame list yet.
+- **The portrait is not padded or shrunk at print time**: that would show seams on frames with borders.
+- **Check:** `pnpm --filter @portrait-studio/web eval:frame-safe-zone [file…]` measures every PNG in `assets/frames/`
+  (or the files given) and exits 1 on a violation. It needs no API key and costs nothing; it is not part of `pnpm test`.
+  Run it whenever a frame is added or changed. `scripts/frame-safe-zone-fix.ts` makes the shift described above.
+- **Not redone:** the admin thumbnails in `public/previews/frames/` still show the old logo position (a few pixels).
+
+### D-42 No delivery template: a portrait outside WhatsApp's 24-hour window is not sent (user decision)
+*2026-10-21. Replaces the delivery template of SPEC §6.3 and D-39, and the open TODO about creating it.*
+- WhatsApp allows free-form messages only within 24 hours of the person's last message. After that only an approved
+  template can be sent. A portrait is normally ready in about a minute, so this only happens when generation takes more
+  than a day or an admin approves a flagged image that long afterwards. The user decided a delivery that late is not
+  worth sending, and that this is the intended behaviour, not a gap.
+- **Behaviour:** `Messenger.send` skips a WhatsApp message outside the window and logs it (`send_skipped`,
+  `outside-24h-window`). `deliver()` returns `skipped`; the portrait is not counted as delivered or in the stats. It stays
+  on its share page. For an admin approval the review page says it was not sent.
+- **Removed:** the `delivery` template and its Twilio setup step in `setup:twilio`, `TWILIO_TEMPLATE_DELIVERY_EN` and
+  `_PT_BR` (env, CI, `deploy.sh`, `.env.example`), `Messenger.sendTemplate`, the sample image `public/samples/delivery.jpg`,
+  and the `.jpg` suffix the `/m/<token>` route used to ignore for the template's media URL. The runtime quick-reply and
+  list-picker templates (SPEC §6.3) are unaffected: they are created inside the window and need no approval.
+- If the user ever wants late deliveries, this is the list of what to bring back; D-39 describes the template.

@@ -26,6 +26,15 @@ describe("BlobPaths", () => {
   });
 });
 
+describe("BlobStore.exists", () => {
+  it("says whether a blob is there without reading it", async () => {
+    const blob = new FakeBlob();
+    await blob.put("events/a/generated/1.jpg", Buffer.from("x"), "image/jpeg");
+    expect(await blob.exists("events/a/generated/1.jpg")).toBe(true);
+    expect(await blob.exists("events/a/generated/2.jpg")).toBe(false);
+  });
+});
+
 describe("runReadiness", () => {
   it("reports each dependency and fails if any fails or hangs", async () => {
     const r = await runReadiness(

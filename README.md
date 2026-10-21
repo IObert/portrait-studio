@@ -65,7 +65,7 @@ for another project is never used by mistake.
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Console → Account info |
 | `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET` | Console → API keys & tokens → Create API key (Standard) |
 | `TWILIO_MESSAGING_SERVICE_SID` | The Messaging Service with the booth's SMS numbers and WhatsApp senders (see step 3) |
-| `TWILIO_SYNC_SERVICE_SID`, `TWILIO_VERIFY_SERVICE_SID`, `TWILIO_MEMORY_STORE_ID`, `TWILIO_TEMPLATE_DELIVERY_EN` / `_PT_BR` | Printed by `setup:twilio` (step 3) |
+| `TWILIO_SYNC_SERVICE_SID`, `TWILIO_VERIFY_SERVICE_SID`, `TWILIO_MEMORY_STORE_ID` | Printed by `setup:twilio` (step 3) |
 | `OPENAI_API_KEY` | platform.openai.com → API keys. Models default to the values in `.env.example` |
 | `AZURE_STORAGE_CONNECTION_STRING`, `AZURE_STORAGE_CONTAINER` | Empty locally (Azurite); `./deploy.sh` creates them on Azure |
 
@@ -88,13 +88,9 @@ pnpm --filter web setup:twilio --public-base-url https://<deployed host>
 ```
 
 It finds or creates the Sync Service, Verify Service and Memory store, points the Messaging Service at
-`/api/twilio/inbound`, and submits the WhatsApp delivery templates. It is safe to run again and never creates
-duplicates; it never changes a shared Memory store, and only takes inbound traffic from another app with
-`--take-over-inbound`. Copy the values it prints into `.env.local`. **Run it again after WhatsApp approves the
-templates** (minutes to 24 hours) to get their SIDs. Details: [docs/deployment.md](docs/deployment.md) §4, D-39.
-
-Use the deployed host for templates: WhatsApp fixes their URLs at approval, so templates made for a tunnel only work
-on that tunnel.
+`/api/twilio/inbound`. It is safe to run again and never creates duplicates; it never changes a shared Memory store,
+and only takes inbound traffic from another app with `--take-over-inbound`. Copy the values it prints into `.env.local`.
+Details: [docs/deployment.md](docs/deployment.md) §4, D-39.
 
 ### 4. Run locally
 
@@ -104,15 +100,18 @@ pnpm dev                                    # web on http://localhost:3000
 pnpm --filter web worker                    # worker, second terminal
 ```
 
-Or everything in containers: `docker compose up --build` (or `podman compose up --build`).
+Or everything in containers: `docker compose --env-file .env.local up --build` (or `podman compose --env-file .env.local up --build`).
 
-To test messages against your laptop, point the Messaging Service at the tunnel with
-`pnpm --filter web setup:twilio --take-over-inbound`, and back at the deployed app the same way afterwards. While it
-points at your laptop, the deployed app receives nothing.
+To test messages against your laptop, point the Messaging Service at the tunnel (the `PUBLIC_BASE_URL` in `.env.local`)
+with `pnpm --filter web setup:twilio --take-over-inbound`. To point it back at the deployed app, name that host, because
+`.env.local` wins over the shell: `pnpm --filter web setup:twilio --take-over-inbound --public-base-url https://<deployed host>`.
+While it points at your laptop, the deployed app receives nothing.
 
 ### 5. Deploy
 
-`./deploy.sh` deploys web and worker to Azure Container Apps; CI deploys every push to `main`.
+`./deploy.sh` deploys web and worker to Azure Container Apps. It reads `.env.local` as plain `KEY=value` data (or the
+file in `ENV_FILE`), and adds its 7-day rule to the storage account's lifecycle policy without removing other rules.
+CI deploys every push to `main`.
 See [docs/deployment.md](docs/deployment.md).
 
 ## Running an event
@@ -159,3 +158,24 @@ Live tests are opt-in and use the real services in `.env.local`: `RUN_LIVE_AI_TE
 `RUN_LIVE_SYNC_TESTS=1`, `RUN_LIVE_INBOUND_TESTS=1` and `RUN_LIVE_DELIVERY_TESTS=1`. The last two send **real**
 messages to `LIVE_TEST_PHONE`, need `pnpm dev` (and the worker, plus the tunnel, for delivery), and never run in CI;
 see the comment at the top of each file in `apps/web/tests/live/`.
+
+Two checks are not part of `pnpm test`; run them when the thing they guard changes:
+
+```sh
+pnpm --filter web eval:top-clearance [--dry-run | --calibrate-only]   # OpenAI, about $3: the top 10% of a portrait stays free (D-40)
+pnpm --filter web eval:frame-safe-zone [file...]                       # free: frames keep logos 60 px from every edge (D-41)
+```
+
+Run `eval:top-clearance` when the prompt, styles, LA Kings scenes or image model change, and `eval:frame-safe-zone`
+whenever a frame is added or changed.
+
+## Other scripts
+
+All run from the repo root with `pnpm --filter web <script>`.
+
+| Script | What it does |
+|---|---|
+| `setup:twilio` | Creates or finds the Twilio resources (step 3 of Setup) |
+| `leads:export [--event <id>] [--out <file>]` | Writes an event's leads to a CSV in `exports/` (git-ignored). Without `--event` it asks which event. The admin has no download. |
+| `stats:reset --event <id>` | Resets an event's counters |
+| `previews:styles --input <selfie.jpg> [--only <style>]` | Regenerates the style thumbnails shown in the admin (one OpenAI image call per style) |

@@ -75,7 +75,6 @@ export function deliveryDeps(sync: SyncStore, messenger: Messenger): DeliveryDep
     messenger,
     publicBaseUrl: env.PUBLIC_BASE_URL,
     mediaUrl: (blobPath, ttl) => new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET, blobPath, ttl)}`, env.PUBLIC_BASE_URL).toString(),
-    templates: { en: env.TWILIO_TEMPLATE_DELIVERY_EN, pt_BR: env.TWILIO_TEMPLATE_DELIVERY_PT_BR },
     log,
   };
 }

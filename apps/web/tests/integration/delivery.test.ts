@@ -15,7 +15,7 @@ const NOW = new Date("2026-10-12T12:00:00Z");
 const RECENT = "2026-10-12T11:30:00Z";
 const STALE = "2026-10-10T11:30:00Z";
 
-async function setup(o: { cfg?: Partial<EventConfigInput>; session?: Partial<Session>; templates?: DeliveryDeps["templates"]; to?: string } = {}) {
+async function setup(o: { cfg?: Partial<EventConfigInput>; session?: Partial<Session>; to?: string } = {}) {
   const fake = new FakeSync();
   const log = { info: vi.fn(), warn: vi.fn() };
   const sync = new SyncStore(fake, log, { baseDelayMs: 1, maxDelayMs: 2 });
@@ -59,7 +59,6 @@ async function setup(o: { cfg?: Partial<EventConfigInput>; session?: Partial<Ses
     messenger,
     mediaUrl: (p) => `https://booth.test/m/${encodeURIComponent(p)}`,
     publicBaseUrl: "https://booth.test",
-    templates: o.templates ?? {},
     log,
     now: () => NOW,
   };
@@ -98,21 +97,32 @@ describe("delivery (SPEC §6.1)", () => {
     expect(w.sent[1]!.body).toContain("(YES / NO)"); // SMS slideshow question with keywords
   });
 
-  it("WhatsApp outside the window: uses the approved template (SPEC §5.7, §6.3)", async () => {
-    const tpl = "HX" + "d".repeat(32);
-    const w = await setup({ session: { lastInboundAt: STALE }, templates: { en: tpl } });
-    expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("sent");
-    expect(w.sent).toHaveLength(1); // no free-form slideshow question outside the window
-    expect(w.sent[0]).toMatchObject({ contentSid: tpl, from: "whatsapp:+13203780782" });
-    expect(JSON.parse(w.sent[0]!.contentVariables!)).toEqual({ "1": expect.stringMatching(/^m\/[^/]+\.jpg$/), "2": "S".repeat(24) });
-  });
-
-  it("WhatsApp outside the window without a template: skipped and logged, share page still works", async () => {
+  it("WhatsApp outside the 24h window: not sent, by design (D-42); logged, and the share page still works", async () => {
     const w = await setup({ session: { lastInboundAt: STALE } });
     expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("skipped");
     expect(w.sent).toEqual([]);
-    expect(w.log.warn).toHaveBeenCalledWith(expect.objectContaining({ reason: "no-delivery-template" }), expect.any(String));
+    expect(w.log.warn).toHaveBeenCalledWith(expect.objectContaining({ reason: "outside-24h-window" }), expect.any(String));
     expect(await w.fake.getItem(Global.shares, "S".repeat(24))).not.toBeNull();
+  });
+
+  it("BUG 5: a send that throws is not lost: the job is retried, not left 'delivered' with nothing sent", async () => {
+    const w = await setup();
+    const create = (w.deps.messenger as unknown as { api: { createMessage: ReturnType<typeof vi.fn> } }).api.createMessage;
+    create.mockRejectedValueOnce(new Error("Twilio 503"));
+    await expect(deliver(w.deps, w.event, w.job, w.address)).rejects.toThrow("Twilio 503");
+    const state = async () => JobSchema.parse((await w.fake.getItem(eventObjects("ev").jobs, w.job.jobId))!.data).state;
+    expect(await state(), "claimable again").toBe("processing");
+    expect((await w.session()).counters.delivered, "not counted as delivered").toBe(0);
+
+    expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("sent");
+    expect(await state()).toBe("delivered");
+    expect((await w.session()).counters.delivered).toBe(1);
+  });
+
+  it("BUG 5: when nothing could be sent (outside the window, no template) the portrait is not counted as delivered", async () => {
+    const w = await setup({ session: { lastInboundAt: STALE } });
+    expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("skipped");
+    expect((await readStats(w.sync, "ev")).imagesDelivered ?? 0).toBe(0);
   });
 
   it("counts quota once, releases the in-flight slot and records stats", async () => {
@@ -145,7 +155,7 @@ describe("delivery (SPEC §6.1)", () => {
     expect(await on.printJob()).toBeUndefined();
     expect((await on.session()).counters.printsReserved).toBe(0);
     expect(on.sent[1]!.body).toBe(`${catalogs.en.delivery.printQuestion({ printsLeft: 2 })} ${catalogs.en.delivery.printSmsHint}`);
-    expect((await on.session()).pendingSlideshow).toEqual({ jobId: "job_00000001", group: false, print: true });
+    expect((await on.session()).pendingSlideshow).toMatchObject({ jobId: "job_00000001", group: false, print: true });
 
     // No prints left (printed + reserved): the plain slideshow question.
     const full = await setup({ cfg: { printingEnabled: true, maxPrintsPerPerson: 2 }, to: "+447700900456", session: { counters: { delivered: 1, printed: 1, printsReserved: 1, inFlight: 1 } } });

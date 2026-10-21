@@ -105,7 +105,7 @@ describe("Case B: unknown person, lead collection on", () => {
 
 describe("Case C: unknown person, lead collection off", () => {
   const ev = event(false);
-  it("asks only for agreement and creates no Memory profile (§17 Q2a)", () => {
+  it("asks only for agreement and creates no Memory profile (SPEC §5.4)", () => {
     const r = beginConsent(session(), ev, c, null, privacyUrl, "whatsapp");
     expect(r.session).toMatchObject({ step: "awaiting_agree", memoryProfileId: null });
     expect(bodies(r)[0]).toContain(privacyUrl);

@@ -91,6 +91,18 @@ test.describe.serial("admin events", () => {
     await expect(page.getByLabel("Printing enabled")).toBeChecked();
   });
 
+  test("turning printing off saves, even with the promo still ticked inside the hidden panel", async ({ page }) => {
+    await page.goto(`/admin/events/${slug}`);
+    await expect(page.getByLabel("Printing enabled")).toBeChecked();
+    await expect(page.getByLabel("Send promo (needs printing)")).toBeChecked();
+    await page.getByLabel("Printing enabled").uncheck();
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Printing enabled")).not.toBeChecked();
+    await expect(page.getByLabel("Send promo (needs printing)")).not.toBeChecked();
+  });
+
   test("switches state through the allowed buttons", async ({ page }) => {
     await page.goto(`/admin/events/${slug}`);
     await expect(page.getByRole("button", { name: "Break" })).toHaveCount(0);

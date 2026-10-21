@@ -53,7 +53,7 @@ export async function reviewAction(_prev: ReviewState, form: FormData): Promise<
         await messenger.init();
         const r = await approveFlagged({ ...base, delivery: deliveryDeps(sync, messenger) }, event, jobId);
         revalidateEvent(slug);
-        return { ok: true, message: r === "sent" ? "Approved and sent" : "Approved; the attendee is outside the WhatsApp window and no delivery template is set up" };
+        return { ok: true, message: r === "sent" ? "Approved and sent" : "Approved, but not sent: the attendee last wrote more than 24 hours ago, so WhatsApp does not allow it. The portrait stays on its share page" };
       }
       case "discard":
         await discardFlagged(base, event, jobId);

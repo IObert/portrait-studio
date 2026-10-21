@@ -73,11 +73,27 @@ if ! az account show >/dev/null 2>&1; then
   az login --output none
 fi
 
+# .env files are plain KEY=value lines (.env.example), not shell. Sourcing one as shell splits a
+# value at `;` (an Azure connection string) and runs the rest as commands. So each line is turned
+# into a quoted assignment first. Lines that already quote or escape their value (the CI writes
+# them with printf %q: backslashes, $'...' or '') are left as they are.
+load_env_file() {
+  local line key value
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+    [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || die "$ENV_FILE: not a KEY=value line: ${line%%=*}"
+    key="${BASH_REMATCH[2]}"
+    value="${BASH_REMATCH[3]}"
+    if [[ "$value" =~ ^(\$\'.*\'|\'.*\'|\".*\")$ || "$value" == *\\* ]]; then
+      eval "export $key=$value"   # already quoted/escaped by whoever wrote it
+    else
+      export "$key=$value"        # literal: no shell interpretation at all
+    fi
+  done <"$ENV_FILE"
+}
+
 log "Loading configuration from $ENV_FILE"
-set -a
-# shellcheck disable=SC1090
-source "$ENV_FILE"
-set +a
+load_env_file
 
 AZURE_LOCATION="${AZURE_LOCATION:-northeurope}"
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-rg-$APP_NAME}"
@@ -163,23 +179,37 @@ az storage container create --name "$AZURE_STORAGE_CONTAINER" \
   --connection-string "$AZURE_STORAGE_CONNECTION_STRING" --public-access off --output none
 
 log "Applying the 7-day lifecycle rule to events/ (selfies and generated images)"
+# The storage account may be shared: `management-policy create` replaces ALL its rules, so our one rule
+# is merged into the existing policy (replacing only a rule with our name) instead of overwriting it.
 policy_file="$(mktemp)"
-trap 'rm -f "$policy_file"' EXIT
-cat >"$policy_file" <<JSON
-{
-  "rules": [
-    {
-      "enabled": true,
-      "name": "expire-event-images-7d",
-      "type": "Lifecycle",
-      "definition": {
-        "actions": { "baseBlob": { "delete": { "daysAfterCreationGreaterThan": 7 } } },
-        "filters": { "blobTypes": ["blockBlob"], "prefixMatch": ["$AZURE_STORAGE_CONTAINER/events/"] }
-      }
-    }
-  ]
+existing_file="$(mktemp)"
+trap 'rm -f "$policy_file" "$existing_file"' EXIT
+if az storage account management-policy show --account-name "$STORAGE_ACCOUNT_FOR_POLICY" \
+  --resource-group "$AZURE_RESOURCE_GROUP" --query policy --output json >"$existing_file" 2>/dev/null; then
+  :
+else
+  echo '{"rules": []}' >"$existing_file"
+fi
+python3 - "$existing_file" "$policy_file" "$AZURE_STORAGE_CONTAINER" <<'PY'
+import json, sys
+existing_path, out_path, container = sys.argv[1:4]
+try:
+    policy = json.load(open(existing_path)) or {}
+except ValueError:
+    policy = {}
+ours = {
+    "enabled": True,
+    "name": "expire-event-images-7d",
+    "type": "Lifecycle",
+    "definition": {
+        "actions": {"baseBlob": {"delete": {"daysAfterCreationGreaterThan": 7}}},
+        "filters": {"blobTypes": ["blockBlob"], "prefixMatch": [container + "/events/"]},
+    },
 }
-JSON
+others = [r for r in (policy.get("rules") or []) if r.get("name") != ours["name"]]
+json.dump({"rules": others + [ours]}, open(out_path, "w"))
+print("Keeping %d other lifecycle rule(s) on the account" % len(others))
+PY
 az storage account management-policy create --account-name "$STORAGE_ACCOUNT_FOR_POLICY" \
   --resource-group "$AZURE_RESOURCE_GROUP" --policy "@$policy_file" --output none
 
@@ -227,13 +257,12 @@ plain_keys=(
   TWILIO_SYNC_SERVICE_SID
   TWILIO_VERIFY_SERVICE_SID
   TWILIO_MEMORY_STORE_ID
-  TWILIO_TEMPLATE_DELIVERY_EN
-  TWILIO_TEMPLATE_DELIVERY_PT_BR
   OPENAI_IMAGE_MODEL
   OPENAI_VISION_MODEL
   OPENAI_CHAT_MODEL
   AZURE_STORAGE_CONTAINER
   LOG_LEVEL
+  WORKER_CONCURRENCY
 )
 
 secret_args=()

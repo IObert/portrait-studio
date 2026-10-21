@@ -20,8 +20,6 @@ const EnvSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().trim().regex(/^[0-9a-f]{32}$/, "32 hex chars").optional(),
   TWILIO_MESSAGING_SERVICE_SID: sid("MG"),
   TWILIO_VERIFY_SERVICE_SID: sid("VA"),
-  TWILIO_TEMPLATE_DELIVERY_EN: z.string().regex(/^HX[0-9a-f]{32}$/).optional(),
-  TWILIO_TEMPLATE_DELIVERY_PT_BR: z.string().regex(/^HX[0-9a-f]{32}$/).optional(),
   TWILIO_MEMORY_STORE_ID: z.string().trim().regex(/^mem_store_[0-9a-z]{26}$/).optional(),
   PUBLIC_BASE_URL: z.url({ protocol: /^https?$/ }).transform((u) => u.replace(/\/+$/, "")).optional(),
 

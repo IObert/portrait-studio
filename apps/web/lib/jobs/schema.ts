@@ -22,7 +22,6 @@ export const JOB_STATES = [
   "approved_by_admin",
   "removed_by_admin",
 ] as const;
-export type JobState = (typeof JOB_STATES)[number];
 
 export const JobSchema = z.object({
   jobId: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),

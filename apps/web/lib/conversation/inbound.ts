@@ -64,13 +64,12 @@ export interface Deps {
   memory: MemoryClient;
   verifier: EmailVerifier;
   fetchMedia: MediaFetch;
-  publicBaseUrl: string;
   /** Signed, long-lived link for a slideshow image (D-17). */
   slideUrl: (blobPath: string) => string;
   /** Signed link for the print agent to download a print PNG (D-24). */
   mediaUrl: (blobPath: string, ttlSeconds: number) => string;
-  /** Chat model for free-text replies (SPEC §5.10). Without it, free text gets the selfie prompt. */
-  chat?: ChatModel;
+  /** Chat model for free-text replies (SPEC §5.10). Required; if a call fails, free text gets the selfie prompt. */
+  chat: ChatModel;
   log: { info(o: object, m: string): void; warn(o: object, m: string): void; error(o: object, m: string): void };
   now?: () => Date;
 }
@@ -223,13 +222,24 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
   const consentInput = { channel: msg.from.channel, text: msg.text, selection: msg.selection };
   const outcome = await decide(deps, current, event, c, consentInput, privacyUrl, msg, selfieBlob, unusableMedia, images.length);
 
+  // Run critical effects (opt-in) BEFORE writing the session so they can't fail after commitment (BUG 3).
+  const messages = [...outcome.messages];
+  const otherEffects = [];
+  for (const effect of outcome.effects) {
+    if (effect.type === "opt-in") {
+      const extra = await runEffect(deps, effect, { event, key, address: msg.from, now, session: outcome.session });
+      if (extra) messages.push(extra);
+    } else {
+      otherEffects.push(effect);
+    }
+  }
+
   // Write with If-Match against the revision we read. If another message for this
   // person changed the session meanwhile, this throws, the dedup claim is
   // released and handleInbound re-runs the message on the fresh state.
   await sessions.writeIfUnchanged(key, outcome.session, read?.revision ?? null);
 
-  const messages = [...outcome.messages];
-  for (const effect of outcome.effects) {
+  for (const effect of otherEffects) {
     const extra = await runEffect(deps, effect, { event, key, address: msg.from, now, session: outcome.session });
     if (extra) messages.push(extra);
   }
@@ -329,7 +339,7 @@ async function decide(
   const r = handleSelfieFlow(session, event, c, { text: input.text, selection: input.selection, images: imageCount, selfieBlob, newJobId: newJobId() });
   // Free text with no active step: the chat model answers, or asks to confirm a deletion (SPEC §5.10).
   if (!r.handled) {
-    const outcome = deps.chat && input.text.trim() ? await chatReply(deps.chat, event.config.language, chatContext(event, c, session), input.text) : ({ kind: "unavailable" } as const);
+    const outcome = input.text.trim() ? await chatReply(deps.chat, event.config.language, chatContext(event, c, session), input.text) : ({ kind: "unavailable" } as const);
     if (outcome.kind === "deletion-requested") {
       const body = c.deletion.confirm;
       return {
@@ -435,7 +445,11 @@ async function runEffect(
       // A newer photo replaced this one before generation: drop it and its selfie.
       let selfie: string | null = null;
       await sync.map(ev.jobs, JobSchema).update(effect.jobId, (cur) => {
-        if (!cur || cur.address !== ctx.key || !["screening", "awaiting_choice"].includes(cur.state)) return SKIP;
+        if (!cur || cur.address !== ctx.key) return SKIP;
+        // `processing` with no scene yet is the worker screening this very photo: its result is
+        // discarded because the worker only writes to jobs still in `processing` (afterScreening, finish).
+        const screeningNow = cur.state === "processing" && cur.subjects === null;
+        if (!screeningNow && !["screening", "awaiting_choice"].includes(cur.state)) return SKIP;
         selfie = cur.selfieBlob;
         return { ...cur, state: "rejected", error: "superseded", leaseUntil: null, timestamps: { ...cur.timestamps, rejected: ctx.now.toISOString() } };
       });

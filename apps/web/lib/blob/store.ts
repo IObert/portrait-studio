@@ -2,6 +2,8 @@ export interface BlobStore {
   put(path: string, data: Buffer, contentType: string): Promise<void>;
   /** Returns null if the blob does not exist. */
   get(path: string): Promise<Buffer | null>;
+  /** Whether the blob exists, without downloading it. */
+  exists(path: string): Promise<boolean>;
   delete(path: string): Promise<void>;
   /** Deletes every blob under the prefix; returns how many were deleted. */
   deletePrefix(prefix: string): Promise<number>;

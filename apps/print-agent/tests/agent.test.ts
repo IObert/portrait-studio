@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { AgentUnauthorized, exchangeToken } from "../src/agent.js";
+import { AgentUnauthorized, exchangeToken, runAgent } from "../src/agent.js";
 import { claim, type PrintItem } from "../src/queue.js";
 import { FakeQueue } from "./support/fake-queue.js";
 
@@ -67,5 +67,38 @@ describe("dead connection watch", () => {
     t += 1;
     expect(w.dead()).toBe(true);
     expect(w.silentFor()).toBe(DEAD_CONNECTION_MS + 1);
+  });
+});
+
+describe("reconnect back-off (BUG 7)", () => {
+  /** Runs the loop against scripted sessions (how long each lasts before dropping); returns the wait before each reconnect. */
+  async function waits(sessions: number[]) {
+    vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    vi.setSystemTime(0);
+    const stop = new AbortController();
+    const starts: number[] = [];
+    const connect = async () => {
+      starts.push(Date.now());
+      const lasted = sessions[starts.length - 1];
+      if (lasted === undefined) { stop.abort(); return; }
+      vi.setSystemTime(Date.now() + lasted);
+      throw new Error("session ended");
+    };
+    try {
+      const run = runAgent({ url: "u", token: "t", printer: {} as never, signal: stop.signal }, connect);
+      await vi.advanceTimersByTimeAsync(10 * 60_000);
+      await run;
+    } finally {
+      vi.useRealTimers();
+    }
+    return starts.slice(1).map((t, i) => t - starts[i]! - sessions[i]!);
+  }
+
+  it("keeps doubling while connecting keeps failing quickly", async () => {
+    expect(await waits([0, 0, 0])).toEqual([1_000, 2_000, 4_000]);
+  });
+
+  it("starts over after a session that was healthy for a while", async () => {
+    expect(await waits([0, 0, 5 * 60_000, 0])).toEqual([1_000, 2_000, 1_000, 2_000]);
   });
 });

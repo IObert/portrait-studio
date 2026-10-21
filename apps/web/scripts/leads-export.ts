@@ -20,7 +20,7 @@ loadRootEnv();
 const { getEnv, requireEnv } = await import("../lib/env");
 const { getServices } = await import("../lib/services");
 const { EventRepo } = await import("../lib/events/repo");
-const { leadsCsv } = await import("../lib/leads/csv");
+const { leadsCsv, csvDataRows } = await import("../lib/leads/csv");
 const { createMemoryClient } = await import("../lib/twilio/memory");
 const { log } = await import("../lib/log");
 const { repoRoot } = await import("../lib/app-dir");
@@ -60,7 +60,7 @@ if (!event) {
 const env = requireEnv(getEnv(), ["TWILIO_API_KEY_SID", "TWILIO_API_KEY_SECRET", "TWILIO_MEMORY_STORE_ID"]);
 const memory = createMemoryClient({ storeId: env.TWILIO_MEMORY_STORE_ID, username: env.TWILIO_API_KEY_SID, password: env.TWILIO_API_KEY_SECRET });
 const csv = await leadsCsv({ sync, memory }, event.slug);
-const rows = csv.split("\r\n").length - 2;
+const rows = csvDataRows(csv);
 // Default: <repo>/exports/, which is gitignored. --out is taken relative to where the command was run.
 const exportsDir = path.join(repoRoot(), "exports");
 const file = values.out

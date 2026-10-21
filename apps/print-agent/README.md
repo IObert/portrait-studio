@@ -61,7 +61,7 @@ It exits with 0 when everything is fine. If a fix needs admin rights, it says so
 | `--printer` | CUPS queue name; required unless `--simulate` |
 | `--simulate` | Do not print; only save the copy in `--out` |
 | `--out` | Folder that keeps a copy of **every** print, in both modes, for manual reprints (default `./prints`). Files are named `<time>_<jobId>.png`. |
-| `--help`, `--version` | Print usage or the version |
+| `--help` (`-h`), `--version` | Print usage or the version |
 
 Logs go to the console as readable lines. Stop it with Ctrl-C.
 
@@ -73,7 +73,8 @@ Logs go to the console as readable lines. Stop it with Ctrl-C.
 4. Reports the printer's status and a heartbeat every 15 seconds; the admin UI shows both.
 5. Retries a failed print up to 3 times, then marks it failed. The attendee already has their image, so nothing is
    sent to them.
-6. Reconnects by itself after a network drop and carries on with what is still queued.
+6. Reconnects by itself after a network drop (or when Sync has been silent for 60 s) with a fresh token and carries on
+   with what is still queued. A print already at the printer is waited for, never printed again.
 
 The agent never messages attendees. The server counts prints and sends the promo (SPEC §5.9).
 
@@ -82,7 +83,7 @@ The agent never messages attendees. The server counts prints and sends the promo
 `dist/agent.mjs` is a single self-contained file (about 870 KB), so there is nothing to install on the booth computer:
 
 ```sh
-pnpm --filter print-agent build
+pnpm --filter @portrait-studio/print-agent build
 ```
 
 ## Troubleshooting

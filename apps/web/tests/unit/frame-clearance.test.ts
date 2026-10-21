@@ -9,7 +9,7 @@ const frame = (id: string) => readFileSync(`assets/frames/${id}.png`);
 
 describe("frame clearance (D-27)", () => {
   it("measures the logo tabs on the shipped frames", async () => {
-    expect(await frameClearance(frame("twilio-tab-top"))).toMatchObject({ top: 0.12, bottom: 0 });
+    expect(await frameClearance(frame("twilio-tab-top"))).toMatchObject({ top: 0.14, bottom: 0 }); // 0.12 before the safe-zone fix moved the logo down (D-41)
     expect((await frameClearance(frame("twilio-tab-bottom"))).bottom).toBeGreaterThanOrEqual(0.12);
     expect((await frameClearance(frame("twilio-tab-bottom-left"))).bottom).toBeGreaterThanOrEqual(0.12);
   });
@@ -36,7 +36,8 @@ describe("frame clearance (D-27)", () => {
     const p = buildPrompt("anime", "gradient", scene, { top: 0.12, bottom: 0 });
     expect(p.indexOf("Frame clearance:")).toBeGreaterThan(-1);
     expect(p.indexOf("Frame clearance:")).toBeLessThan(p.indexOf("FINAL REMINDER"));
-    // No frame, or a frame that covers nothing: exactly the PROMPTS.md prompt.
+    // No frame, or a frame that covers nothing: the same prompt (the top margin is always there, D-40).
     expect(buildPrompt("anime", "gradient", scene, { top: 0, bottom: 0 })).toBe(buildPrompt("anime", "gradient", scene));
+    expect(buildPrompt("anime", "gradient", scene)).toContain("Top margin:");
   });
 });

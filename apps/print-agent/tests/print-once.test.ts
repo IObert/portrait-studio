@@ -154,4 +154,44 @@ describe("one print, one copy (D-25)", () => {
     expect(fp.cancelled).toEqual([]);
     expect(q.items.get("job_1")).toMatchObject({ state: "printing", printerJobId: "DS620-24" });
   });
+
+  it("BUG 9: a failing final 'printed' write is retried, never turned into a second copy", async () => {
+    const q = new FakeQueue([item()]);
+    let failures = 1;
+    const mutate = q.mutate.bind(q);
+    q.mutate = async (jobId, mutator) => {
+      if (failures > 0 && mutator(structuredClone(q.items.get(jobId)))?.state === "printed") {
+        failures--;
+        throw new Error("network down");
+      }
+      return mutate(jobId, mutator);
+    };
+    const fp = fakePrinter();
+    fp.power = "on";
+    const run = printOne(q as never, { jobId: "job_1", resume: false }, fp.printer, new AbortController().signal);
+    await until(() => fp.submitted.length === 1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await run;
+    expect(fp.submitted).toEqual(["DS620-24"]);
+    expect(fp.cancelled).toEqual([]);
+    expect(q.items.get("job_1")).toMatchObject({ state: "printed" });
+  });
+
+  it("BUG 9: if the 'printed' write keeps failing, the item stays resumable (not requeued, printer job kept)", async () => {
+    const q = new FakeQueue([item()]);
+    const mutate = q.mutate.bind(q);
+    q.mutate = async (jobId, mutator) => {
+      if (mutator(structuredClone(q.items.get(jobId)))?.state === "printed") throw new Error("network down");
+      return mutate(jobId, mutator);
+    };
+    const fp = fakePrinter();
+    fp.power = "on";
+    const run = printOne(q as never, { jobId: "job_1", resume: false }, fp.printer, new AbortController().signal);
+    await until(() => fp.submitted.length === 1);
+    await vi.advanceTimersByTimeAsync(60_000);
+    await run;
+    expect(fp.submitted).toEqual(["DS620-24"]);
+    expect(fp.cancelled).toEqual([]);
+    expect(q.items.get("job_1")).toMatchObject({ state: "printing", printerJobId: "DS620-24" });
+  });
 });
