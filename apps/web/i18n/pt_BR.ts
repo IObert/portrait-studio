@@ -101,6 +101,7 @@ export const pt_BR = {
     printKeywords: ["imprimir"],
     printSmsHint: "Responda IMPRIMIR para imprimir e mostrar na tela, SIM para só mostrar, ou NAO.",
     printQueued: ({ printsLeft }) => `Está indo para a impressora! Retire na cabine. Impressões restantes: ${printsLeft}.`,
+    printQueuedPrinterOffline: ({ printsLeft }) => `Sua impressão está na fila, mas a impressora parece estar offline agora. Ela será impressa assim que voltar; fale com a equipe da cabine se demorar. Impressões restantes: ${printsLeft}.`,
     printNoneLeft: "Você já usou todas as suas impressões neste evento, então este fica só no digital.",
     printAlready: "Este retrato já está a caminho da impressora.",
     printUnavailable: "A impressão não está disponível agora, então este fica só no digital.",

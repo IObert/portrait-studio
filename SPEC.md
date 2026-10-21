@@ -377,6 +377,7 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
 - **SMS has no buttons.** `PRINT`, `YES` and `NO` (localized) answer the last question, and only for 10 minutes: a stray "ok" hours later is not an answer. The keywords are matched in code, never by the model.
 - **Printing a portrait you already have (D-28).** A message containing the print word (`print` / `imprimir`) while nothing else awaits an answer lists the person's printable portraits, newest first: one **Print it** button or a numbered list. Choosing one prints it without adding it to the booth screen. On SMS, `PRINT 2` picks the second one listed.
 - **Print quota** is reserved when a print is requested, before it is queued, so two taps never print twice (§4.3). A portrait can be printed again once its earlier print is counted, and again after a failure.
+- **The reply says whether the printer looks ready (D-44).** The print is always queued. If an agent is connected and its printer is not off, paused, out of paper or in error, the person is told it is on its way. Otherwise (no agent, one that went quiet for 45 s, or a printer that cannot print) they are told it is queued but the printer seems offline and it will print when it is back. The same applies to the button on the share page.
 - An admin can remove an image from the booth screen at any time (§10.3).
 
 ### 5.9 Promo follow-up
@@ -601,6 +602,7 @@ A job with a single style and background goes from `screening` straight to `queu
 - State buttons: Go live, Break, End, Back to draft.
 - Upload the frame and background, with previews.
 - The event page has five sections: Event, Booth screen and QR code, Portraits, Printing, Lead collection. Printing shows the printer token (it stays visible, with a ready-to-copy agent command, §11.1, D-33) and the printer's status.
+- **The printer line in the event header stays current without a refresh (D-44).** The page asks `GET /admin/events/<id>/printer` every 30 seconds while the tab is visible, and again as soon as it becomes visible. A failed request keeps the last known status; after two in a row the line adds "(not refreshing)". The events list and the stats page show the status as of loading.
 - Delete an event, confirmed by typing its name (§4.4, D-35).
 
 ### 10.3 Admin: review (per event)
