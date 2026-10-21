@@ -112,7 +112,9 @@ points at your laptop, the deployed app receives nothing.
 
 ### 5. Deploy
 
-`./deploy.sh` deploys web and worker to Azure Container Apps; CI deploys every push to `main`.
+`./deploy.sh` deploys web and worker to Azure Container Apps. It reads `.env.local` as plain `KEY=value` data (or the
+file in `ENV_FILE`), and adds its 7-day rule to the storage account's lifecycle policy without removing other rules.
+CI deploys every push to `main`.
 See [docs/deployment.md](docs/deployment.md).
 
 ## Running an event
@@ -159,3 +161,24 @@ Live tests are opt-in and use the real services in `.env.local`: `RUN_LIVE_AI_TE
 `RUN_LIVE_SYNC_TESTS=1`, `RUN_LIVE_INBOUND_TESTS=1` and `RUN_LIVE_DELIVERY_TESTS=1`. The last two send **real**
 messages to `LIVE_TEST_PHONE`, need `pnpm dev` (and the worker, plus the tunnel, for delivery), and never run in CI;
 see the comment at the top of each file in `apps/web/tests/live/`.
+
+Two checks are not part of `pnpm test`; run them when the thing they guard changes:
+
+```sh
+pnpm --filter web eval:top-clearance [--dry-run | --calibrate-only]   # OpenAI, about $3: the top 10% of a portrait stays free (D-40)
+pnpm --filter web eval:frame-safe-zone [file...]                       # free: frames keep logos 60 px from every edge (D-41)
+```
+
+Run `eval:top-clearance` when the prompt, styles, LA Kings scenes or image model change, and `eval:frame-safe-zone`
+whenever a frame is added or changed.
+
+## Other scripts
+
+All run from the repo root with `pnpm --filter web <script>`.
+
+| Script | What it does |
+|---|---|
+| `setup:twilio` | Creates or finds the Twilio resources (step 3 of Setup) |
+| `leads:export [--event <id>] [--out <file>]` | Writes an event's leads to a CSV in `exports/` (git-ignored). Without `--event` it asks which event. The admin has no download. |
+| `stats:reset --event <id>` | Resets an event's counters |
+| `previews:styles --input <selfie.jpg> [--only <style>]` | Regenerates the style thumbnails shown in the admin (one OpenAI image call per style) |
