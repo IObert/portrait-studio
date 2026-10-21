@@ -47,12 +47,13 @@ export interface FrameReport {
 export async function checkFrame(file: string | Buffer): Promise<FrameReport> {
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: w, height: h } = info;
-  const px = (i: number) => i * 4;
+  // Raw RGBA bytes; the buffer is always in range, so the lookups cannot be undefined.
+  const at = (i: number, c: number) => data[i * 4 + c]!;
 
   const votes = new Map<number, number>();
   for (let i = 0; i < w * h; i++) {
-    if (data[px(i) + 3] < OPAQUE) continue;
-    const key = ((data[px(i)] >> 4) << 8) | ((data[px(i) + 1] >> 4) << 4) | (data[px(i) + 2] >> 4);
+    if (at(i, 3) < OPAQUE) continue;
+    const key = ((at(i, 0) >> 4) << 8) | ((at(i, 1) >> 4) << 4) | (at(i, 2) >> 4);
     votes.set(key, (votes.get(key) ?? 0) + 1);
   }
   const top = [...votes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0;
@@ -60,8 +61,8 @@ export async function checkFrame(file: string | Buffer): Promise<FrameReport> {
 
   const content = new Uint8Array(w * h);
   for (let i = 0; i < w * h; i++) {
-    if (data[px(i) + 3] < OPAQUE) continue;
-    const d = Math.abs(data[px(i)] - base[0]) + Math.abs(data[px(i) + 1] - base[1]) + Math.abs(data[px(i) + 2] - base[2]);
+    if (at(i, 3) < OPAQUE) continue;
+    const d = Math.abs(at(i, 0) - base[0]) + Math.abs(at(i, 1) - base[1]) + Math.abs(at(i, 2) - base[2]);
     if (d > CONTENT_DISTANCE) content[i] = 1;
   }
 

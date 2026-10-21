@@ -176,7 +176,7 @@ keep-alive with a 5 s idle recycle. The callers' own retries (SyncStore, worker)
 stale socket costs seconds instead of 30 s. Covered by a unit test against a server that never answers, and by the
 live Sync tests.
 
-### D-22 Print agent uses the Sync SDK, confirmed on Node 22
+### D-22 Print agent uses the Sync SDK, confirmed on Node 22 (the agent now requires Node 24)
 *2026-10-14.* SPEC §11.1 asked for this check before relying on `twilio-sync`. Verified on real Node 22.22:
 the SDK connects, opens objects and receives pushes. One catch: it is CommonJS, so an esbuild ESM bundle needs a
 `createRequire` banner, otherwise it dies at start-up with "Dynamic require of events is not supported". CI now
@@ -244,7 +244,7 @@ when it was switched on.*
   `Frame clearance: A decorative frame will cover {the top N%| the bottom N%| both} of the image after generation.
   Keep that area free of the subjects: every head, all hair and every face must sit fully outside {…}, with only
   background there. Scale and position the subjects so nothing important is hidden.`
-- Shipped frames: tab top → top 15%; tab bottom / bottom left → bottom 20%; red borders (their own tilted window,
+- Shipped frames: tab top → top 20% (15% before the safe-zone fix of D-41 moved its logo down); tab bottom / bottom left → bottom 20%; red borders (their own tilted window,
   3–5% wedge) → no line. With no frame, or one that covers nothing, the prompt is exactly the PROMPTS.md prompt.
 - The model follows this most of the time, not always. If it is still not good enough, the fallback is to move the
   photo below the tab in the frame designs.
@@ -382,28 +382,15 @@ lock), for one brand.*
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
   with `git grep -n "TODO(profile-deletion)"`.
 
-- **Update SPEC.md and the docs to match the code** (user, 2026-10-20): not done yet. The code and decisions are right;
-  the SPEC is stale in these places:
-  - §4.1 and §5: bindings are removed when an event ends. Kept since D-13.
-  - §9.2 step 7: six review criteria. There are five (D-15). `lib/prompts/review.ts` says "six" in a comment too.
-  - §9.2 step 5 and §9.3: no brand blocks, no style lock, "the selfie only". Brand blocks, reference images and the
-    frame-clearance line exist (D-27, D-36).
-  - §9.1: the job states have no `screening` or `awaiting_choice` (D-18), and `aiReview` is `{reason}` only.
-  - §4.4 and §10.2: delete is confirmed by typing the slug. It is the event name (D-35).
-  - §10.3: "remove from slideshow" and "reprints count against quota". It is a full remove (D-16), and reprints do not
-    count (Q5). The review audit lines also carry no admin name, although the SPEC and a code comment say they do.
-  - §10.5: the CSV download became the `leads:export` script (D-31).
-  - `PROTOCOL.md` §2 says the agent refreshes its token on a 401 from Sync. It reconnects with a new token instead.
-  - `docs/deployment.md` leaves out `AZURE_WEB_APP_NAME`, `AZURE_WORKER_APP_NAME` and `IMAGE_NAME`, and the deploy
-    smoke test checks `/healthz`, not `/healthz/ready`. `app/healthz/route.ts` still says readiness is "coming".
-
 - **Print agent reads only the first 100 queue items** (user, 2026-10-20): left as it is for now. Settled items
   stay for 7 days, so on a long, busy event a new print can sort after the first 100 and be missed. Marked
   `TODO(print-queue-pagination)` in `apps/print-agent/src/agent.ts`. Page through `getItems` with `nextPage()`.
 
 ### Closed
 
+- **SPEC and docs aligned with the code** (user, 2026-10-21): SPEC.md rewritten to the current state, the other docs checked against the code. The SPEC keeps a short section 17 so the "§17 Q…" references in code comments resolve.
 - **Eval: portraits keep the top 10% free** (user, 2026-10-20): built, see D-40.
+- **Frame safe zone** (user, 2026-10-20): measured on the DS620, frames fixed, eval built, see D-41.
 - **`setup:twilio` script** (2026-10-16): written, see D-39.
 - **README** (2026-10-16): rewritten with setup, architecture, env table, booth printer steps and the test checklist.
 
@@ -504,3 +491,25 @@ second copy:
   can rule out a frequent failure, not a rare one.
 - Run it when the generation prompt, the style prompts, the brand scenes or the image model change, and by hand before
   an event. Not on every merge: nothing in a normal merge can change what the model draws.
+
+### D-41 Frames keep logos and text 60 px inside every edge (user decision)
+*2026-10-20.*
+- **Finding:** the DS620 prints borderless by scaling the image slightly past the paper and then cutting. Measured with a
+  calibration print (1200×1800, rings every 6–12 px, queue options exactly as the agent sends them): the **left and
+  right lose about 24 px (2 mm), the top about 30 px (2.5 mm) and the bottom about 36 px (3 mm)**. `fit-to-page` +
+  `print-scaling=fill` are correct; there is no white edge. The loss is the printer's, not a queue setting, so it cannot
+  be configured away. A Twilio tab logo 35 px from the top came out almost touching the edge.
+- **Rule:** anything that is not anchored to an edge, such as a logo, a wordmark or text, stays at least **60 px**
+  (`SAFE_ZONE_PX`, 5 mm) from every edge. Shapes that run off the canvas (the tab itself, a tower, a border) are fine
+  and must keep running off it, so the cut never shows a gap. 60 px is the worst edge (36 px) plus a margin for
+  paper-to-paper variation.
+- **Fixed, for `twilio-tab-*` only** (user): the logo in the top tab moved down from 35 to 67 px, and in both bottom tabs
+  up from 57 to 71 px. Done by stretching a plain-colour strip at the edge, so the tab outline and the logo are not
+  redrawn. `twilio-border-left/right` already pass (94 and 125 px) and were not touched. The London "Assemble" frame
+  supplied by the user was fixed the same way; its file is in `exports/london-assemble-safe-zone.png` and is not part of
+  the frame list yet.
+- **The portrait is not padded or shrunk at print time**: that would show seams on frames with borders.
+- **Check:** `pnpm --filter @portrait-studio/web eval:frame-safe-zone [file…]` measures every PNG in `assets/frames/`
+  (or the files given) and exits 1 on a violation. It needs no API key and costs nothing; it is not part of `pnpm test`.
+  Run it whenever a frame is added or changed. `scripts/frame-safe-zone-fix.ts` makes the shift described above.
+- **Not redone:** the admin thumbnails in `public/previews/frames/` still show the old logo position (a few pixels).

@@ -9,7 +9,7 @@ const frame = (id: string) => readFileSync(`assets/frames/${id}.png`);
 
 describe("frame clearance (D-27)", () => {
   it("measures the logo tabs on the shipped frames", async () => {
-    expect(await frameClearance(frame("twilio-tab-top"))).toMatchObject({ top: 0.12, bottom: 0 });
+    expect(await frameClearance(frame("twilio-tab-top"))).toMatchObject({ top: 0.14, bottom: 0 }); // 0.12 before the safe-zone fix moved the logo down (D-41)
     expect((await frameClearance(frame("twilio-tab-bottom"))).bottom).toBeGreaterThanOrEqual(0.12);
     expect((await frameClearance(frame("twilio-tab-bottom-left"))).bottom).toBeGreaterThanOrEqual(0.12);
   });
