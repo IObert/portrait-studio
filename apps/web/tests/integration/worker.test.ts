@@ -275,6 +275,32 @@ describe("screening before the menus (D-18)", () => {
     await workOnce(deps); // generate
   });
 
+  it("one style and one background: the session leaves 'screening' once the photo passed, so the person is not stuck", async () => {
+    const ai = fakeOpenAI();
+    const { fake, deps, ev } = await setup(ai, { styles: ["anime"], backgrounds: ["gradient"] });
+    await screening(fake);
+    // As inbound leaves the session when it queues the photo for screening.
+    const cur = (await fake.getItem(ev.sessions, KEY))!;
+    await fake.updateItem(ev.sessions, KEY, { ...(cur.data as object), step: "screening", pendingJobId: "job_00000001" });
+    await workOnce(deps); // screening passes, no menu to show, the job goes straight to generation
+    expect((await getJob(fake)).state).toBe("queued");
+    const session = (await fake.getItem(ev.sessions, KEY))!.data as { step: string; pendingJobId: string | null };
+    expect(session.step, "nobody is waiting for a menu").toBe("ready");
+    expect(session.pendingJobId).toBeNull();
+  });
+
+  it("one style and one background: a newer photo that took over the session is left alone", async () => {
+    const ai = fakeOpenAI();
+    const { fake, deps, ev } = await setup(ai, { styles: ["anime"], backgrounds: ["gradient"] });
+    await screening(fake);
+    const cur = (await fake.getItem(ev.sessions, KEY))!;
+    // The person sent a second photo meanwhile: the session now waits for job_00000002, not for this one.
+    await fake.updateItem(ev.sessions, KEY, { ...(cur.data as object), step: "screening", pendingJobId: "job_00000002" });
+    await workOnce(deps);
+    const session = (await fake.getItem(ev.sessions, KEY))!.data as { step: string; pendingJobId: string | null };
+    expect(session).toMatchObject({ step: "screening", pendingJobId: "job_00000002" });
+  });
+
   it("BUG 1: rejection resets session step and pendingJobId so next photo isn't stuck", async () => {
     const ai = fakeOpenAI({ face: "NO" });
     const { fake, deps, ev } = await setup(ai);
