@@ -2,7 +2,7 @@ import { z } from "zod";
 import { catalogs } from "../../i18n";
 import type { Catalog } from "../../i18n/types";
 import { ACTION_SLIDESHOW } from "../conversation/actions";
-import { SessionSchema } from "../conversation/session";
+import { SessionSchema, senderFor } from "../conversation/session";
 import type { PortraitEvent } from "../events/schema";
 import { type Job, JobSchema } from "../jobs/schema";
 import { type Address, supportsMms } from "../messaging/address";
@@ -67,7 +67,7 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
   // attendee can actually have. If the send throws, the claim is released so the job is retried.
   const sessions = deps.sync.map(ev.sessions, SessionSchema);
   const current = await sessions.get(job.address);
-  const ctx = { lastInboundAt: current?.lastInboundAt ?? null, locale, from: event.config.qrSender };
+  const ctx = { lastInboundAt: current?.lastInboundAt ?? null, locale, from: senderFor(current, event) };
   let result: "sent" | "skipped";
   try {
     // WhatsApp outside the 24h window: the messenger skips and logs it. A portrait that late is not sent (D-42);

@@ -53,7 +53,8 @@ async function setup(openai = fakeOpenAI(), cfg: Partial<EventConfigInput> = {})
   const ev = eventObjects("ev");
   for (const m of [ev.jobs, ev.sessions]) await sync.ensureMap(m);
   const sent: string[] = [];
-  const api: TwilioMessagingApi = { createMessage: vi.fn(async (p) => (sent.push(p.body ?? ""), { sid: "SM" + "1".repeat(32) })), createContent: vi.fn(async () => ({ sid: "HX" + "1".repeat(32) })) };
+  const senders: (string | undefined)[] = [];
+  const api: TwilioMessagingApi = { createMessage: vi.fn(async (p) => (sent.push(p.body ?? ""), senders.push(p.from), { sid: "SM" + "1".repeat(32) })), createContent: vi.fn(async () => ({ sid: "HX" + "1".repeat(32) })) };
   const messenger = new Messenger(api, sync, "MG" + "0".repeat(32), log);
   await messenger.init();
   await blob.put("events/ev/selfies/s.jpg", await sharp({ create: { width: 800, height: 1000, channels: 3, background: "#c9a" } }).jpeg().toBuffer(), "image/jpeg");
@@ -69,7 +70,7 @@ async function setup(openai = fakeOpenAI(), cfg: Partial<EventConfigInput> = {})
     onReady,
     workerId: "w1",
   };
-  return { fake, sync, blob, deps, sent, onReady, log, ev, openai };
+  return { fake, sync, blob, deps, sent, senders, onReady, log, ev, openai };
 }
 
 async function queue(fake: FakeSync, over: Partial<Job> = {}) {
@@ -341,6 +342,36 @@ describe("screening before the menus (D-18)", () => {
     await screening(fake);
     await workOnce(deps);
     expect((await getJob(fake))).toMatchObject({ state: "screening", attempts: 1, subjects: null });
+  });
+});
+
+describe("messages from the worker come from the number the person wrote to (D-43)", () => {
+  const withBooth = async (ev: ReturnType<typeof eventObjects>, fake: FakeSync) => {
+    const cur = (await fake.getItem(ev.sessions, KEY))!;
+    await fake.updateItem(ev.sessions, KEY, { ...(cur.data as object), boothNumber: "+447700900600" });
+  };
+
+  it("a rejected photo is answered from that number", async () => {
+    const { fake, deps, ev, senders } = await setup(fakeOpenAI({ face: "NO" }));
+    await withBooth(ev, fake);
+    await queue(fake, { state: "screening", subjects: null, style: null, background: null, timestamps: { screening: new Date().toISOString() } });
+    await workOnce(deps);
+    expect(senders).toEqual(["whatsapp:+447700900600"]);
+  });
+
+  it("the style menu after screening is sent from that number", async () => {
+    const { fake, deps, ev, senders } = await setup(fakeOpenAI());
+    await withBooth(ev, fake);
+    await queue(fake, { state: "screening", subjects: null, style: null, background: null, timestamps: { screening: new Date().toISOString() } });
+    await workOnce(deps);
+    expect(senders).toEqual(["whatsapp:+447700900600"]);
+  });
+
+  it("without a remembered number it falls back to the event's QR number", async () => {
+    const { fake, deps, senders } = await setup(fakeOpenAI({ face: "NO" }));
+    await queue(fake, { state: "screening", subjects: null, style: null, background: null, timestamps: { screening: new Date().toISOString() } });
+    await workOnce(deps);
+    expect(senders).toEqual(["whatsapp:+13203780782"]);
   });
 });
 

@@ -215,7 +215,7 @@ async function handleForEvent(deps: Deps, msg: InboundMessage, event: PortraitEv
   const unusableMedia = msg.media.length > 0 && images.length === 0;
 
   const read = await sessions.getVersioned(key);
-  const current: Session = { ...(read?.data ?? newSession(locale, now)), locale, lastInboundAt: now.toISOString(), updatedAt: now.toISOString() };
+  const current: Session = { ...(read?.data ?? newSession(locale, now)), locale, lastInboundAt: now.toISOString(), boothNumber: msg.to ?? read?.data.boothNumber ?? null, updatedAt: now.toISOString() };
 
   // Side effects (Verify, Memory) need answers before the state can be decided, so
   // they run first and their results feed the pure step functions.

@@ -125,6 +125,20 @@ describe("delivery (SPEC §6.1)", () => {
     expect((await readStats(w.sync, "ev")).imagesDelivered ?? 0).toBe(0);
   });
 
+  it("WhatsApp: delivers from the number the person wrote to, not the event's QR number (WhatsApp rejects it otherwise, 63016)", async () => {
+    // The event's QR number is +13203780782; this person messaged another booth number, so only that number has an open 24h window.
+    const w = await setup({ session: { boothNumber: "+447700900600" } });
+    expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("sent");
+    expect(w.sent[0]).toMatchObject({ from: "whatsapp:+447700900600" });
+    expect(w.sent[1]).toBeDefined(); // the print/show question goes from the same number
+  });
+
+  it("WhatsApp: a session from before the number was remembered falls back to the event's QR number", async () => {
+    const w = await setup();
+    expect(await deliver(w.deps, w.event, w.job, w.address)).toBe("sent");
+    expect(w.sent[0]).toMatchObject({ from: "whatsapp:+13203780782" });
+  });
+
   it("counts quota once, releases the in-flight slot and records stats", async () => {
     const w = await setup();
     await deliver(w.deps, w.event, w.job, w.address);

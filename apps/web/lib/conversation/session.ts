@@ -52,6 +52,8 @@ export const SessionSchema = z.object({
   delivered: z.array(z.string()).max(10).default([]),
   /** The last print menu's order, so an SMS "PRINT 2" means what the person saw (D-28). */
   printMenu: z.array(z.string()).max(10).default([]),
+  /** The booth number the person last wrote to. The WhatsApp 24h window belongs to that number, so every later message (the portrait, menus, promo) is sent from it (D-11, D-43). Absent on sessions from before it was remembered. */
+  boothNumber: z.string().nullable().default(null),
   /** For the WhatsApp 24h window (SPEC §5.11). */
   lastInboundAt: z.iso.datetime().nullable().default(null),
   counters: z
@@ -69,6 +71,11 @@ export const SessionSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 export type Session = z.infer<typeof SessionSchema>;
+
+/** The number to send from: the one the person wrote to, else the event's QR number (sessions from before D-43). */
+export function senderFor(session: Pick<Session, "boothNumber"> | null | undefined, event: { config: { qrSender: string } }): string {
+  return session?.boothNumber ?? event.config.qrSender;
+}
 
 export function newSession(locale: "en" | "pt_BR", now: Date): Session {
   return SessionSchema.parse({ step: "new", locale, updatedAt: now.toISOString() });

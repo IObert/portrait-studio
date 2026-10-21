@@ -1,5 +1,5 @@
 import { catalogs } from "../../i18n";
-import { SessionSchema } from "../conversation/session";
+import { SessionSchema, senderFor } from "../conversation/session";
 import type { EventRepo } from "../events/repo";
 import type { PortraitEvent } from "../events/schema";
 import { type Job, JobSchema } from "../jobs/schema";
@@ -168,7 +168,7 @@ async function afterScreening(deps: WorkerDeps, event: PortraitEvent, job: Job, 
   const step = style ? "awaiting_background" : "awaiting_style";
   const session = await sessions.update(job.address, (cur) => (cur ? { ...cur, step, pendingJobId: job.jobId } : SKIP));
   const msg = step === "awaiting_style" ? styleMenu(event, c) : backgroundMenu(event, c);
-  await deps.messenger.send(address, msg, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: event.config.qrSender });
+  await deps.messenger.send(address, msg, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: senderFor(session, event) });
 }
 
 /** The server's `retry-after` (seconds) from an OpenAI error, whose headers are a `Headers` object (a plain object in older SDKs). */
@@ -247,7 +247,7 @@ async function finish(deps: WorkerDeps, event: PortraitEvent, job: Job, outcome:
             ? c.job.tooManyPeople
             : c.job.noFace;
   const session = await deps.sync.map(ev.sessions, SessionSchema).get(job.address);
-  await deps.messenger.send(address, { kind: "text", body }, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: event.config.qrSender });
+  await deps.messenger.send(address, { kind: "text", body }, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: senderFor(session, event) });
 }
 
 /** Passed review: delivery counts the quota and releases the slot. */

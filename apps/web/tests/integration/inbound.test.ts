@@ -297,6 +297,18 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(w.blob.blobs.has(old.selfieBlob), "its selfie is deleted").toBe(false);
   });
 
+  it("remembers the booth number the person wrote to, so later messages come from it (D-43)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    const key = "whatsapp:+447700900123";
+    const read = async () => ((await w.fake.getItem(eventObjects("ev").sessions, key))!.data as { boothNumber: string | null }).boothNumber;
+    await w.say(WA, "#ev", { to: "+447700900600" });
+    expect(await read()).toBe("+447700900600");
+    await w.say(WA, "hello", { to: "+13203780782" }); // wrote to another booth number later: that one now has the open window
+    expect(await read()).toBe("+13203780782");
+    await w.say(WA, "hello again"); // no recipient on this message: keep what we know
+    expect(await read()).toBe("+13203780782");
+  });
+
   it("rejects non-image media and multiple photos", async () => {
     await liveEvent(w, "ev", { leadCollection: false });
     await w.say(WA, "#ev");
