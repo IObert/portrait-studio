@@ -835,9 +835,3 @@ No TwiML Bins, Functions or Studio. If the app ever needs static TwiML, it serve
   - a portrait with the event's uploaded background, and one with the LA Kings jersey
   - printing from the chat ("Print + show", then `PRINT` later) and from the share page, with a real DS620 and with `--simulate`
   - the booth screen on a landscape and a portrait display
-
----
-
-## 17. Resolved questions
-
-The questions of the original build specification are all answered. The answers are in the table "Answers to SPEC §17" in [docs/decisions.md](docs/decisions.md); code comments and tests that cite "§17 Q2a", "Q3" or "Q5" mean those rows (Q2a: no Memory profile in Case C; Q3: chest up everywhere; Q5: admin reprints do not count toward the quota).

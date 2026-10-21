@@ -115,7 +115,7 @@ describe("admin review (SPEC §10.3)", () => {
     await expect(removeFromPrintQueue({ sync: w.sync, log: w.log }, w.event, "job_00000001")).rejects.toThrow(/printing/);
   });
 
-  it("reprint queues a print marked as a reprint, without touching the quota (§17 Q5)", async () => {
+  it("reprint queues a print marked as a reprint, without touching the quota (SPEC §10.3)", async () => {
     const w = await setup({ printingEnabled: true }, { state: "delivered" });
     const before = await w.counters();
     await reprint({ sync: w.sync, log: w.log, mediaUrl: (p: string) => `https://x.test/m/${p}` }, w.event, "job_00000001");

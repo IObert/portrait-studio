@@ -106,9 +106,10 @@ pnpm --filter web worker                    # worker, second terminal
 
 Or everything in containers: `docker compose --env-file .env.local up --build` (or `podman compose --env-file .env.local up --build`).
 
-To test messages against your laptop, point the Messaging Service at the tunnel with
-`pnpm --filter web setup:twilio --take-over-inbound`, and back at the deployed app the same way afterwards. While it
-points at your laptop, the deployed app receives nothing.
+To test messages against your laptop, point the Messaging Service at the tunnel (the `PUBLIC_BASE_URL` in `.env.local`)
+with `pnpm --filter web setup:twilio --take-over-inbound`. To point it back at the deployed app, name that host, because
+`.env.local` wins over the shell: `pnpm --filter web setup:twilio --take-over-inbound --public-base-url https://<deployed host>`.
+While it points at your laptop, the deployed app receives nothing.
 
 ### 5. Deploy
 

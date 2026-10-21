@@ -128,7 +128,7 @@ export async function removeFromPrintQueue(deps: { sync: SyncStore; log: AuditLo
 
 /**
  * Reprint (SPEC §10.3). Does not count toward the attendee's print quota
- * (§17 Q5); logged with the admin's name.
+ * and sends no promo. The log line carries no admin name.
  */
 export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: (blobPath: string, ttlSeconds: number) => string }, event: PortraitEvent, jobId: string) {
   if (!event.config.printingEnabled) throw new ReviewError("Printing is off for this event");

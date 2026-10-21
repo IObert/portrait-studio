@@ -193,7 +193,7 @@ API is needed.
 - Print items carry a **signed download link** (`/m/<token>`), so the agent needs no storage credentials.
 - The server settles prints (`lib/pipeline/prints.ts`): counts successes toward `maxPrintsPerPerson`, releases
   reservations, sends the promo once per printed job (§5.9), and requeues or fails jobs whose lease expired 5 min
-  ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (§17 Q5).
+  ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (Q5).
 - The admin command now defaults to `--simulate`, since it works with no printer attached.
 
 ### D-24 Attendees choose what to print (user decision)
@@ -388,7 +388,7 @@ lock), for one brand.*
 
 ### Closed
 
-- **SPEC and docs aligned with the code** (user, 2026-10-21): SPEC.md rewritten to the current state, the other docs checked against the code. The SPEC keeps a short section 17 so the "§17 Q…" references in code comments resolve.
+- **SPEC and docs aligned with the code** (user, 2026-10-21): SPEC.md rewritten to the current state, the other docs checked against the code. The old section 17 (open questions) is removed; code comments and tests now cite the SPEC section that holds each answer.
 - **Eval: portraits keep the top 10% free** (user, 2026-10-20): built, see D-40.
 - **Frame safe zone** (user, 2026-10-20): measured on the DS620, frames fixed, eval built, see D-41.
 - **`setup:twilio` script** (2026-10-16): written, see D-39.
@@ -399,7 +399,9 @@ lock), for one brand.*
 - **Email templates for all activations** (2026-10-16): the SendGrid verification templates are updated. Portrait
   Studio's uses `event_name`, `promo_code` and `show_snippet` only (D-20).
 
-## Answers to SPEC §17
+## Answers to the original open questions
+
+The build specification ended with eight open questions. Their answers are below; the SPEC now states each one in the section that holds the behaviour.
 
 | Q | Decision |
 |---|---|
@@ -408,7 +410,7 @@ lock), for one brand.*
 | Q2b Returning profile without a verified email, at an event that collects leads | Greet them by name, skip the name step, then ask for email and code. |
 | Q3 Framing | Chest up for every style. Cartoon's hard-coded "waist up" is replaced by the shared composition text. `{preserve}` uses the settings text in PROMPTS.md §C. |
 | Q4 Fixed frames | Ship `none` plus one placeholder border, clearly marked as a placeholder, until real 1200×1800 PNGs are supplied. **Superseded 2026-10-14:** the five supplied Twilio frames are the fixed frames; the placeholder was removed. |
-| Q5 Admin reprints | They do not count toward `maxPrintsPerPerson`. They are logged with the admin's name. |
+| Q5 Admin reprints | They do not count toward `maxPrintsPerPerson` and send no promo. The log line carries no admin name. |
 | Q6 Models | `OPENAI_VISION_MODEL=gpt-6.1-sol`, `OPENAI_CHAT_MODEL=gpt-6-luna`. Both use the Responses API with reasoning effort `none`. |
 | Q7 Shared types | None. The two projects stay independent, with a contract in `PROTOCOL.md` and fixture-based contract tests. |
 | Q8 Auto-start | No. |

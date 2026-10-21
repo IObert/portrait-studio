@@ -14,7 +14,7 @@ describe("prompt builder (SPEC §9.3)", () => {
         expect(buildPrompt(style, bg, { subjects: 1, pet: null })).toMatchSnapshot();
       });
 
-  it("uses one composition everywhere: chest up, never waist up (§17 Q3)", () => {
+  it("uses one composition everywhere: chest up, never waist up (SPEC §9.3)", () => {
     for (const style of STYLE_IDS) {
       const p = buildPrompt(style, "gradient", { subjects: 1, pet: null });
       expect(p, style).toContain("from the chest up");

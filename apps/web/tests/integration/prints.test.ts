@@ -75,7 +75,7 @@ describe("print settlement (SPEC §11.2, §4.3, §5.9)", () => {
     expect(await readStats(w.sync, "ev")).toMatchObject({ printsFailed: 1 });
   });
 
-  it("admin reprints neither count toward the quota nor trigger a promo (§17 Q5)", async () => {
+  it("admin reprints neither count toward the quota nor trigger a promo (SPEC §10.3)", async () => {
     const w = await setup({}, { counters: { delivered: 1, printed: 1, printsReserved: 0, inFlight: 0 } });
     await w.put({ state: "printed", reprint: true });
     await settlePrints(w.deps);

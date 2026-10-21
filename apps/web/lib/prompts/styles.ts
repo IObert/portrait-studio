@@ -2,7 +2,7 @@ import { COMPOSITION, PRESERVE } from "./defaults";
 
 // Built-in styles, verbatim from PROMPTS.md §D (sticker excluded, SPEC §8.1).
 // Paragraphs are joined with a blank line. Cartoon's hard-coded "Frame from the
-// waist up." is replaced by the shared composition (SPEC §9.3, §17 Q3). The two
+// waist up." is replaced by the shared composition (SPEC §9.3). The two
 // styles that ask for big expressive eyes yield to sunglasses (D-38).
 
 /** Cartoon and anime paint eyes onto sunglasses without this (D-38). */

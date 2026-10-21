@@ -71,7 +71,7 @@ async function settle(deps: PrintDeps, event: PortraitEvent, item: PrintJob, now
   if (!job) return true; // deleted meanwhile (event or data deletion)
 
   if (item.state === "printed") {
-    // Successful prints count toward maxPrintsPerPerson (SPEC §4.3); admin reprints do not (§17 Q5).
+    // Successful prints count toward maxPrintsPerPerson (SPEC §4.3); admin reprints do not (§10.3).
     if (!item.reprint) {
       await deps.sync.map(ev.sessions, SessionSchema).update(job.address, (s) =>
         s ? { ...s, counters: { ...s.counters, printed: s.counters.printed + 1, printsReserved: Math.max(0, s.counters.printsReserved - 1) } } : SKIP,
