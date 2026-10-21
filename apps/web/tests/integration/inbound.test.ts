@@ -127,6 +127,11 @@ async function passScreening(w: World, slug: string, key: string, subjects = 1) 
   return job!;
 }
 
+/** A print agent that is connected and has a ready printer, the normal condition at an event. Without it a print waits and the attendee is told the printer seems offline. */
+async function printerOnline(w: World, slug: string, status = "idle") {
+  await w.fake.putDocument(eventObjects(slug).printer, { agentVersion: "0.1.0", mode: "cups", queue: "DNP_DS620", status, detail: "", heartbeatAt: new Date().toISOString() });
+}
+
 async function jobs(w: World, slug: string) {
   const out = [];
   for await (const it of w.fake.listItems(eventObjects(slug).jobs)) out.push(JobSchema.parse(it.data));
@@ -389,7 +394,8 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     // Someone else's portrait cannot be printed.
     expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_99" })).toEqual([catalogs.en.delivery.printUnavailable]);
 
-    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_01" })).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 0 })]);
+    // No print agent has connected in this test, so the print is queued but the attendee is told the printer seems offline.
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_01" })).toEqual([catalogs.en.delivery.printQueuedPrinterOffline({ printsLeft: 0 })]);
     expect((await w.fake.getItem(ev.print, "job_print_01"))!.data).toMatchObject({ state: "queued", who: "whatsapp:+44…23", url: expect.stringContaining("job_print_01.print.png"), reprint: false });
     expect((await w.fake.getItem(ev.slideshow, "job_print_01"))!.data).toMatchObject({ blobPath: "events/ev/generated/job_print_01.jpg" });
 
@@ -420,8 +426,35 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await w.fake.getItem(ev.slideshow, "job_stale_01")).toBeNull();
   });
 
+  it("print: with a print agent connected and the printer ready, the plain 'on its way' message", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    await w.fake.createItem(ev.jobs, "job_print_ok", JobSchema.parse({
+      jobId: "job_print_ok", address: "whatsapp:+447700900123", channel: "whatsapp", style: "anime", background: "gradient", selfieBlob: "s",
+      outputBlobs: { printPng: "events/ev/generated/job_print_ok.print.png", deliveryJpeg: "events/ev/generated/job_print_ok.jpg" }, shareId: "OK".padEnd(24, "Q"), state: "delivered", timestamps: {},
+    }));
+    await w.fake.putDocument(ev.printer, { agentVersion: "0.1.0", mode: "cups", queue: "DNP_DS620", status: "idle", detail: "", heartbeatAt: new Date().toISOString() });
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_ok" })).toEqual([catalogs.en.delivery.printQueued({ printsLeft: 2 })]);
+  });
+
+  it("print: an agent that is connected but out of paper still counts as offline for the attendee", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    await w.fake.createItem(ev.jobs, "job_print_np", JobSchema.parse({
+      jobId: "job_print_np", address: "whatsapp:+447700900123", channel: "whatsapp", style: "anime", background: "gradient", selfieBlob: "s",
+      outputBlobs: { printPng: "events/ev/generated/job_print_np.print.png", deliveryJpeg: "events/ev/generated/job_print_np.jpg" }, shareId: "NP".padEnd(24, "Q"), state: "delivered", timestamps: {},
+    }));
+    await w.fake.putDocument(ev.printer, { agentVersion: "0.1.0", mode: "cups", queue: "DNP_DS620", status: "out_of_paper", detail: "", heartbeatAt: new Date().toISOString() });
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_print_np" })).toEqual([catalogs.en.delivery.printQueuedPrinterOffline({ printsLeft: 2 })]);
+  });
+
   it("print on SMS: PRINT answers the pending question only when printing was offered", async () => {
     await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 2 });
+    await printerOnline(w, "ev");
     await w.say(SMS, "#ev");
     await w.say(SMS, "AGREE");
     const ev = eventObjects("ev");
@@ -438,6 +471,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
 
   it("a failed print can be asked for again", async () => {
     await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 2 });
+    await printerOnline(w, "ev");
     await w.say(WA, "#ev");
     await w.say(WA, "", { selection: ACTION.agree });
     const ev = eventObjects("ev");
@@ -453,6 +487,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
 
   it("PRINT any time lists the person's own portraits to print (D-28)", async () => {
     await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 3 });
+    await printerOnline(w, "ev");
     await w.say(WA, "#ev");
     await w.say(WA, "", { selection: ACTION.agree });
     const ev = eventObjects("ev");
@@ -502,6 +537,7 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
 
   it("SMS: PRINT then PRINT 2 picks the second portrait shown", async () => {
     await liveEvent(w, "ev", { leadCollection: false, printingEnabled: true, maxPrintsPerPerson: 2 });
+    await printerOnline(w, "ev");
     await w.say(SMS, "#ev");
     await w.say(SMS, "AGREE");
     const ev = eventObjects("ev");

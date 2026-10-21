@@ -28,11 +28,17 @@ const DOT: Record<Tone, string> = { ok: "bg-go", warn: "bg-pause", off: "bg-slat
 
 export function PrinterSummary({ printingEnabled, printer }: { printingEnabled: boolean; printer: PrinterView }) {
   const { tone, text } = describePrinting(printingEnabled, printer);
+  return <PrinterLine tone={tone} text={text} />;
+}
+
+/** The one-line indicator. Shared by the server-rendered summary and the live one. */
+export function PrinterLine({ tone, text, stale = false }: { tone: Tone; text: string; stale?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-2 text-sm ${tone === "off" ? "text-slate" : "text-ink"}`} data-testid="printer-summary">
+    <span className={`inline-flex items-center gap-2 text-sm ${tone === "off" ? "text-slate" : "text-ink"}`} data-testid="printer-summary" title={stale ? "Could not refresh; showing the last known status" : undefined}>
       <PrinterIcon />
       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT[tone]}`} aria-hidden />
       {text}
+      {stale && <span className="text-xs text-slate">(not refreshing)</span>}
     </span>
   );
 }

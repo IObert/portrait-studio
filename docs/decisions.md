@@ -535,3 +535,19 @@ second copy:
   to the QR number for a session from before this.
 - **Left as is:** a person who writes to two booth numbers at one event is answered from the one they used last.
 
+### D-44 Tell the attendee when the printer looks offline; keep the admin printer line current (user decision)
+*2026-10-21. Found while testing: with the printer off, a print request still said "It's on its way to the printer".*
+- **Attendee reply.** A print request is always queued. The reply now depends on whether a print would come out right now
+  (`printerWillPrint`): an agent is connected (heartbeat younger than 45 s) and its printer is not `offline`, `paused`,
+  `out_of_paper` or `error`. The simulator counts as ready, because it prints to a folder. If not, the person is told the
+  print is queued but the printer seems offline and will print when it is back (`printQueuedPrinterOffline`, en and
+  pt_BR). It applies to the chat and to the print button on the share page (`requestPrint` returns `printerReady`).
+- **Admin line.** The printer status in the event header polls `GET /admin/events/<id>/printer` every 30 seconds
+  (user's choice), pauses while the tab is hidden and refreshes when it is shown. A failed request keeps the last known
+  status instead of claiming the printer is offline; after two failures in a row it adds "(not refreshing)". "Last seen
+  N min ago" is recounted every 15 s without a request. The events list and the stats page are not live: they are
+  opened by navigating, so they are current on arrival.
+- **Not done:** a live push over Sync, as the booth screen uses. It would show a change within a second, but needs a
+  token endpoint, ACL grants and the Sync SDK in the admin bundle, and an agent that dies still has to be noticed by a
+  timer. Polling every 30 s was chosen as enough; the lag is up to 30 s.
+

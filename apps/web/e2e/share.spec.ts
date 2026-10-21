@@ -56,12 +56,13 @@ test.describe("share page (SPEC §6.2)", () => {
 test.describe("print from the share page (D-26)", () => {
   const PRINT_SHARE = "/s/e2ePrintShareFixture000001";
 
-  test("anyone with the link can print; a second tap while it is on its way does nothing", async ({ browser, baseURL }) => {
+  test("anyone with the link can print (queued, printer offline); a second tap while it is on its way does nothing", async ({ browser, baseURL }) => {
     const anon = await browser.newContext({ httpCredentials: undefined });
     const page = await anon.newPage();
     await page.goto(`${baseURL}${PRINT_SHARE}`);
     await page.getByRole("button", { name: "Print at the booth (1 left)" }).click();
-    await expect(page.getByRole("status")).toHaveText("It's on its way to the printer! Pick it up at the booth. Prints left: 0.");
+    // No print agent is connected in this server, so the print is queued but the person is told the printer seems offline.
+    await expect(page.getByRole("status")).toHaveText("Your print is queued, but the printer seems to be offline right now. It will print as soon as it is back; ask the booth team if it takes long. Prints left: 0.");
     await expect(page.getByTestId("share-print-done")).toBeVisible();
     // After a reload it stays marked, and there is no second print button.
     await page.reload();
