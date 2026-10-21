@@ -153,12 +153,18 @@ async function afterScreening(deps: WorkerDeps, event: PortraitEvent, job: Job, 
     return { ...cur, state, style, background, subjects: s.subjects, pet: s.pet, leaseUntil: null, attempts: 0, error: null, timestamps: { ...cur.timestamps, [state]: now } };
   });
   // `update` returns the stored job when the write was skipped (superseded, reclaimed): then it is not ours.
-  if (!updated || updated.state !== (ready ? "queued" : "awaiting_choice") || ready) return; // generation is picked up on the next pass
+  if (!updated || updated.state !== (ready ? "queued" : "awaiting_choice")) return;
+  const sessions = deps.sync.map(eventObjects(event.slug).sessions, SessionSchema);
+  if (ready) {
+    // Nothing to choose: the person is no longer waiting for the checks, and generation is picked up on the next pass.
+    // Only if this is still their pending photo; a newer one has taken over the session otherwise.
+    await sessions.update(job.address, (cur) => (cur?.pendingJobId === job.jobId ? { ...cur, step: "ready", pendingJobId: null } : SKIP));
+    return;
+  }
 
   // Open the first menu the attendee still has to answer (SPEC §5.5).
   const address = addressFromKey(job.address);
   if (!address) return;
-  const sessions = deps.sync.map(eventObjects(event.slug).sessions, SessionSchema);
   const step = style ? "awaiting_background" : "awaiting_style";
   const session = await sessions.update(job.address, (cur) => (cur ? { ...cur, step, pendingJobId: job.jobId } : SKIP));
   const msg = step === "awaiting_style" ? styleMenu(event, c) : backgroundMenu(event, c);
