@@ -35,7 +35,7 @@ const PARAGRAPHS: Record<StyleId, readonly string[]> = {
     COMPOSITION,
   ],
   anime: [
-    "Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.",
+    "Create a joseim, moe anime style image of the person(s) in the photo. Don't add any new person if the original image doesn't have that person. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Don't add any extra objects in the image, only the person(s) in the original photo, and only objects that the person is wearing, holding, or interacting with in the original photo, for example if the person is sitting on a chair. If there are multiple people in the photo, make sure to include all of them in the generated image.",
     PRESERVE,
     `Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. ${SUNGLASSES} Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.`,
     "Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.",
