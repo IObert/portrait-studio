@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`prompt builder (SPEC §9.3) > anime × gradient 1`] = `
-"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+"Create a josei, moe anime style image of the primary subject(s) in the photo. Don't add any person who is not a primary subject in the original photo. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Preserve objects that the primary subjects are wearing, holding, or interacting with in the original photo, for example a chair they are sitting on, unless the branding instructions below explicitly replace them. Follow the selected background instructions below, preserving the original environment when requested or using the selected replacement background. Do not add other foreground objects unless explicitly requested by the branding instructions. Include all primary subjects specified by the scene count below, but exclude background bystanders, passersby, people partially visible at frame edges, and people on screens or posters.
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
@@ -19,7 +19,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > anime × original 1`] = `
-"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+"Create a josei, moe anime style image of the primary subject(s) in the photo. Don't add any person who is not a primary subject in the original photo. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Preserve objects that the primary subjects are wearing, holding, or interacting with in the original photo, for example a chair they are sitting on, unless the branding instructions below explicitly replace them. Follow the selected background instructions below, preserving the original environment when requested or using the selected replacement background. Do not add other foreground objects unless explicitly requested by the branding instructions. Include all primary subjects specified by the scene count below, but exclude background bystanders, passersby, people partially visible at frame edges, and people on screens or posters.
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
@@ -37,7 +37,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > anime × solid-black 1`] = `
-"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+"Create a josei, moe anime style image of the primary subject(s) in the photo. Don't add any person who is not a primary subject in the original photo. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Preserve objects that the primary subjects are wearing, holding, or interacting with in the original photo, for example a chair they are sitting on, unless the branding instructions below explicitly replace them. Follow the selected background instructions below, preserving the original environment when requested or using the selected replacement background. Do not add other foreground objects unless explicitly requested by the branding instructions. Include all primary subjects specified by the scene count below, but exclude background bystanders, passersby, people partially visible at frame edges, and people on screens or posters.
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
@@ -55,7 +55,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > anime × solid-white 1`] = `
-"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+"Create a josei, moe anime style image of the primary subject(s) in the photo. Don't add any person who is not a primary subject in the original photo. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Preserve objects that the primary subjects are wearing, holding, or interacting with in the original photo, for example a chair they are sitting on, unless the branding instructions below explicitly replace them. Follow the selected background instructions below, preserving the original environment when requested or using the selected replacement background. Do not add other foreground objects unless explicitly requested by the branding instructions. Include all primary subjects specified by the scene count below, but exclude background bystanders, passersby, people partially visible at frame edges, and people on screens or posters.
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
@@ -73,7 +73,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > anime × uploaded 1`] = `
-"Transform this photo into a Japanese anime-style character portrait. Do not add anyone not in the original photo.
+"Create a josei, moe anime style image of the primary subject(s) in the photo. Don't add any person who is not a primary subject in the original photo. If the people are at the bottom of the image, fill the entire frame with the people and don't leave lots of blank space at the top. If the people are at the top of the image, fill the entire frame with the people and don't leave lots of blank space at the bottom. Preserve objects that the primary subjects are wearing, holding, or interacting with in the original photo, for example a chair they are sitting on, unless the branding instructions below explicitly replace them. Follow the selected background instructions below, preserving the original environment when requested or using the selected replacement background. Do not add other foreground objects unless explicitly requested by the branding instructions. Include all primary subjects specified by the scene count below, but exclude background bystanders, passersby, people partially visible at frame edges, and people on screens or posters.
 
 Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
