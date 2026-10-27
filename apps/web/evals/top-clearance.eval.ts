@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
 import sharp from "sharp";
@@ -7,14 +7,17 @@ import type { BackgroundId } from "../lib/events/schema";
 import { generatePortrait, type RefImage } from "../lib/pipeline/generate";
 import { buildPrompt } from "../lib/prompts/build";
 import { bgRefName, brandRefName } from "../lib/prompts/brand";
-import type { StyleId } from "../lib/prompts/styles";
+import { STYLE_IDS, type StyleId } from "../lib/prompts/styles";
 import { calibrationImages, judgeTopBand, markTopBand, type Verdict } from "./top-clearance";
 import { evalEnv } from "./env";
 
 /**
  * Eval: does a generated portrait keep the top 10% free? (docs/decisions.md D-40)
  *
- *   pnpm --filter @portrait-studio/web eval:top-clearance            # calibrate the judge, then 12 images (~$3)
+ *   pnpm --filter @portrait-studio/web eval:top-clearance            # calibrate the judge, then every style and photo: 54 images (~$13)
+ *   pnpm --filter @portrait-studio/web eval:top-clearance --style=anime,sketch  # just these styles
+ *   pnpm --filter @portrait-studio/web eval:top-clearance --people=1-person-mirror  # just this photo
+ *   pnpm --filter @portrait-studio/web eval:top-clearance --resume   # skip cases that already have a verdict image
  *   pnpm --filter @portrait-studio/web eval:top-clearance --dry-run  # print the plan and the cost, spend nothing
  *   pnpm --filter @portrait-studio/web eval:top-clearance --calibrate-only
  *
@@ -28,9 +31,9 @@ const OUT = path.join(ROOT, ".local/eval-top-clearance");
 const PEOPLE = [
   { id: "1-person", file: "1-person.jpg", subjects: 1 },
   { id: "3-people", file: "3-people.jpg", subjects: 3 },
+  { id: "1-person-mirror", file: "1-person-mirror.jpg", subjects: 1 }, // tall mirror selfie, head in the upper third, busy bathroom behind
 ] as const;
 const BACKGROUNDS = ["original", "crypto-arena", "uploaded"] as const satisfies readonly BackgroundId[];
-const STYLES = ["cartoon", "watercolor"] as const satisfies readonly StyleId[];
 /** Rough cost of one 1024x1536 high-quality generation plus one judge call. */
 const COST_PER_IMAGE_USD = 0.25;
 
@@ -40,11 +43,17 @@ interface Case {
   background: (typeof BACKGROUNDS)[number];
   style: StyleId;
 }
-const CASES: Case[] = PEOPLE.flatMap((people) =>
+const args = new Set(process.argv.slice(2));
+// --style=anime,sketch runs just those styles; the default is every style.
+const only = [...args].find((a) => a.startsWith("--style="))?.slice("--style=".length).split(",");
+// --people=1-person-mirror runs just these photos.
+const onlyPeople = [...args].find((a) => a.startsWith("--people="))?.slice("--people=".length).split(",");
+const unknown = only?.filter((s) => !(STYLE_IDS as readonly string[]).includes(s));
+if (unknown?.length) throw new Error(`unknown style: ${unknown.join(", ")} (known: ${STYLE_IDS.join(", ")})`);
+const STYLES: readonly StyleId[] = only ? (only as StyleId[]) : STYLE_IDS;
+const CASES: Case[] = PEOPLE.filter((p) => !onlyPeople || onlyPeople.includes(p.id)).flatMap((people) =>
   BACKGROUNDS.flatMap((background) => STYLES.map((style) => ({ name: `${people.id}/${background}/${style}`, people, background, style }))),
 );
-
-const args = new Set(process.argv.slice(2));
 
 async function main() {
   console.log(`${CASES.length} images, about $${(CASES.length * COST_PER_IMAGE_USD).toFixed(2)}`);
@@ -74,6 +83,8 @@ async function main() {
   // 2. Generate with the real prompt, judge the top band.
   const results: { c: Case; verdict: Verdict | { error: string } }[] = [];
   for (const c of CASES) {
+    // --resume: skip cases that already have a verdict image from an earlier run (e.g. one cut short by a network error).
+    if (args.has("--resume") && ["pass", "FAIL"].some((v) => existsSync(path.join(OUT, `${c.name.replaceAll("/", "_")}.${v}.jpg`)))) continue;
     try {
       const selfie = await sharp(readFileSync(path.join(INPUTS, c.people.file))).rotate().jpeg({ quality: 90 }).toBuffer();
       const uploaded = c.background === "uploaded";
