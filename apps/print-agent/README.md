@@ -154,6 +154,10 @@ spooler with PowerShell instead of CUPS; `--printer` is the Windows printer name
 - Turn on **Keep printed documents** (`node agent.mjs doctor --fix` in an Administrator terminal). Without it the
   agent cannot tell a printed job from a cancelled one.
 
+If `pnpm` does not work on Windows (for example it fails with a missing `@pnpm/exe` native binary), use `npm` instead:
+`npm install`, then `npm run build` in `apps/print-agent`, then `node dist\agent.mjs`. Or build `agent.mjs` on another
+computer and copy it over: it needs only Node.js 24 or newer.
+
 Tips if the driver will not install on Windows 10:
 
 - Right-click the downloaded zip → Properties → **Unblock** (if shown), then Extract All. Running the installer from
