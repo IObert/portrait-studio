@@ -90,8 +90,11 @@ queued ──claim──▶ claimed ──▶ printing ──▶ printed
 
 **One print, one copy (docs/decisions.md D-25).** A print is submitted to CUPS once. While the printer is off, paused
 or out of paper, the agent keeps the lease and waits: CUPS holds the job and prints it when the printer is back.
-The agent claims nothing new while the printer is not ready. A job that makes no progress for 10 min while the
-printer says it is ready is cancelled and retried.
+The agent claims nothing new while the printer is not ready. With the printer ready, a job that makes no progress for
+10 min is cancelled and retried, and one that CUPS has `stopped` or `held` (a driver that failed on it, e.g. after a
+printer error) after 30 s. The 10 min are counted from `timestamps.printing`, so restarting the agent does not start them
+over; a step longer than 30 s (a laptop that slept) counts as 30 s. The retry's `error` carries what the printer said,
+e.g. `printer job stopped (job-completed-with-errors); printer said: Filter failed (com.mitsubishi-error0023)` (D-47).
 
 - The agent renews `leaseUntil` every 30 s while an item is `claimed` or `printing`, including while it waits for
   the printer.

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { AgentUnauthorized, exchangeToken, runAgent } from "../src/agent.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AgentUnauthorized, exchangeToken, runAgent, session, SYNC_TIMEOUT_MS } from "../src/agent.js";
 import { claim, type PrintItem } from "../src/queue.js";
 import { FakeQueue } from "./support/fake-queue.js";
 
@@ -100,5 +100,54 @@ describe("reconnect back-off (BUG 7)", () => {
 
   it("starts over after a session that was healthy for a while", async () => {
     expect(await waits([0, 0, 5 * 60_000, 0])).toEqual([1_000, 2_000, 1_000, 2_000]);
+  });
+});
+
+describe("a dead connection cannot trap the session (D-47)", () => {
+  const hang = () => new Promise<never>(() => {});
+  const tokenBody = { token: "t".repeat(40), ttl: 3600, slug: "ev", objects: { print: "ev_ev_print", printer: "ev_ev_printer" } };
+  const printer = { mode: "cups", queue: "Q", outDir: "x", owns: () => false, check: async () => ({ kind: "done" }), cancel: async () => {}, status: async () => ({ status: "idle", detail: "" }), describe: async () => "fake" };
+  const run = (client: object, stop = new AbortController()) => session({ url: "https://app.test", token: "t", printer: printer as never, signal: stop.signal }, () => client as never);
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "setInterval", "Date"] });
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json(tokenBody)));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("gives up, so the agent can retry, when the print queue never opens", async () => {
+    const result = expect(run({ on() {}, map: hang, document: hang, shutdown: hang })).rejects.toThrow("opening the print queue timed out");
+    await vi.advanceTimersByTimeAsync(10); // the session reaches the call that hangs
+    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS + 6_000); // then the SDK gets 5 s to shut down
+    await result;
+  });
+
+  it("a hung queue read and a hung shutdown still end the session within seconds, so the agent reconnects", async () => {
+    // The state after a Wi-Fi drop: writes fail, reads and the shutdown wait for a connection that is gone.
+    const queue = { on() {}, getItems: hang, mutate: hang };
+    const status = { set: async () => { throw new Error("disconnected"); } };
+    const client = { on() {}, map: async () => queue, document: async () => status, shutdown: hang };
+    let settled = false;
+    const result = expect(run(client).finally(() => (settled = true))).rejects.toThrow("reading the print queue timed out");
+    await vi.advanceTimersByTimeAsync(10);
+    await vi.advanceTimersByTimeAsync(SYNC_TIMEOUT_MS - 1_000);
+    expect(settled).toBe(false);
+    // 30 s for the read, then at most 5 s for the SDK to shut down.
+    await vi.advanceTimersByTimeAsync(1_000 + 6_000);
+    await result;
+    expect(settled).toBe(true);
+  });
+
+  it("stops at once, not after the Sync timeout, when the agent itself is stopped while reading the queue", async () => {
+    const stop = new AbortController();
+    const client = { on() {}, map: async () => ({ on() {}, getItems: hang }), document: async () => ({ set: async () => {} }), shutdown: async () => {} };
+    const done = run(client, stop);
+    await vi.advanceTimersByTimeAsync(1_000);
+    stop.abort();
+    await vi.advanceTimersByTimeAsync(100);
+    await expect(done).resolves.toBeUndefined();
   });
 });

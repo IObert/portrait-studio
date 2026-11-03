@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { printOne, STALLED_MS } from "../src/agent.js";
+import { printOne, STALLED_MS, STUCK_MS } from "../src/agent.js";
 import type { JobOutcome, Printer } from "../src/printer.js";
 import type { PrinterStatus } from "../src/cups.js";
 import type { PrintItem } from "../src/queue.js";
@@ -31,7 +31,7 @@ function fakePrinter() {
     cancelled: [] as string[],
     completeAfterOn: 1,
     checksWhileOn: 0,
-    jobState: "waiting" as "waiting" | "canceled",
+    jobState: "waiting" as "waiting" | "canceled" | "stopped",
     printer: null as unknown as Printer,
   };
   p.printer = {
@@ -46,6 +46,8 @@ function fakePrinter() {
     },
     async check(): Promise<JobOutcome> {
       if (p.jobState === "canceled") return { kind: "failed", reason: "printer job canceled" };
+      // CUPS parks a job the driver failed on (here: the printer reported an error); it never comes out.
+      if (p.jobState === "stopped") return { kind: "waiting", stuck: true, detail: "printer job stopped (job-completed-with-errors); printer said: Filter failed (com.mitsubishi-error0023)" };
       if (p.power === "off") return { kind: "waiting", detail: "offline" };
       return ++p.checksWhileOn >= p.completeAfterOn ? { kind: "done" } : { kind: "waiting", detail: "printing" };
     },
@@ -120,6 +122,65 @@ describe("one print, one copy (D-25)", () => {
     await run;
     expect(fp.cancelled).toEqual(["DS620-24"]);
     expect(q.items.get("job_1")).toMatchObject({ state: "queued", printerJobId: null });
+  });
+
+  it("D-47: a job CUPS has stopped is cancelled and retried after 30 s, with the printer's own error", async () => {
+    const q = new FakeQueue([item()]);
+    const fp = fakePrinter();
+    fp.power = "on";
+    fp.jobState = "stopped";
+    const run = printOne(q as never, { jobId: "job_1", resume: false }, fp.printer, new AbortController().signal);
+    await until(() => fp.submitted.length === 1);
+    await vi.advanceTimersByTimeAsync(STUCK_MS + 5_000);
+    await run;
+    expect(fp.cancelled).toEqual(["DS620-24"]);
+    expect(q.items.get("job_1")).toMatchObject({ state: "queued", printerJobId: null });
+    expect(q.items.get("job_1")!.error).toContain("com.mitsubishi-error0023");
+  });
+
+  it("D-47: a stopped job is only waited for while the printer is off", async () => {
+    const q = new FakeQueue([item()]);
+    const fp = fakePrinter(); // off
+    fp.jobState = "stopped";
+    const run = printOne(q as never, { jobId: "job_1", resume: false }, fp.printer, new AbortController().signal);
+    await until(() => fp.submitted.length === 1);
+    await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+    expect(fp.cancelled).toEqual([]);
+    expect(q.items.get("job_1")).toMatchObject({ state: "printing", printerJobId: "DS620-24" });
+    fp.power = "on";
+    fp.jobState = "waiting";
+    await vi.advanceTimersByTimeAsync(5_000);
+    await run;
+    expect(q.items.get("job_1")).toMatchObject({ state: "printed" });
+  });
+
+  it("D-47: restarting the agent does not give a dead job another full wait", async () => {
+    // Reached the printer 11 minutes ago and has not moved since; a new agent resumes it.
+    const q = new FakeQueue([item({ state: "printing", attempts: 1, printerJobId: "DS620-24", leaseUntil: "2026-10-14T11:59:00Z", timestamps: { queued: "2026-10-14T11:40:00Z", printing: "2026-10-14T11:49:00Z" } })]);
+    const fp = fakePrinter();
+    fp.power = "on";
+    fp.completeAfterOn = Number.POSITIVE_INFINITY;
+    await printOne(q as never, { jobId: "job_1", resume: true }, fp.printer, new AbortController().signal);
+    expect(fp.cancelled).toEqual(["DS620-24"]);
+    expect(q.items.get("job_1")).toMatchObject({ state: "queued", printerJobId: null });
+  });
+
+  it("D-47: a laptop that sleeps mid-print does not count the sleep as a stall", async () => {
+    const q = new FakeQueue([item()]);
+    const fp = fakePrinter();
+    fp.power = "on";
+    fp.completeAfterOn = Number.POSITIVE_INFINITY;
+    const run = printOne(q as never, { jobId: "job_1", resume: false }, fp.printer, new AbortController().signal);
+    await until(() => fp.submitted.length === 1);
+    await vi.advanceTimersByTimeAsync(10_000);
+    vi.setSystemTime(new Date(Date.now() + 30 * 60 * 1000)); // slept for half an hour
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(fp.cancelled).toEqual([]);
+    expect(q.items.get("job_1")).toMatchObject({ state: "printing" });
+    fp.completeAfterOn = 1;
+    await vi.advanceTimersByTimeAsync(5_000);
+    await run;
+    expect(q.items.get("job_1")).toMatchObject({ state: "printed", attempts: 1 });
   });
 
   it("after an agent restart it waits for the same printer job instead of printing again", async () => {

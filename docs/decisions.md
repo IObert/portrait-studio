@@ -591,3 +591,21 @@ second copy:
   CP-D70DW: `com.mitsubishi-error0023`). `parseLpstat` no longer treats it as an `error` that holds back the next print; the status
   stays `idle` with the note "the last print failed". The failed print is still reported by its own job. For other errors, the detail
   is now the reason line, not the "is idle" state line.
+
+### D-47 A dead print job and a dead connection must not stop the agent (found while testing)
+*2026-11-03. The agent seemed to stop after a Wi-Fi drop and needed a restart. The logs showed two different causes.*
+- **A stopped job blocked the queue.** The CP-D70DW reported an error (`com.mitsubishi-error0023`), its filter exited 1 and CUPS
+  left the job `processing-stopped`, which never finishes. The agent treated "stopped" as "still printing" and waited the
+  full 10 minutes with the printer idle. It prints one job at a time, so nothing else came out. The heartbeat kept running, so
+  the admin showed it online. A restart reset the wait, and ~2 minutes later (the dead job's lease) the next agent resumed it
+  first and blocked again.
+- **Now:** a job that CUPS has `stopped` or `held` while the printer is ready is cancelled and retried after 30 s (while the
+  printer is off or paused it is still waited for). The retry's error carries the job's `job-printer-state-reasons` and
+  message. The 10 min stall limit is counted from `timestamps.printing`, so a restart does not start it over; each step counts
+  at most 30 s, so a sleeping laptop does not add up to a stall.
+- **Reconnecting.** Opening the print queue, reading it, every Sync write and the SDK shutdown now have time limits (30 s,
+  shutdown 5 s), and a session that is ending stops waiting for them at once. Before, any of them could stay pending on a
+  dead connection and the session never returned to reconnect. This is hardening from reading the code: the logs showed
+  one clean reconnect (16:57) and one inconclusive case, so it is not proven to have been a cause.
+- **Not done:** printing several jobs at once. One job at a time is what keeps one print one copy (D-25); the two limits above
+  bound how long a bad job can hold the line. A hung SDK client that never shuts down is left behind, not killed.

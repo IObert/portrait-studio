@@ -109,9 +109,11 @@ export const JOB_STATE_TEST = `{
   ATTR uri printer-uri $uri
   ATTR integer job-id $job-id
   ATTR name requesting-user-name $user
-  ATTR keyword requested-attributes job-state,job-state-reasons
+  ATTR keyword requested-attributes job-state,job-state-reasons,job-printer-state-reasons,job-printer-state-message
   DISPLAY job-state
   DISPLAY job-state-reasons
+  DISPLAY job-printer-state-reasons
+  DISPLAY job-printer-state-message
 }
 `;
 
@@ -125,4 +127,17 @@ export function parseJobState(output: string): { state: JobState; reasons: strin
   const known: JobState[] = ["pending", "held", "processing", "stopped", "canceled", "aborted", "completed"];
   const normalised = state === "pending-held" ? "held" : state === "processing-stopped" ? "stopped" : state;
   return { state: known.includes(normalised as JobState) ? (normalised as JobState) : "unknown", reasons };
+}
+
+/**
+ * What the printer itself said about a job, from `ipptool -t` output of the query above: the driver's own error
+ * keyword and message, e.g. `Filter failed (com.mitsubishi-error0023)`. Empty when it said nothing.
+ */
+export function parseJobPrinterError(output: string): string {
+  const message = /job-printer-state-message \([^)]*\) = (.+)/.exec(output)?.[1]?.trim() ?? "";
+  const reasons = (/job-printer-state-reasons \([^)]*\) = (.+)/.exec(output)?.[1] ?? "")
+    .split(",")
+    .map((r) => r.trim())
+    .filter((r) => r && r !== "none");
+  return [message, reasons.length ? `(${reasons.join(", ")})` : ""].filter(Boolean).join(" ");
 }

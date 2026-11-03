@@ -2,12 +2,16 @@ import { execFile } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { type Driver, driverOf, JOB_STATE_TEST, jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId, type PrinterStatus } from "./cups.js";
+import { type Driver, driverOf, JOB_STATE_TEST, jobNumber, lpArgs, parseJobPrinterError, parseJobState, parseLpstat, parseRequestId, type PrinterStatus } from "./cups.js";
 
 const run = promisify(execFile);
 
 /** Where a submitted job stands. `waiting` covers a printer that is off or busy: CUPS keeps the job. */
-export type JobOutcome = { kind: "done" } | { kind: "failed"; reason: string } | { kind: "waiting"; detail: string };
+export type JobOutcome =
+  | { kind: "done" }
+  | { kind: "failed"; reason: string }
+  /** `stuck`: the job itself is stopped or held. With the printer ready it will not come out; waiting only helps while the printer is off. */
+  | { kind: "waiting"; detail: string; stuck?: boolean };
 
 /**
  * One way to put a PNG on paper: real CUPS, the Windows spooler (windows.ts) or
@@ -101,6 +105,11 @@ export function cupsPrinter(queue: string, outDir: string): Printer {
       const { state, reasons } = parseJobState(out);
       if (state === "completed") return { kind: "done" };
       if (state === "canceled" || state === "aborted") return { kind: "failed", reason: `printer job ${state}${reasons ? ` (${reasons})` : ""}` };
+      if (state === "stopped" || state === "held") {
+        // A driver that fails on a job (e.g. the printer reports an error) leaves it stopped for good.
+        const said = parseJobPrinterError(out);
+        return { kind: "waiting", stuck: true, detail: `printer job ${state}${reasons ? ` (${reasons})` : ""}${said ? `; printer said: ${said}` : ""}` };
+      }
       const st = await this.status();
       return { kind: "waiting", detail: st.detail || st.status };
     },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { driverOf, jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId } from "../src/cups.js";
+import { driverOf, jobNumber, lpArgs, parseJobPrinterError, parseJobState, parseLpstat, parseRequestId } from "../src/cups.js";
 import { claim, claimable, failed, LEASE_MS, MAX_ATTEMPTS, printed, type PrintItem, renew, resumable, resume, startPrinting } from "../src/queue.js";
 
 describe("CUPS command (SPEC §11.2, §16)", () => {
@@ -20,6 +20,14 @@ describe("CUPS command (SPEC §11.2, §16)", () => {
     expect(driverOf("PageSize/Media Size: *ME_9x13 ME_10x15 ME_13x18\nResolution/Output Resolution: *300dpi\n")).toBe("cp70");
     expect(driverOf("PageSize/Media Size: dnp5x3.5 *dnp6x4 dnp5x7\nCutter/Cutter: *Normal\n")).toBe("ds620");
     expect(driverOf("")).toBe("ds620");
+  });
+  it("reads the printer's own error for a stopped job (D-47)", () => {
+    // Real ipptool output for the CP-D70DW job that never came out.
+    const out = "        job-state (enum) = processing-stopped\n        job-state-reasons (keyword) = job-completed-with-errors\n        job-printer-state-message (textWithoutLanguage) = Filter failed\n        job-printer-state-reasons (keyword) = com.mitsubishi-error0023\n";
+    expect(parseJobState(out)).toEqual({ state: "stopped", reasons: "job-completed-with-errors" });
+    expect(parseJobPrinterError(out)).toBe("Filter failed (com.mitsubishi-error0023)");
+    expect(parseJobPrinterError("        job-printer-state-reasons (keyword) = none\n")).toBe("");
+    expect(parseJobPrinterError("        job-state (enum) = completed\n")).toBe("");
   });
   it("rejects unsafe queue names (no shell injection)", () => {
     for (const q of ["a b", "x;rm -rf /", "$(id)", "", "-d"]) expect(() => lpArgs(q, "/tmp/p.png"), q).toThrow();
