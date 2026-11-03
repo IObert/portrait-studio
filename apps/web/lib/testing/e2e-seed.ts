@@ -24,7 +24,7 @@ async function seedBooth(): Promise<void> {
   const events = await getEventRepo();
   const slug = "e2e-booth";
   if (await events.get(slug)) return;
-  await events.create(slug, { ...defaultConfig("E2E Booth", "+13203780782"), ctaText: { headline: "Get your portrait", steps: ["Scan the code", "Send a selfie", "Pick a style"] } });
+  await events.create(slug, { ...defaultConfig("E2E Booth", "+13203780782"), printCalibration: { top: 1, right: 2, bottom: 3, left: 4 }, ctaText: { headline: "Get your portrait", steps: ["Scan the code", "Send a selfie", "Pick a style"] } });
   await events.setState(slug, "live");
   const ev = eventObjects(slug);
   for (const m of [ev.jobs, ev.slideshow, ev.print]) await sync.ensureMap(m);
@@ -42,6 +42,8 @@ async function seedBooth(): Promise<void> {
     await blob.put(`events/${slug}/selfies/${id}.jpg`, await img("#64748b"), "image/jpeg");
     await sync.map(ev.jobs, JobSchema).put(id, job(id, state));
   }
+  // The print PNG of the delivered job: the download route fits it to the event's printer calibration (D-45).
+  await blob.put(`events/${slug}/generated/e2e_slide_01.print.png`, await sharp({ create: { width: 1200, height: 1800, channels: 3, background: "#0ea5e9" } }).png().toBuffer(), "image/png");
   await sync.raw.createItem(ev.slideshow, "e2e_slide_01", { blobPath: `events/${slug}/generated/e2e_slide_01.jpg`, addedAt: new Date().toISOString() });
   // A delivered job always has a share record (written at delivery).
   await sync.ensureMap(Global.shares);

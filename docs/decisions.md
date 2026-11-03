@@ -551,3 +551,23 @@ second copy:
   token endpoint, ACL grants and the Sync SDK in the admin bundle, and an agent that dies still has to be noticed by a
   timer. Polling every 30 s was chosen as enough; the lag is up to 30 s.
 
+
+### D-45 Printer calibration: measure what the printer trims, then fit prints inside it (user decision)
+*2026-11-03. Found while setting up a Mitsubishi CP-D70DW: its "10x15" driver page (448×295 pt) is larger than a 4×6 print and the printer trims the edges, by a different amount on each side.*
+- **Config.** Each event has `printCalibration`: whole mm trimmed per edge (`top`, `right`, `bottom`, `left`, 0 to 12; 0 for
+  events saved before it existed). It is edited in the event's "Printer calibration" section and saved with the rest.
+- **Measuring.** The section has a "Print clipping chart" button. It copies `assets/calibration/clipping-chart.png` (1229×1867,
+  the driver page upright, nested rectangles 0 to 12 mm in from each edge) to the event's blobs and queues it for the print
+  agent like an admin reprint (`jobId` `clipping-chart`, no quota, no promo, no stats). The admin enters, per edge, the
+  lowest number still visible: that is the trim in mm. The chart needs printing on for the event, as the agent cannot connect
+  otherwise, and one chart can wait at a time.
+- **Applying.** `GET /m/<token>` fits every `.print.png` to the page minus the trims (`applyCalibration`): scaled down, never
+  cropped, so frames and borders stay whole, and the leftover is filled by repeating the picture's edge pixels. The output is
+  the chart's page size, so CUPS prints it 1:1. It is done on download, not when the print is made, so a changed calibration
+  also reaches prints that are already queued, and the stored print PNG stays the 1200×1800 original. All zeros: untouched.
+  The chart is a `.chart.png` and is never calibrated.
+- **Agent.** The queue's driver is read once from `lpoptions -p <queue> -l`. A queue that lists `ME_10x15` gets
+  `-o PageSize=ME_10x15 -o fit-to-page`, with no forced orientation, since that page is landscape and CUPS turns the portrait
+  picture; anything else keeps the DS620 options (PROTOCOL.md §5).
+- **Limits.** The canvas is fixed to the CP-D70DW page, so the numbers only mean mm on that printer. Another model needs
+  its own chart and `CALIBRATION_PAGE`. A DS620 event should leave all four at 0. The doctor still only knows the DS620.

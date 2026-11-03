@@ -4,7 +4,7 @@ import { loadAdminEvent } from "@/lib/admin/event-load";
 import { formOptions, senderOptions } from "@/lib/admin/options";
 import { SAS_TTL_SECONDS } from "@/lib/blob/store";
 import { getServices } from "@/lib/services";
-import { AssetUpload, PrinterToken } from "../../_components/controls";
+import { AssetUpload, PrintClippingChart, PrinterToken } from "../../_components/controls";
 import { EventForm } from "../../_components/event-form";
 import { SettingsSkeleton } from "../../_components/skeletons";
 import { SECTIONS } from "../../_components/ui";
@@ -51,6 +51,7 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
               </div>
             ),
             printAgent: <PrinterToken slug={slug} appUrl={appUrl} token={event.printerToken} />,
+            calibrationChart: <PrintClippingChart slug={slug} />,
           }}
         />
     </div>

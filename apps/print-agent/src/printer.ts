@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { JOB_STATE_TEST, jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId, type PrinterStatus } from "./cups.js";
+import { type Driver, driverOf, JOB_STATE_TEST, jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId, type PrinterStatus } from "./cups.js";
 
 const run = promisify(execFile);
 
@@ -64,6 +64,10 @@ export function cupsPrinter(queue: string, outDir: string): Printer {
   lpArgs(queue, "/dev/null");
   const tmpDir = path.join(outDir, ".tmp");
   const printerUri = `ipp://localhost/printers/${queue}`;
+  // Which driver the queue uses decides the option names; asked once, on the first print. A failed
+  // lookup falls back to the DS620 set, like before.
+  let driver: Promise<Driver> | undefined;
+  const driverFor = () => (driver ??= run("lpoptions", ["-p", queue, "-l"], { timeout: 10_000 }).then(({ stdout }) => driverOf(stdout), () => "ds620" as const));
   const testFile = path.join(tmpDir, "job-state.test");
   return {
     mode: "cups",
@@ -75,7 +79,7 @@ export function cupsPrinter(queue: string, outDir: string): Printer {
       await mkdir(tmpDir, { recursive: true });
       const file = path.join(tmpDir, `${jobId.replace(/[^A-Za-z0-9_-]/g, "")}.png`);
       await writeFile(file, png);
-      const { stdout } = await run("lp", lpArgs(queue, file), { signal, timeout: 30_000 }).finally(() => rm(file, { force: true }));
+      const { stdout } = await run("lp", lpArgs(queue, file, await driverFor()), { signal, timeout: 30_000 }).finally(() => rm(file, { force: true }));
       const id = parseRequestId(stdout);
       if (!id) throw new Error(`lp did not return a request id: ${stdout.trim().slice(0, 120)}`);
       return id;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId } from "../src/cups.js";
+import { driverOf, jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId } from "../src/cups.js";
 import { claim, claimable, failed, LEASE_MS, MAX_ATTEMPTS, printed, type PrintItem, renew, resumable, resume, startPrinting } from "../src/queue.js";
 
 describe("CUPS command (SPEC §11.2, §16)", () => {
@@ -10,6 +10,16 @@ describe("CUPS command (SPEC §11.2, §16)", () => {
       "-o", "fit-to-page", "-o", "print-scaling=fill", "-o", "orientation-requested=3",
       "--", "/tmp/p.png",
     ]);
+  });
+  it("prints on the CP-D70DW with its own page size, turned by CUPS (D-45)", () => {
+    expect(lpArgs("MITSUBISHI_CP60D70D707D", "/tmp/p.png", "cp70")).toEqual(["-d", "MITSUBISHI_CP60D70D707D", "-o", "PageSize=ME_10x15", "-o", "fit-to-page", "--", "/tmp/p.png"]);
+    expect(() => lpArgs("x;rm", "/tmp/p.png", "cp70")).toThrow();
+  });
+  it("tells the drivers apart by their page sizes", () => {
+    // `lpoptions -p <queue> -l` on the Mitsubishi and on the DS620.
+    expect(driverOf("PageSize/Media Size: *ME_9x13 ME_10x15 ME_13x18\nResolution/Output Resolution: *300dpi\n")).toBe("cp70");
+    expect(driverOf("PageSize/Media Size: dnp5x3.5 *dnp6x4 dnp5x7\nCutter/Cutter: *Normal\n")).toBe("ds620");
+    expect(driverOf("")).toBe("ds620");
   });
   it("rejects unsafe queue names (no shell injection)", () => {
     for (const q of ["a b", "x;rm -rf /", "$(id)", "", "-d"]) expect(() => lpArgs(q, "/tmp/p.png"), q).toThrow();

@@ -44,6 +44,17 @@ const E164 = z.string().regex(/^\+[1-9]\d{6,14}$/, "E.164, e.g. +13203780782");
 export const EVENT_NAME_TOKEN = "{event}";
 export const withEventName = (text: string, eventName: string) => text.replaceAll(EVENT_NAME_TOKEN, eventName);
 
+/** The most any edge can be trimmed on the clipping chart (D-45): it has lines 0 to 12. */
+export const MAX_CLIP_MM = 12;
+const clipMm = z.number().int().min(0).max(MAX_CLIP_MM);
+/**
+ * How much the printer trims off each edge of the page, in mm, read off the clipping chart (D-45):
+ * the lowest number still visible on that edge. Prints are scaled into what is left.
+ */
+export const PrintCalibrationSchema = z.object({ top: clipMm, right: clipMm, bottom: clipMm, left: clipMm });
+export type PrintCalibration = z.infer<typeof PrintCalibrationSchema>;
+export const NO_CALIBRATION: PrintCalibration = { top: 0, right: 0, bottom: 0, left: 0 };
+
 /** The admin-editable fields. Upload metadata and the token hash are managed separately. */
 export const EventConfigInputSchema = z
   .object({
@@ -79,6 +90,8 @@ export const EventConfigInputSchema = z
     maxPrintsPerPerson: z.number().int().min(0).max(99),
     /** No print limit: `maxPrintsPerPerson` is ignored and no message or button mentions a count. */
     unlimitedPrints: z.boolean().default(false),
+    /** Printer calibration (D-45). Events saved before it existed have none. */
+    printCalibration: PrintCalibrationSchema.default(NO_CALIBRATION),
     promo: z.object({ enabled: z.boolean(), text: text(600) }),
     shareText: text(280),
     ctaText: z.object({ headline: text(80), steps: z.array(text(120)).max(5) }),
@@ -167,6 +180,7 @@ export function defaultConfig(name: string, qrSender: string): EventConfigInput 
     printingEnabled: false,
     maxPrintsPerPerson: 6,
     unlimitedPrints: false,
+    printCalibration: NO_CALIBRATION,
     promo: { enabled: false, text: DEFAULT_COPY.en.promo },
     shareText: DEFAULT_COPY.en.shareText,
     ctaText: { headline: DEFAULT_COPY.en.ctaHeadline, steps: [...DEFAULT_COPY.en.ctaSteps] },

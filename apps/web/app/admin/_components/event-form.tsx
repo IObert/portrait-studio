@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/admin/actions";
-import { DEFAULT_COPY, type EventConfigInput } from "@/lib/events/schema";
+import { DEFAULT_COPY, MAX_CLIP_MM, type EventConfigInput } from "@/lib/events/schema";
 import type { StyleId } from "@/lib/prompts/styles";
 import { btn, field, Panel, SECTIONS, type SectionId } from "./ui";
 
@@ -27,7 +27,7 @@ interface Props {
   senders: { e164: string; channel: "whatsapp" | "sms"; rcs?: boolean }[];
   submitLabel: string;
   /** Edit page only: widgets with their own actions, shown inside the section they belong to. */
-  slots?: { uploads: React.ReactNode; printAgent: React.ReactNode };
+  slots?: { uploads: React.ReactNode; printAgent: React.ReactNode; calibrationChart: React.ReactNode };
   /** Thumbnail for the "your own frame" tile, once one is uploaded. */
   framePreview?: string | null;
 }
@@ -397,6 +397,31 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
           <p className="mt-0.5 mb-3 text-sm text-slate">Runs on the laptop next to the printer and pulls print jobs from here.</p>
           {slots ? slots.printAgent : afterCreate("The printer token")}
         </div>
+      </Panel>
+
+      <Panel id="calibration" title={title("calibration")} description="Printers trim the edges of a print. Measure how much and every print is fitted inside what is left.">
+        {slots ? (
+          <>
+            <ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate">
+              <li>Print the clipping chart. The print agent must be running and printing on.</li>
+              <li>Hold the print with the arrow at the top. On each edge, find the lowest number you can still see.</li>
+              <li>Enter the four numbers below and save. 0 means that edge is not trimmed.</li>
+            </ol>
+            {slots.calibrationChart}
+            <div className="grid max-w-md grid-cols-2 gap-4 sm:grid-cols-4">
+              {([["top", "Top"], ["right", "Right"], ["bottom", "Bottom"], ["left", "Left"]] as const).map(([edge, label]) => (
+                <div key={edge}>
+                  <label className={field.label} htmlFor={`calibration-${edge}`}>{label}</label>
+                  <input id={`calibration-${edge}`} name={`calibration${label}`} type="number" min={0} max={MAX_CLIP_MM} defaultValue={config.printCalibration[edge]} className={field.input} />
+                  <FieldError state={state} name={`printCalibration.${edge}`} />
+                </div>
+              ))}
+            </div>
+            <p className={field.hint}>Lowest visible number per edge, in mm (0 to {MAX_CLIP_MM}). With any trimming, prints are scaled down slightly to fit.</p>
+          </>
+        ) : (
+          afterCreate("The clipping chart")
+        )}
       </Panel>
 
       <Panel id="leads" title={title("leads")}>

@@ -21,14 +21,29 @@ export const DS620_OPTIONS = {
   Resolution: "300x300dpi",
 } as const;
 
+/**
+ * CP-D70DW options ("MITSUBISHI CP70D Series" PPD, `lpoptions -p <queue> -l`). Its "10x15" page is landscape and a
+ * little bigger than 4x6 (448×295 pt), so a portrait picture is left to CUPS to turn instead of forcing
+ * `orientation-requested=3`. Checked on a real printer with the clipping chart (D-45).
+ */
+export const CP70_OPTIONS = { PageSize: "ME_10x15" } as const;
+
+export type Driver = "ds620" | "cp70";
+
+/** Which option set a queue needs, from `lpoptions -p <queue> -l`: the CP70 driver lists its `ME_10x15` page size. */
+export function driverOf(lpoptionsOutput: string): Driver {
+  return /^PageSize\/.*\bME_10x15\b/m.test(lpoptionsOutput) ? "cp70" : "ds620";
+}
+
 /** CUPS queue names: no leading dash, or lp would read it as an option (argument injection). */
 export function isSafeQueueName(queue: string): boolean {
   return /^[A-Za-z0-9_.][A-Za-z0-9_.-]{0,126}$/.test(queue);
 }
 
 /** `lp` arguments for one borderless 4x6 print. */
-export function lpArgs(queue: string, file: string): string[] {
+export function lpArgs(queue: string, file: string, driver: Driver = "ds620"): string[] {
   if (!isSafeQueueName(queue)) throw new Error("Invalid CUPS queue name");
+  if (driver === "cp70") return ["-d", queue, ...Object.entries(CP70_OPTIONS).flatMap(([k, v]) => ["-o", `${k}=${v}`]), "-o", "fit-to-page", "--", file];
   return [
     "-d", queue,
     ...Object.entries(DS620_OPTIONS).flatMap(([k, v]) => ["-o", `${k}=${v}`]),

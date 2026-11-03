@@ -4,6 +4,7 @@ import { startTransition, useActionState, useId, useRef, useState } from "react"
 import {
   type ActionState,
   deleteEventAction,
+  printClippingChartAction,
   removeAssetAction,
   rotatePrinterTokenAction,
   setStateAction,
@@ -132,6 +133,19 @@ export function AssetUpload({
         <Status state={upState} />
         <Status state={rmState} />
       </div>
+    </div>
+  );
+}
+
+/** Queues the clipping chart on the print agent (D-45). Sits in the settings form, so no nested <form>. */
+export function PrintClippingChart({ slug }: { slug: string }) {
+  const [state, action, pending] = useActionState(printClippingChartAction, {});
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button type="button" disabled={pending} className={`${btn.base} ${btn.secondary}`} onClick={() => send(action, { slug })}>
+        {pending ? "Sending…" : "Print clipping chart"}
+      </button>
+      <Status state={state} />
     </div>
   );
 }

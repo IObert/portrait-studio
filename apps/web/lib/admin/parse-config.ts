@@ -7,6 +7,7 @@ import { STYLE_IDS } from "../prompts/styles";
 export function parseConfig(form: FormData): EventConfigInput {
   const bool = (k: string) => form.get(k) === "on" || form.get(k) === "true";
   const num = (k: string) => Number(form.get(k) ?? Number.NaN);
+  const mm = (k: string) => Number(form.get(k) || 0);
   const list = <T extends readonly string[]>(k: string, allowed: T) =>
     form.getAll(k).map(String).filter((v): v is T[number] => (allowed as readonly string[]).includes(v));
   const laKings = bool("laKings");
@@ -33,6 +34,8 @@ export function parseConfig(form: FormData): EventConfigInput {
     printingEnabled,
     maxPrintsPerPerson: num("maxPrintsPerPerson"),
     unlimitedPrints: printingEnabled && bool("unlimitedPrints"),
+    // Absent on the create page, which has no calibration yet: nothing is trimmed.
+    printCalibration: { top: mm("calibrationTop"), right: mm("calibrationRight"), bottom: mm("calibrationBottom"), left: mm("calibrationLeft") },
     promo: { enabled: printingEnabled && bool("promoEnabled"), text: String(form.get("promoText") ?? "") },
     shareText: String(form.get("shareText") ?? ""),
     ctaText: {

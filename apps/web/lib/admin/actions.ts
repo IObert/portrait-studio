@@ -1,10 +1,15 @@
 "use server";
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { appDir } from "../app-dir";
 import { BlobPaths } from "../blob/paths";
 import { generatePrinterToken } from "../auth/printer-token";
+import { ChartError, queueClippingChart } from "../delivery/clipping-chart";
+import { getEnv, requireEnv } from "../env";
 import { deleteEvent } from "../events/delete";
 import { eventIdCandidate, eventIdFromName } from "../events/event-id";
 import { EventNotFound, InvalidTransition, SlugTaken } from "../events/repo";
@@ -17,6 +22,7 @@ import {
 } from "../events/schema";
 import { validateBackground, validateFrame } from "../images/validate-upload";
 import { log } from "../log";
+import { signMedia } from "../media-token";
 import { getServices } from "../services";
 import { SlugSchema } from "../sync/names";
 import { STYLE_IDS } from "../prompts/styles";
@@ -84,6 +90,7 @@ function echo(form: FormData): ActionState["values"] {
       printingEnabled: bool("printingEnabled"),
       maxPrintsPerPerson: num("maxPrintsPerPerson"),
       unlimitedPrints: bool("unlimitedPrints"),
+      printCalibration: { top: num("calibrationTop"), right: num("calibrationRight"), bottom: num("calibrationBottom"), left: num("calibrationLeft") },
       promo: { enabled: bool("promoEnabled"), text: str("promoText") },
       shareText: str("shareText"),
       ctaText: { headline: str("ctaHeadline"), steps: form.getAll("ctaStep").map(String) },
@@ -230,6 +237,31 @@ export async function rotatePrinterTokenAction(_prev: ActionState, form: FormDat
     return { ok: true, token };
   } catch (err) {
     return fail(err, "Could not generate a token");
+  }
+}
+
+/** Queues the clipping chart for the event's print agent (D-45). */
+export async function printClippingChartAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  await requireAdmin();
+  try {
+    const slug = SlugSchema.parse(form.get("slug"));
+    const event = await (await getEventRepo()).require(slug);
+    const env = requireEnv(getEnv(), ["MEDIA_SIGNING_SECRET", "PUBLIC_BASE_URL"]);
+    const { sync, blob } = getServices();
+    await queueClippingChart(
+      {
+        sync,
+        blob,
+        chart: () => readFile(path.join(appDir(), "assets/calibration/clipping-chart.png")),
+        mediaUrl: (p, ttl) => new URL(`/m/${signMedia(env.MEDIA_SIGNING_SECRET, p, ttl)}`, env.PUBLIC_BASE_URL).toString(),
+      },
+      event,
+    );
+    log.info({ event: "clipping_chart_queued", slug }, "clipping chart queued");
+    return { ok: true, message: "Chart sent to the print agent" };
+  } catch (err) {
+    if (err instanceof ChartError) return { message: err.message };
+    return fail(err, "Could not queue the chart");
   }
 }
 

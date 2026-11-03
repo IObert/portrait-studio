@@ -133,3 +133,15 @@ lp -d <queue> -o PageSize=dnp6x4 -o Cutter=Normal -o Finish=Glossy -o Resolution
 The option names were verified on a real DS620 with the DNP-DS620 PPD (`lpoptions -p <queue> -l`); they live in
 `DS620_OPTIONS` in `src/cups.ts`. The agent logs that command's output at start-up. `node agent.mjs doctor --fix`
 switches a queue to the DS620 driver and sets these values as the queue defaults (see README, "Printer doctor").
+
+### Mitsubishi CP-D70DW (D-45)
+
+A queue whose `lpoptions -p <queue> -l` lists the page size `ME_10x15` ("MITSUBISHI CP70D Series" PPD) is sent
+
+```
+lp -d <queue> -o PageSize=ME_10x15 -o fit-to-page <file.png>
+```
+
+That page is landscape (448×295 pt) and a little larger than 4x6, so the orientation is left to CUPS, which turns the
+portrait PNG. The server sends a PNG of exactly the page size (1229×1867) when the event has a printer calibration; see
+`lib/image/calibration.ts`. `doctor` does not know this printer.

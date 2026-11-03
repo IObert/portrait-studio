@@ -32,7 +32,7 @@ export function verifyMedia(secret: string, token: string, now = Date.now()): Me
     const claim = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as MediaClaim;
     if (typeof claim.p !== "string" || typeof claim.e !== "number") return null;
     // Only generated images may be served this way.
-    if (!/^events\/[a-z0-9-]+\/generated\/[A-Za-z0-9_-]+\.(jpg|print\.png)$/.test(claim.p)) return null;
+    if (!/^events\/[a-z0-9-]+\/generated\/[A-Za-z0-9_-]+\.(jpg|print\.png|chart\.png)$/.test(claim.p)) return null;
     return claim.e * 1000 > now ? claim : null;
   } catch {
     return null;

@@ -38,4 +38,14 @@ describe("event form parsing", () => {
     const cfg = parseConfig(form({ leadCollection: "on", printingEnabled: "on", promoEnabled: "on", emailShowSnippet: "on" }));
     expect(cfg).toMatchObject({ emailPromoCode: "KINGS10", emailShowSnippet: true, printingEnabled: true, promo: { enabled: true, text: "Win!" } });
   });
+
+  it("reads the four calibration numbers, and treats missing ones as nothing trimmed", () => {
+    expect(parseConfig(form({ calibrationTop: "2", calibrationRight: "3", calibrationBottom: "4", calibrationLeft: "1" })).printCalibration).toEqual({ top: 2, right: 3, bottom: 4, left: 1 });
+    expect(parseConfig(form()).printCalibration).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+    expect(parseConfig(form({ calibrationTop: "" })).printCalibration.top).toBe(0);
+  });
+
+  it("rejects calibration numbers the chart cannot give", () => {
+    for (const bad of ["13", "-1", "1.5", "abc"]) expect(() => parseConfig(form({ calibrationLeft: bad })), bad).toThrow();
+  });
 });

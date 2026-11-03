@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import sharp from "sharp";
+import { signMedia } from "../lib/media-token";
 
 // The ID is derived from the name (D-35): a unique name per run gives a predictable ID.
 const run = Date.now().toString(36);
@@ -89,6 +90,30 @@ test.describe.serial("admin events", () => {
     await page.reload();
     await expect(page.getByRole("heading", { name: `${eventName} (renamed)` })).toBeVisible();
     await expect(page.getByLabel("Printing enabled")).toBeChecked();
+  });
+
+  test("printer calibration: queues the clipping chart once and saves the four numbers (D-45)", async ({ page }) => {
+    await page.goto(`/admin/events/${slug}`);
+    await page.getByRole("button", { name: "Print clipping chart" }).click();
+    await expect(page.getByText("Chart sent to the print agent")).toBeVisible();
+    await page.getByRole("button", { name: "Print clipping chart" }).click();
+    await expect(page.getByText("A chart is already waiting to print")).toBeVisible();
+
+    await page.getByLabel("Top", { exact: true }).fill("2");
+    await page.getByLabel("Right", { exact: true }).fill("13");
+    await page.getByLabel("Bottom", { exact: true }).fill("4");
+    await page.getByLabel("Left", { exact: true }).fill("1");
+    await page.getByRole("button", { name: "Save" }).click();
+    // The browser stops 13 (the chart ends at 12) before anything is sent; the other numbers stay.
+    expect(await page.getByLabel("Right", { exact: true }).evaluate((el) => (el as HTMLInputElement).validity.rangeOverflow)).toBe(true);
+    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toHaveCount(0);
+    await expect(page.getByLabel("Top", { exact: true })).toHaveValue("2");
+
+    await page.getByLabel("Right", { exact: true }).fill("3");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+    await page.reload();
+    for (const [edge, mm] of [["Top", "2"], ["Right", "3"], ["Bottom", "4"], ["Left", "1"]]) await expect(page.getByLabel(edge!, { exact: true })).toHaveValue(mm!);
   });
 
   test("turning printing off saves, even with the promo still ticked inside the hidden panel", async ({ page }) => {
@@ -221,5 +246,18 @@ test.describe("stats (SPEC §10.5)", () => {
     // Leads are exported only with the leads:export script (user decision, D-31).
     await expect(page.getByRole("link", { name: /csv/i })).toHaveCount(0);
     expect((await request.get(`${baseURL}/admin/events/e2e-share/leads.csv`)).status()).toBe(404);
+  });
+});
+
+test.describe("printer calibration downloads (D-45)", () => {
+  // The secret the e2e server runs with (playwright.config.ts).
+  const link = (blobPath: string) => `/m/${signMedia("e2e-media-signing-secret-not-a-real-secret-000", blobPath, 300)}`;
+
+  test("a print is fitted to the event's calibration when the agent downloads it", async ({ request }) => {
+    const print = await request.get(link("events/e2e-booth/generated/e2e_slide_01.print.png"));
+    expect(print.status()).toBe(200);
+    const meta = await sharp(await print.body()).metadata();
+    // The event trims 1/2/3/4 mm: the print comes back at the chart's page size, not the original 1200×1800.
+    expect([meta.width, meta.height]).toEqual([1229, 1867]);
   });
 });
