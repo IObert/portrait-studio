@@ -123,7 +123,14 @@ See [docs/deployment.md](docs/deployment.md).
 5. **Review** tab: keep an eye on held-back portraits during the event.
 6. Afterwards, export leads with `pnpm --filter web leads:export`; reset counters with `pnpm --filter web stats:reset --event <id>`.
 
-### Booth printer (DNP DS620, 4x6)
+### Booth printer (4x6)
+
+Two printers are supported today: the **DNP DS620** and the **Mitsubishi CP-D70DW**. The list can be extended: the agent
+works with any CUPS queue, and only the driver's option names are specific to a model (see
+[Supported printers](apps/print-agent/README.md#supported-printers) in the print agent README). The steps below are for
+the DS620. For the CP-D70DW, install Mitsubishi's driver ("CP-D70 series" on their
+[download page](https://www.mitsubishielectric.com/printer/dowmload-01/)) instead of step 2, skip step 4 (the doctor only
+knows the DS620) and measure the printer's trimmed edges in the event's "Printer calibration" section.
 
 On the booth laptop (macOS; Windows is beta, Linux not yet supported):
 

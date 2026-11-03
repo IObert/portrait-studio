@@ -1,13 +1,13 @@
 # Portrait Studio print agent
 
-Prints portraits at the booth on a DNP DS620 (4x6), or to a folder in simulator mode.
+Prints portraits at the booth on a DNP DS620 or a Mitsubishi CP-D70DW (4x6), or to a folder in simulator mode.
 It runs on the booth computer, needs no installation, and is a plain Node.js script, never a
 compiled binary or app bundle, so macOS Gatekeeper does not get in the way (SPEC §11.1).
 
 ## Requirements
 
 - **Node.js 24 or newer** (`node --version`)
-- For real printing: CUPS with the DNP DS620 queue set up (`lpstat -p`)
+- For real printing: CUPS with the printer's queue set up (`lpstat -p`)
 - The event's **printer token**, shown in the admin UI with a ready-to-copy command
 
 ## Run it
@@ -23,6 +23,24 @@ With a printer:
 ```sh
 node agent.mjs --url https://<app> --token <event>.XXXX-XXXX-XXXX-XXXX --printer DNP_DS620
 ```
+
+## Supported printers
+
+| Printer | Driver | What the agent sends |
+|---|---|---|
+| DNP DS620 | DNP's `DNP-DS620` PPD | `PageSize=dnp6x4`, `Cutter`, `Finish`, `Resolution`, portrait |
+| Mitsubishi CP-D70DW | "MITSUBISHI CP70D Series" PPD | `PageSize=ME_10x15`, `fit-to-page`; CUPS turns the portrait picture onto its landscape page |
+
+These two are what is supported now, and the list can be extended. The agent prints to any CUPS queue; what differs per
+driver is the option names. It reads the queue's `lpoptions -p <queue> -l` once and picks the set that fits. A queue it does
+not recognise gets the DS620 options, which a different driver ignores, so the print comes out on that queue's default page.
+To add a printer:
+
+1. Install its driver and look at the real option names: `lpoptions -p <queue> -l`.
+2. In `src/cups.ts`, add an options constant, a name to `Driver`, a rule for it in `driverOf` and a branch in `lpArgs`.
+3. Add a case to `tests/cups-queue.test.ts` with the real `lpoptions` output, and note it in [PROTOCOL.md](PROTOCOL.md) §5.
+4. For the web app's "Printer calibration", the chart and `CALIBRATION_PAGE` are sized for the CP-D70DW; another model needs
+   its own (D-45). `doctor` only knows the DS620.
 
 ## Printer doctor
 
