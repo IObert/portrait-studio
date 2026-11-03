@@ -29,6 +29,11 @@ describe("event form parsing", () => {
     expect(cfg).toMatchObject({ leadCollection: false, emailPromoCode: "", emailShowSnippet: false });
   });
 
+  it("unlimited prints needs printing on", () => {
+    expect(parseConfig(form({ printingEnabled: "on", unlimitedPrints: "on" })).unlimitedPrints).toBe(true);
+    expect(parseConfig(form({ printingEnabled: null, unlimitedPrints: "on" })).unlimitedPrints).toBe(false);
+  });
+
   it("keeps the options while their toggle is on", () => {
     const cfg = parseConfig(form({ leadCollection: "on", printingEnabled: "on", promoEnabled: "on", emailShowSnippet: "on" }));
     expect(cfg).toMatchObject({ emailPromoCode: "KINGS10", emailShowSnippet: true, printingEnabled: true, promo: { enabled: true, text: "Win!" } });
