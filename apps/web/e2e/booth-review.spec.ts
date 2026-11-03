@@ -6,10 +6,11 @@ const BOOTH = "/booth/e2e-booth";
 const REVIEW = "/admin/events/e2e-booth/review";
 
 test.describe.serial("booth screen and review (SPEC §10.3, §10.4)", () => {
-  test("booth needs basic auth", async ({ browser, baseURL }) => {
+  test("the booth is public, the admin is not", async ({ browser, baseURL }) => {
     const anon = await browser.newContext({ httpCredentials: undefined });
-    expect((await anon.request.get(`${baseURL}${BOOTH}`)).status()).toBe(401);
-    expect((await anon.request.get(`${baseURL}${BOOTH}/stream`)).status()).toBe(401);
+    expect((await anon.request.get(`${baseURL}${BOOTH}`)).status()).toBe(200);
+    expect((await anon.request.get(`${baseURL}/admin`)).status()).toBe(401);
+    expect((await anon.request.get(`${baseURL}/admin/events/e2e-booth`)).status()).toBe(401);
     await anon.close();
   });
 

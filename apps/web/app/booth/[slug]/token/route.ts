@@ -1,6 +1,5 @@
 import { connection } from "next/server";
 import { getEventRepo } from "@/lib/admin/context";
-import { requireAdmin } from "@/lib/admin/guard";
 import { publishBooth } from "@/lib/booth/state";
 import { boothToken } from "@/lib/booth/token";
 import { log } from "@/lib/log";
@@ -8,13 +7,12 @@ import { getServices } from "@/lib/services";
 import { SlugSchema } from "@/lib/sync/names";
 
 /**
- * Read-only Sync token for the booth screen (D-17). Behind basic auth
- * (proxy.ts, re-checked here). The browser calls it at start and when the
+ * Read-only Sync token for the booth screen (D-17). Public like the screen
+ * itself (no basic auth, so a kiosk needs no login). The browser calls it at start and when the
  * token is about to expire.
  */
 export async function GET(_req: Request, ctx: RouteContext<"/booth/[slug]/token">) {
   await connection();
-  await requireAdmin();
   const slug = SlugSchema.safeParse((await ctx.params).slug);
   if (!slug.success) return new Response("Not found", { status: 404 });
   const event = await (await getEventRepo()).get(slug.data);

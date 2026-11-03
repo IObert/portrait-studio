@@ -128,7 +128,7 @@ client SDK** (`twilio-sync`): Sync pushes changes, with no polling.
   number, and the localized break and ended texts. There is no personal data in it. `EventRepo.onChange` republishes
   it on every event write.
 - Slideshow items carry their signed image URL, so a push contains everything the screen needs.
-- `/booth/<slug>/token` (basic auth) mints a 1-hour read-only token for the identity `booth:<slug>`, granted read on
+- `/booth/<slug>/token` (public, like the booth screen) mints a 1-hour read-only token for the identity `booth:<slug>`, granted read on
   `ev_<slug>_booth` and `ev_<slug>_slideshow` only. The service has ACLs on, so everything else is denied with 54007.
   This was verified live against `events`, `sessions`, `jobs` and `leads`. The browser opens objects with
   `open_existing`, since creating them would need write access, and refreshes the token before it expires.

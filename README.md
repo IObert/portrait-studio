@@ -13,7 +13,7 @@ How a selfie becomes a portrait, step by step: [docs/how-it-works.md](docs/how-i
 | Event **Settings** | Staff | Configure the event: name, language, styles, backgrounds, frame, uploads, limits, QR number and message, leads, printing, LA Kings promotion. Go live / Break / End. Printer token and agent command. |
 | Event **Review** | Staff | Triage portraits: **Approve & send** or **Discard** the ones the AI check held back; **Remove** a delivered one, **Reprint** it (not counted against the attendee), or take it off the print queue |
 | Event **Stats** | Staff | Counters, delivery time, per style and background, print agent status |
-| `/booth/<event>` | Booth display (basic auth) | Full-screen QR code, call to action and live slideshow; break and ended screens |
+| `/booth/<event>` | Booth display (public, no login) | Full-screen QR code, call to action and live slideshow; break and ended screens |
 | `/s/<share id>` | Attendees | Their portrait: download, share, and print at the booth if prints are left |
 
 ## How it fits together
@@ -60,7 +60,7 @@ for another project is never used by mistake.
 | Variables | Where they come from |
 |---|---|
 | `PUBLIC_BASE_URL` | Your tunnel (`https://<name>.ngrok.app`) locally; printed by `./deploy.sh` on Azure |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | You choose. Basic auth for `/admin` and `/booth` |
+| `ADMIN_USER`, `ADMIN_PASSWORD` | You choose. Basic auth for `/admin` |
 | `MEDIA_SIGNING_SECRET`, `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Generate once: `openssl rand -base64 48` / `32` |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Console → Account info |
 | `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET` | Console → API keys & tokens → Create API key (Standard) |

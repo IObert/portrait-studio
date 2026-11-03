@@ -586,7 +586,7 @@ A job with a single style and background goes from `screening` straight to `queu
 ## 10. Web app surfaces (Next.js)
 
 ### 10.1 Auth
-- **Basic auth** (`ADMIN_USER` and `ADMIN_PASSWORD` environment variables), enforced in `proxy.ts` (Next.js's middleware). It covers `/admin/**` and `/booth/**`, and fails closed when the variables are not set. Server Actions check the admin again.
+- **Basic auth** (`ADMIN_USER` and `ADMIN_PASSWORD` environment variables), enforced in `proxy.ts` (Next.js's middleware). It covers `/admin/**` only: the booth screen (`/booth/**`) is public so a kiosk needs no login. It fails closed when the variables are not set. Server Actions check the admin again.
 - **Public routes:**
   - `/api/twilio/*` (Twilio signature required)
   - `/s/*`
