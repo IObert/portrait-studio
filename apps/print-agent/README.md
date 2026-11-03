@@ -154,4 +154,17 @@ spooler with PowerShell instead of CUPS; `--printer` is the Windows printer name
 - Turn on **Keep printed documents** (`node agent.mjs doctor --fix` in an Administrator terminal). Without it the
   agent cannot tell a printed job from a cancelled one.
 
+Tips if the driver will not install on Windows 10:
+
+- Right-click the downloaded zip → Properties → **Unblock** (if shown), then Extract All. Running the installer from
+  inside the zip does nothing. Run `setup.exe` from the extracted folder as administrator.
+- The printer often does not show up under "Add a printer or scanner" until its driver is installed. In Device
+  Manager (Win+X) it appears as an unknown device or one with a yellow triangle. Plug it straight into the PC, not a hub.
+- **Install the driver by hand if the installer still fails:**
+  - Open Device Manager, right-click the unknown device and choose Update driver → Browse my computer → Let me pick,
+    or point it at the extracted folder.
+  - Or go to Settings → Printers & scanners → Add a printer or scanner → The printer that I want isn't listed → Add a
+    local printer → Use an existing port (USB001) → Have Disk…, then browse to the `.inf` file in the extracted
+    driver folder.
+
 The protocol between the agent and the server is documented in [PROTOCOL.md](PROTOCOL.md).
