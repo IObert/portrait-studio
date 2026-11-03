@@ -39,6 +39,17 @@ describe("CUPS command (SPEC §11.2, §16)", () => {
   });
 });
 
+describe("lpstat status after a failed print", () => {
+  // `lpstat -p` on the CP-D70DW after job 43 failed with com.mitsubishi-error0023.
+  const AFTER_FAILED = "printer MITSUBISHI_CP60D70D707D is idle.  enabled since Tue Nov  3 16:12:51 2026\n\tFilter failed\n";
+  it("does not hold the queue for the leftover Filter failed message", () => {
+    expect(parseLpstat(AFTER_FAILED, 0)).toEqual({ status: "idle", detail: "the last print failed (Filter failed)" });
+  });
+  it("shows the reason, not the state line, for a real error", () => {
+    expect(parseLpstat("printer Q is idle.  enabled since Mon\n\tCover open or fault\n", 0)).toEqual({ status: "error", detail: "Cover open or fault" });
+  });
+});
+
 describe("lpstat status (SPEC §11.2)", () => {
   it.each([
     ["printer DNP_DS620 is idle.  enabled since Mon", 0, "idle"],
@@ -47,7 +58,8 @@ describe("lpstat status (SPEC §11.2)", () => {
     ["printer DNP_DS620 is idle.\n\tMedia empty or ribbon end", 0, "out_of_paper"],
     ["printer DNP_DS620 is idle.\n\tWaiting for printer to become available.", 0, "offline"],
     ["lpstat: Invalid destination name in list \"NOPE\".", 1, "offline"],
-    ["printer DNP_DS620 is idle.\n\tFilter failed", 0, "error"],
+    ["printer DNP_DS620 is idle.\n\tFilter failed", 0, "idle"],
+    ["printer DNP_DS620 is idle.\n\tUnrecoverable fault", 0, "error"],
   ])("%s → %s", (out, code, status) => {
     expect(parseLpstat(out, code).status).toBe(status);
   });

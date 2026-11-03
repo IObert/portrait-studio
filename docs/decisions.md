@@ -194,7 +194,7 @@ API is needed.
 - The server settles prints (`lib/pipeline/prints.ts`): counts successes toward `maxPrintsPerPerson`, releases
   reservations, sends the promo once per printed job (§5.9), and requeues or fails jobs whose lease expired 5 min
   ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (Q5).
-- The admin command now defaults to `--simulate`, since it works with no printer attached.
+- The admin command now defaults to `--simulate`, since it works with no printer attached. (Replaced by D-46: the command names no printer and the agent asks.)
 
 ### D-24 Attendees choose what to print (user decision)
 *2026-10-14. Changes SPEC §6.1, §9.2 and §11: nothing is printed automatically any more.*
@@ -570,4 +570,24 @@ second copy:
   `-o PageSize=ME_10x15 -o fit-to-page`, with no forced orientation, since that page is landscape and CUPS turns the portrait
   picture; anything else keeps the DS620 options (PROTOCOL.md §5).
 - **Limits.** The canvas is fixed to the CP-D70DW page, so the numbers only mean mm on that printer. Another model needs
-  its own chart and `CALIBRATION_PAGE`. A DS620 event should leave all four at 0. The doctor still only knows the DS620.
+  its own chart and `CALIBRATION_PAGE`. A DS620 event should leave all four at 0. The doctor learned the CP-D70DW in D-46.
+
+### D-46 The doctor knows both printers; the agent asks which printer to use (user decision)
+*2026-11-03. Found after D-45: `printer:doctor` still checked everything against the DS620, and the admin command still said `--simulate`.*
+- **Doctor profiles.** `PROFILES` in `apps/print-agent/src/doctor.ts` holds, per printer: how to recognise it (device URI, queue
+  name or driver name), its own driver, the queue defaults, the name of a queue it creates. The doctor works out which printer a
+  queue is for from its device, then its driver, then the page sizes the driver lists (`ME_10x15` vs `dnp6x4`). If that says
+  nothing, `--model ds620|cp70` decides; it never falls back to the DS620. Several queues are listed, not guessed at.
+- **CP-D70DW defaults are only `PageSize=ME_10x15`.** That is the one option name checked on the real printer (D-45). More
+  can be added to its profile once `lpoptions -p <queue> -l` has been looked at. Its driver is recognised by description, not
+  file name, because the PPD's file name was not seen on a real Mac.
+- **Windows.** The Windows doctor is unchanged and still only knows the DS620.
+- **Start-up question.** With neither `--printer` nor `--simulate`, the agent lists the simulator (1, also the answer to Enter)
+  and the printers from `lpstat -p` (`Get-Printer` on Windows), labels the supported models, and asks for a number. It logs the
+  flag that skips the question. Without a terminal it exits with code 2. `--printer` together with `--simulate` is refused.
+- **Admin command.** It is now `node agent.mjs --url <app> --token <token>`: no printer, no `--simulate`, no `--out` (the
+  default `./prints` is the same). This replaces the `--simulate` default from D-33.
+- **Leftover "Filter failed".** CUPS keeps this on the queue after a print failed, even when the printer is idle again (seen on the
+  CP-D70DW: `com.mitsubishi-error0023`). `parseLpstat` no longer treats it as an `error` that holds back the next print; the status
+  stays `idle` with the note "the last print failed". The failed print is still reported by its own job. For other errors, the detail
+  is now the reason line, not the "is idle" state line.

@@ -67,16 +67,23 @@ export type PrinterStatus = "idle" | "printing" | "offline" | "paused" | "out_of
  * out-of-paper and error). `detail` is a short, non-personal reason.
  */
 export function parseLpstat(output: string, exitCode: number): { status: PrinterStatus; detail: string } {
-  const text = output.trim();
+  // CUPS keeps "Filter failed" on the queue after a print failed, even when the printer is idle again and
+  // whatever it complained about is gone. That print is reported by its own job (ipptool); the queue is
+  // not unready for it, so it must not hold back the next print.
+  const lines = output.split("\n");
+  const filterFailed = lines.some((l) => /^\s*filter failed\s*$/i.test(l));
+  const text = lines.filter((l) => !/^\s*filter failed\s*$/i.test(l)).join("\n").trim();
   const lower = text.toLowerCase();
+  // `lpstat -p` puts the state on the first line and the reason on the lines after it.
+  const reason = firstLine(text.split("\n").slice(1).join("\n")) || firstLine(text);
   if (exitCode !== 0 || !text || /invalid destination|does not exist|unknown destination|not found/.test(lower)) return { status: "offline", detail: firstLine(text) || "queue not found" };
   if (/out of paper|media.?empty|media.?needed|no media|ribbon/.test(lower)) return { status: "out_of_paper", detail: firstLine(text) };
   if (/disabled|paused|stopped/.test(lower)) return { status: "paused", detail: firstLine(text) };
   if (/offline|not connected|unable to connect|unplugged|waiting for printer/.test(lower)) return { status: "offline", detail: firstLine(text) };
-  if (/error|fault|failed/.test(lower)) return { status: "error", detail: firstLine(text) };
+  if (/error|fault|failed/.test(lower)) return { status: "error", detail: reason };
   if (/now printing|is printing|processing/.test(lower)) return { status: "printing", detail: "" };
-  if (/is idle|enabled/.test(lower)) return { status: "idle", detail: "" };
-  return { status: "error", detail: firstLine(text) };
+  if (/is idle|enabled/.test(lower)) return { status: "idle", detail: filterFailed ? "the last print failed (Filter failed)" : "" };
+  return { status: "error", detail: reason };
 }
 
 function firstLine(s: string): string {

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { AgentUnauthorized, AGENT_VERSION, runAgent } from "./agent.js";
+import { askForPrinter, describeChoices, listPrinters } from "./choose.js";
 import { parseAgentArgs, parseDoctorArgs, USAGE } from "./args.js";
 import { runDoctor } from "./doctor.js";
 import { log } from "./log.js";
@@ -41,13 +42,26 @@ if (major < 24) {
   process.exit(2);
 }
 
-// parseAgentArgs guarantees --printer unless --simulate.
+// Neither --printer nor --simulate: ask, so the command in the admin UI names no printer.
+let printerName = args.printer;
+let simulate = args.simulate;
+if (!simulate && !printerName) {
+  if (!process.stdin.isTTY) {
+    console.error(`Say which printer to use: --printer <queue> or --simulate. It can only ask in a terminal.\n\n${USAGE}`);
+    process.exit(2);
+  }
+  const picked = await askForPrinter(describeChoices(await listPrinters(isWindows)));
+  if (picked.kind === "simulate") simulate = true;
+  else printerName = picked.name;
+}
+
 // TODO(linux): CUPS works on Linux, but the DNP driver is macOS/Windows only. With Gutenprint the
 // DS620 option names differ (see DS620_OPTIONS in cups.ts), so pick the option set by driver.
-const printer = args.simulate || !args.printer ? simulatedPrinter(args.out) : isWindows ? windowsPrinter(args.printer, args.out) : cupsPrinter(args.printer, args.out);
+const printer = simulate || !printerName ? simulatedPrinter(args.out) : isWindows ? windowsPrinter(printerName, args.out) : cupsPrinter(printerName, args.out);
 log("info", `Portrait Studio print agent ${AGENT_VERSION} (server ${new URL(args.url).origin})`);
-log("info", args.simulate ? "Simulator mode: nothing goes to a printer" : `${isWindows ? "Windows printer" : "Printer queue"}: ${args.printer}`);
-if (isWindows && !args.simulate) log("warn", WINDOWS_BETA_NOTICE);
+log("info", simulate ? "Simulator mode: nothing goes to a printer" : `${isWindows ? "Windows printer" : "Printer queue"}: ${printerName}`);
+if (!args.printer && !args.simulate) log("info", simulate ? "Next time add --simulate to skip the question." : `Next time add --printer ${JSON.stringify(printerName)} to skip the question.`);
+if (isWindows && !simulate) log("warn", WINDOWS_BETA_NOTICE);
 log("info", `A copy of every print is saved in ${path.resolve(args.out)}`);
 
 const controller = new AbortController();

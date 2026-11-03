@@ -659,16 +659,16 @@ There is no privacy page of our own (D-19). Every consent message and the verifi
 - **Nothing to install at runtime.** The `twilio-sync` SDK is shipped as a pre-bundled single file, `dist/agent.mjs` (esbuild). It was checked on real Node (D-22): the bundle needs a `createRequire` banner, and CI starts the built bundle so this cannot regress. There is no polling fallback.
 - **How it is started:**
   ```
-  node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue>] [--simulate --out ./prints]
+  node agent.mjs --url https://<app> --token <event printer token> [--printer <queue> | --simulate] [--out ./prints]
   ```
-  The admin UI shows this command with the values filled in (D-33).
-- **Printer doctor.** `node agent.mjs doctor [--fix]` checks the CUPS queue (driver, paused or rejecting queue, the defaults below) and repairs what it can.
+  The admin UI shows this command with the values filled in (D-33), without a printer: when neither `--printer` nor `--simulate` is given, the agent lists the simulator and the printers it finds and asks which to use (D-46). Without a terminal it exits with an error instead.
+- **Printer doctor.** `node agent.mjs doctor [--printer <queue>] [--model ds620|cp70] [--fix]` checks the CUPS queue of a supported printer (its own driver, paused or rejecting queue, the defaults below) and repairs what it can. It works out which printer a queue is for (D-46).
 - No auto-start at login (decided).
 - macOS with CUPS is the tested platform. Windows printing is a beta, not yet tested on a real booth PC. Linux printing is a known gap (`TODO(linux)`).
 
 ### 11.2 Behavior
 - **Auth.** The agent exchanges its printer token at `/api/agent/token` for a Sync token for the identity `printer:<slug>`. That token can read and write only `ev_<slug>_print` and `ev_<slug>_printer`; everything else is denied. An unknown event, a rotated token and printing switched off all return the same 401. The agent refreshes the token before it expires (D-23).
-- **One printer per event.** It must be a DNP DS620 using 4x6 paper.
+- **One printer per event.** A DNP DS620 or a Mitsubishi CP-D70DW (D-45), using 4x6 paper. The rest of this section describes the DS620 print command; the CP-D70DW's is in `apps/print-agent/PROTOCOL.md` §5.
 - **Print command:** `lp -d <queue> -o PageSize=dnp6x4 -o Cutter=Normal -o Finish=Glossy -o Resolution=300x300dpi`, plus `fit-to-page` and `print-scaling=fill` so the print is borderless. Confirmed on paper: no white edge and nothing cropped (the printer itself cuts a few millimetres, §8.3). The doctor sets these as the queue's defaults.
 - **One print, one copy (D-25).** A print is submitted to CUPS once, and its request id is stored on the item (`printerJobId`). After that the agent only waits for that job or cancels it. A printer that is off, paused or out of paper is a reason to wait: the agent keeps its lease and takes nothing new. Done means IPP `job-state = completed`. Before any retry or final failure the CUPS job is cancelled. A job that stalls for 10 minutes while the printer reports ready counts as an error.
 - **Printer health.** Check the queue regularly for offline, paused, out-of-paper and error states. Report the status and a heartbeat every 15 seconds to `ev_<slug>_printer`. The admin UI and stats show it.
@@ -682,7 +682,7 @@ There is no privacy page of our own (D-19). Every consent message and the verifi
   The agent reads the first 100 items of the queue per look (`TODO(print-queue-pagination)`).
 - **Stuck jobs.** The server (`lib/pipeline/prints.ts`) puts a `claimed` item, or a `printing` item without a `printerJobId`, whose lease ran out 5 minutes ago back to `queued`, or fails it after 3 attempts. A `printing` item that has a `printerJobId` is never requeued, because that copy may already be on paper; the next agent resumes it.
 - **Settlement.** The server counts successful prints toward `maxPrintsPerPerson`, releases the reservation of a failed one, and sends the promo once per printed job. An item that does not parse is skipped and logged, so one bad item cannot stop it.
-- **Simulator (`--simulate`).** No printer is needed. "Printing" writes the PNG to `--out` with a short delay. This mode is the required hardware simulator. Real prints also keep a copy of every print in the output folder.
+- **Simulator (`--simulate`, or the first choice in the start-up question).** No printer is needed. "Printing" writes the PNG to `--out` with a short delay. This mode is the required hardware simulator. Real prints also keep a copy of every print in the output folder.
 - **Network drops.** Reconnect with back-off (1 s, doubling to 60 s while connecting keeps failing, starting over after a session that lasted a minute) and carry on with items that are still queued. With no successful heartbeat for 60 seconds the agent drops the session and starts a fresh one with a new token; a print at the printer is resumed (D-32).
 - Logs go to the console as readable lines.
 

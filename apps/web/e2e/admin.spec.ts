@@ -162,6 +162,9 @@ test.describe.serial("admin events", () => {
     const value = (await token.textContent())!;
     await expect(page.getByTestId("agent-command")).toContainText(`node agent.mjs --url http://localhost:`);
     await expect(page.getByTestId("agent-command")).toContainText(`--token ${value}`);
+    // No printer in the command: the agent asks which one (D-46).
+    await expect(page.getByTestId("agent-command")).not.toContainText("--printer");
+    await expect(page.getByTestId("agent-command")).not.toContainText("--simulate");
     // Still there after a reload: the operator types it in on the printer laptop.
     await page.reload();
     await expect(page.getByTestId("agent-token")).toHaveText(value);

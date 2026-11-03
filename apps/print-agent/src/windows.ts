@@ -326,6 +326,15 @@ export interface WindowsPrinterFacts {
   papers: string[];
 }
 
+/** All printer names, for the agent's start-up question. */
+export const LIST_PRINTERS_SCRIPT = `${PRELUDE}ConvertTo-Json -InputObject @(Get-Printer | ForEach-Object { $_.Name }) -Compress
+`;
+
+export function parsePrinterList(output: string): string[] {
+  const parsed = parseJson<unknown>(output);
+  return Array.isArray(parsed) ? parsed.filter((n): n is string => typeof n === "string" && isSafePrinterName(n)) : [];
+}
+
 /** DS620 printers (or the one named in `$env:PSA_PRINTER`) with their driver and paper sizes. */
 export const DOCTOR_FACTS_SCRIPT = `${PRELUDE}Add-Type -AssemblyName System.Drawing
 if ($env:PSA_PRINTER) { $all = @(Get-Printer -Name $env:PSA_PRINTER -ErrorAction SilentlyContinue) }

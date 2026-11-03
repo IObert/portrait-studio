@@ -129,8 +129,9 @@ Two printers are supported today: the **DNP DS620** and the **Mitsubishi CP-D70D
 works with any CUPS queue, and only the driver's option names are specific to a model (see
 [Supported printers](apps/print-agent/README.md#supported-printers) in the print agent README). The steps below are for
 the DS620. For the CP-D70DW, install Mitsubishi's driver ("CP-D70 series" on their
-[download page](https://www.mitsubishielectric.com/printer/dowmload-01/)) instead of step 2, skip step 4 (the doctor only
-knows the DS620) and measure the printer's trimmed edges in the event's "Printer calibration" section.
+[download page](https://www.mitsubishielectric.com/printer/dowmload-01/)) instead of step 2; the doctor in step 4 knows
+both printers and works out which one it is looking at. Then measure the printer's trimmed edges in the event's
+"Printer calibration" section.
 
 On the booth laptop (macOS; Windows is beta, Linux not yet supported):
 
@@ -139,16 +140,17 @@ On the booth laptop (macOS; Windows is beta, Linux not yet supported):
    the printer by USB. macOS's automatic *Generic PostScript* driver prints the wrong size.
 3. **Copy the agent**: build it with `pnpm --filter @portrait-studio/print-agent build` and copy
    `apps/print-agent/dist/agent.mjs` to the laptop. It is one file with nothing to install.
-4. **Run the printer doctor**, which checks and fixes the print queue: DS620 driver, paused queue, 4x6 glossy
-   defaults, and creates the queue if none exists.
+4. **Run the printer doctor**, which checks and fixes the print queue: the printer's own driver, a paused queue, the
+   print defaults (4x6 glossy for the DS620), and creates the queue if none exists.
 
    ```sh
    node agent.mjs doctor          # check only
    node agent.mjs doctor --fix    # repair (prefix with sudo if it asks for admin rights)
    ```
 
-5. **Start the agent** with the command from the event page (token and URL filled in). Try `--simulate` first, then
-   replace `--simulate --out ./prints` with `--printer <queue>` (the queue name doctor printed).
+5. **Start the agent** with the command from the event page (token and URL filled in). It names no printer: the agent
+   lists the simulator and the printers it finds and asks which to use. Try the simulator first, then start it again and
+   pick the printer. To skip the question, add `--simulate` or `--printer <queue>` (the queue name doctor printed).
 
 The event page shows the printer's status. See the [print agent README](apps/print-agent/README.md) for flags and
 troubleshooting.
