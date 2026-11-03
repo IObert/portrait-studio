@@ -32,6 +32,7 @@ export function parseConfig(form: FormData): EventConfigInput {
     maxImagesPerPerson: num("maxImagesPerPerson"),
     printingEnabled,
     maxPrintsPerPerson: num("maxPrintsPerPerson"),
+    unlimitedPrints: printingEnabled && bool("unlimitedPrints"),
     promo: { enabled: printingEnabled && bool("promoEnabled"), text: String(form.get("promoText") ?? "") },
     shareText: String(form.get("shareText") ?? ""),
     ctaText: {

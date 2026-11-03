@@ -77,6 +77,8 @@ export const EventConfigInputSchema = z
     maxImagesPerPerson: z.number().int().min(1).max(99),
     printingEnabled: z.boolean(),
     maxPrintsPerPerson: z.number().int().min(0).max(99),
+    /** No print limit: `maxPrintsPerPerson` is ignored and no message or button mentions a count. */
+    unlimitedPrints: z.boolean().default(false),
     promo: z.object({ enabled: z.boolean(), text: text(600) }),
     shareText: text(280),
     ctaText: z.object({ headline: text(80), steps: z.array(text(120)).max(5) }),
@@ -164,6 +166,7 @@ export function defaultConfig(name: string, qrSender: string): EventConfigInput 
     maxImagesPerPerson: 10,
     printingEnabled: false,
     maxPrintsPerPerson: 6,
+    unlimitedPrints: false,
     promo: { enabled: false, text: DEFAULT_COPY.en.promo },
     shareText: DEFAULT_COPY.en.shareText,
     ctaText: { headline: DEFAULT_COPY.en.ctaHeadline, steps: [...DEFAULT_COPY.en.ctaSteps] },

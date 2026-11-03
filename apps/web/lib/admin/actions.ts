@@ -83,6 +83,7 @@ function echo(form: FormData): ActionState["values"] {
       maxImagesPerPerson: num("maxImagesPerPerson"),
       printingEnabled: bool("printingEnabled"),
       maxPrintsPerPerson: num("maxPrintsPerPerson"),
+      unlimitedPrints: bool("unlimitedPrints"),
       promo: { enabled: bool("promoEnabled"), text: str("promoText") },
       shareText: str("shareText"),
       ctaText: { headline: str("ctaHeadline"), steps: form.getAll("ctaStep").map(String) },
