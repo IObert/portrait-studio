@@ -97,40 +97,42 @@ export function BoothScreen({ slug, initialDoc, initialSlides }: { slug: string;
   return (
     <main lang={doc.locale === "pt_BR" ? "pt-BR" : "en"} className="relative flex h-screen w-screen overflow-hidden bg-ink bg-[radial-gradient(60vh_60vh_at_0%_100%,rgb(239_34_58/0.22),transparent)] text-white" data-state={doc.state}>
       {doc.state === "live" ? (
-        // CTA + QR always keep the left 55%; the 2:3 slideshow fits the rest by height.
-        <div className="flex h-full w-full gap-[4vw] p-[5vh] portrait:flex-col portrait:gap-[3vh] portrait:p-[4vw]">
-          <section className="flex w-[55%] shrink-0 flex-col justify-between portrait:w-full portrait:gap-[3vh]">
+        // Landscape: CTA + QR keep the left 55%; the 2:3 slideshow fits the rest by height.
+        // Portrait (vertical monitor): lockup on top, the portrait pile gets all the room in the middle,
+        // headline, steps and QR sit in a band below. vw units there: on a tall screen vh is the long side.
+        <div className="flex h-full w-full gap-[4vw] p-[5vh] portrait:flex-col portrait:gap-[3vw] portrait:p-[5vw]">
+          <section className="flex w-[55%] shrink-0 flex-col justify-between portrait:contents">
             <Lockup />
-            <div className="flex flex-col gap-[5vh]">
-              <h1 className="font-display text-[6.5vh] portrait:text-[5vh] leading-[1.02] font-semibold tracking-tight text-balance">{doc.cta.headline || doc.name}</h1>
+            <div className="flex flex-col gap-[5vh] portrait:order-3 portrait:grid portrait:grid-cols-[1fr_auto] portrait:items-center portrait:gap-x-[4vw] portrait:gap-y-[3.2vw]">
+              <h1 className="font-display text-[6.5vh] leading-[1.02] font-semibold tracking-tight text-balance portrait:self-end portrait:text-[6.2vw]">{doc.cta.headline || doc.name}</h1>
               {doc.cta.steps.length > 0 && (
-                <ol className="space-y-[2.2vh] text-[3vh] leading-snug">
+                <ol className="space-y-[2.2vh] text-[3vh] leading-snug portrait:space-y-[1.6vw] portrait:self-start portrait:text-[3.8vw]">
                   {doc.cta.steps.map((s, i) => (
-                    <li key={i} className="flex items-center gap-[1.5vw]">
-                      <span className="flex h-[5.2vh] w-[5.2vh] shrink-0 items-center justify-center rounded-full bg-signal font-display text-[2.6vh] font-semibold">{i + 1}</span>
+                    <li key={i} className="flex items-center gap-[1.5vw] portrait:gap-[2.6vw]">
+                      <span className="flex h-[5.2vh] w-[5.2vh] shrink-0 items-center justify-center rounded-full bg-signal font-display text-[2.6vh] font-semibold portrait:h-[6.4vw] portrait:w-[6.4vw] portrait:text-[3.4vw]">{i + 1}</span>
                       <span>{s}</span>
                     </li>
                   ))}
                 </ol>
               )}
-              <div className="flex items-center gap-[2.4vw] portrait:gap-[4vw]">
-                <div className="aspect-square h-[30vh] shrink-0 rounded-[2vh] portrait:h-[20vh] bg-white p-[1.2vh] shadow-[0_0_0_0.6vh_var(--color-signal)] [&>svg]:h-full [&>svg]:w-full" data-testid="qr" dangerouslySetInnerHTML={{ __html: doc.qrSvg }} />
-                <div className="space-y-[0.8vh]">
-                  {doc.numberLabel && <p className="text-[2.6vh] portrait:text-[2vh] leading-snug text-white/70">{doc.numberLabel}</p>}
-                  <p className="font-display text-[4.2vh] portrait:text-[3vh] leading-none font-semibold tracking-wide whitespace-nowrap tabular-nums" data-testid="booth-number">{doc.number}</p>
+              <div className="flex items-center gap-[2.4vw] portrait:col-start-2 portrait:row-span-2 portrait:row-start-1 portrait:w-[32vw] portrait:flex-col portrait:items-start portrait:gap-[2vw]">
+                <div className="aspect-square h-[30vh] shrink-0 rounded-[2vh] bg-white p-[1.2vh] shadow-[0_0_0_0.6vh_var(--color-signal)] portrait:h-[30vw] portrait:rounded-[2.4vw] portrait:p-[1.4vw] portrait:shadow-[0_0_0_0.8vw_var(--color-signal)] [&>svg]:h-full [&>svg]:w-full" data-testid="qr" dangerouslySetInnerHTML={{ __html: doc.qrSvg }} />
+                <div className="space-y-[0.8vh] portrait:space-y-[0.6vw]">
+                  {doc.numberLabel && <p className="text-[2.6vh] leading-snug text-white/70 portrait:text-[2.6vw]">{doc.numberLabel}</p>}
+                  <p className="font-display text-[4.2vh] leading-none font-semibold tracking-wide whitespace-nowrap tabular-nums portrait:text-[3.2vw]" data-testid="booth-number">{doc.number}</p>
                 </div>
               </div>
             </div>
             <p className="text-[2.2vh] text-white/55 portrait:hidden">Built with Twilio Messaging</p>
           </section>
-          <section className="flex min-h-0 min-w-0 flex-1 items-center justify-center">
+          <section className="flex min-h-0 min-w-0 flex-1 items-center justify-center portrait:order-2">
             <SlideStack slides={slides} />
           </section>
         </div>
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-8 p-12 text-center">
-          <h1 className="font-display text-7xl font-semibold tracking-tight text-balance">{doc.name}</h1>
-          <p className="max-w-[40ch] text-4xl leading-snug text-white/75 text-balance" data-testid="status-message">
+          <h1 className="font-display text-[8vmin] font-semibold tracking-tight text-balance">{doc.name}</h1>
+          <p className="max-w-[40ch] text-[4.4vmin] leading-snug text-white/75 text-balance" data-testid="status-message">
             {doc.state === "break" ? doc.messages.onBreak : doc.messages.ended}
           </p>
         </div>
