@@ -22,6 +22,12 @@ export const METRICS = [
   "printsFailed",
   "slideshowYes",
   "deletionRequests",
+  /** Share page (D-50): page views, portraits whose link was opened at least once, share sheet used, text copied, image downloaded. */
+  "shareViews",
+  "shareLinksOpened",
+  "shareShares",
+  "shareTextCopied",
+  "shareDownloads",
   /** Sum and count for the average selfie→delivery time. */
   "deliveryMsTotal",
   "deliveryCount",

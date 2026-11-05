@@ -444,7 +444,7 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
   - a **Download** button, which is the fallback when sharing is not supported, for example on desktop
   - a **Print at the booth (N left)** button when the event has printing on and the owner still has prints. Anyone with the link may use it; it takes one of the owner's prints and never adds the portrait to the booth screen (D-26).
 - Add OpenGraph tags so a pasted link shows a preview.
-- No tracking pixels and no short links.
+- No tracking pixels, no cookies, no third-party scripts and no short links. The page only reports **counters** to the event's stats (§10.5, D-50): a page view (once per portrait and tab session, sent by the page itself, so link-preview crawlers are not counted), and the Share, Copy text and Download buttons. A portrait whose link was opened at least once is marked on the share record (`openedAt`). No address, browser details or IP are stored.
 
 ### 6.3 WhatsApp templates
 - **No approved templates (D-42).** Nothing is sent outside the 24h window (§5.11), so the app has none to maintain or to get approved.
@@ -637,6 +637,7 @@ A job with a single style and background goes from `screening` straight to `queu
   - prints succeeded and failed
   - images per style and per background
   - slideshow consents (yes)
+  - share page (D-50): page views, portraits whose link was opened, share sheet used, text copied, downloads
   - deletion requests
   - average time from selfie to delivery
 - Show `lastResetAt`. The page also shows the average delivery time, the funnel, counts per style and background, and the print agent's status (offline after 45 s without a heartbeat) (D-31).

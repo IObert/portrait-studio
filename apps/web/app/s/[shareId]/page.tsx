@@ -6,6 +6,7 @@ import { withEventName } from "@/lib/events/schema";
 import { loadShare } from "@/lib/share/load";
 import { PrintButton } from "./print-button";
 import { ShareButtons } from "./share-buttons";
+import { ShareTracker } from "./share-tracker";
 
 /** OpenGraph preview for a pasted link (SPEC §6.2). */
 export async function generateMetadata(props: PageProps<"/s/[shareId]">): Promise<Metadata> {
@@ -41,7 +42,9 @@ async function Share({ params }: { params: Promise<{ shareId: string }> }) {
       <h1 className="text-center font-display text-2xl leading-tight font-semibold tracking-tight text-balance text-white">{c.share.title({ eventName: view.event.config.name })}</h1>
       {/* eslint-disable-next-line @next/next/no-img-element -- signed, expiring URL; not optimizable */}
       <img src={view.imageUrl} alt={c.share.title({ eventName: view.event.config.name })} width={1200} height={1800} className="w-full -rotate-1 rounded-xl shadow-[0_24px_60px_-12px_rgb(0_0_0/0.6)] ring-8 ring-white" />
+      <ShareTracker shareId={shareId} />
       <ShareButtons
+        shareId={shareId}
         imageUrl={view.imageUrl}
         shareText={withEventName(view.event.config.shareText, view.event.config.name)}
         // Only plain strings cross to the client (the catalog also holds functions).

@@ -642,3 +642,17 @@ second copy:
 - **Copies before the session.** The selfie copies are made before the session is written, so a failed copy never leaves a counted slot (as in D-48).
 - **Not done:** an "ALL" for a restyle (an old menu has no free text) and a summary question after the last image.
 
+### D-50 Count what happens on the share page (user decision)
+*2026-11-05. We did not know how many attendees open their share link or use its buttons, so we could not tell whether the page is worth the work.*
+- **Counters in the event's stats** (SPEC §10.5): `shareViews`, `shareLinksOpened`, `shareShares`, `shareTextCopied`, `shareDownloads`. They reset with the other counters.
+  The stats page has a "Share page" card; "portraits whose link was opened" is shown against the portraits delivered.
+- **Views are sent by the page, not counted on the server**: `ShareTracker` runs in the browser after load, once per portrait and tab session (`sessionStorage`).
+  The crawlers that fetch a link for its preview (WhatsApp, iMessage, Slack) do not run JavaScript, so they are not counted; a reload is not counted twice.
+  Opening your own link counts. Clicks (share, copy, download) are counted per click, not per person.
+- **Share** counts when the phone's share sheet completes (`navigator.share` resolved), not when it is dismissed. **Copy text** is counted apart. **Download** counts the
+  link and the fallback used where sharing files is not supported.
+- **First open** is stored as `openedAt` on the share record, so "links opened" counts portraits, not visits.
+- **No personal data**: the page sends only the share id and the kind; the event comes from the share record (`trackShareAction`), so a made-up id counts nothing, and a
+  link that is unknown, expired or whose portrait was removed is ignored. Anyone with a link can still raise its counters by calling the action, which is accepted for aggregate numbers.
+- **Not done:** unique visitors (would need a cookie or an identifier), referrer or device data, and counting print taps on the share page (prints are already counted).
+
