@@ -128,7 +128,7 @@ client SDK** (`twilio-sync`): Sync pushes changes, with no polling.
   number, and the localized break and ended texts. There is no personal data in it. `EventRepo.onChange` republishes
   it on every event write.
 - Slideshow items carry their signed image URL, so a push contains everything the screen needs.
-- `/booth/<slug>/token` (basic auth) mints a 1-hour read-only token for the identity `booth:<slug>`, granted read on
+- `/booth/<slug>/token` (public, like the booth screen) mints a 1-hour read-only token for the identity `booth:<slug>`, granted read on
   `ev_<slug>_booth` and `ev_<slug>_slideshow` only. The service has ACLs on, so everything else is denied with 54007.
   This was verified live against `events`, `sessions`, `jobs` and `leads`. The browser opens objects with
   `open_existing`, since creating them would need write access, and refreshes the token before it expires.
@@ -194,14 +194,14 @@ API is needed.
 - The server settles prints (`lib/pipeline/prints.ts`): counts successes toward `maxPrintsPerPerson`, releases
   reservations, sends the promo once per printed job (§5.9), and requeues or fails jobs whose lease expired 5 min
   ago (§11.2 stuck jobs). Admin reprints neither count nor trigger a promo (Q5).
-- The admin command now defaults to `--simulate`, since it works with no printer attached.
+- The admin command now defaults to `--simulate`, since it works with no printer attached. (Replaced by D-46: the command names no printer and the agent asks.)
 
 ### D-24 Attendees choose what to print (user decision)
 *2026-10-14. Changes SPEC §6.1, §9.2 and §11: nothing is printed automatically any more.*
 - Two per-event limits: `maxImagesPerPerson` (X, portraits delivered for free) and `maxPrintsPerPerson` (Y, portraits
   sent to the printer).
-- After each delivery, one question with three buttons replaces the slideshow question: **Print + show**, **Show
-  only**, **No thanks**. Printing a portrait also puts it on the booth screen. When printing is off or no prints are
+- After each delivery, one question with three buttons replaces the slideshow question: **Print + big screen**, **Big
+  screen only**, **No thanks**. Printing a portrait also puts it on the booth screen. When printing is off or no prints are
   left, the question is the plain slideshow Yes / No.
 - The buttons carry the job id, so an earlier portrait can still be printed later. SMS: `PRINT` / `YES` / `NO` answer
   the latest question.
@@ -229,7 +229,7 @@ when it was switched on.*
 - The share page shows **Print at the booth (N left)** when the event has printing on and the owner still has prints.
 - **Anyone with the link** may use it (the user's choice): it takes one of the *owner's* prints, never more than
   their quota. The page sends only the share id; the server looks up the job and owner.
-- It never adds the portrait to the booth screen. "Print + show" in the chat is the way to do both.
+- It never adds the portrait to the booth screen. "Print + big screen" in the chat is the way to do both.
 - Same rules as the chat print (`requestPrint`): own delivered portrait, one print per portrait, a failed print can
   be asked for again.
 
@@ -550,4 +550,95 @@ second copy:
 - **Not done:** a live push over Sync, as the booth screen uses. It would show a change within a second, but needs a
   token endpoint, ACL grants and the Sync SDK in the admin bundle, and an agent that dies still has to be noticed by a
   timer. Polling every 30 s was chosen as enough; the lag is up to 30 s.
+
+
+### D-45 Printer calibration: measure what the printer trims, then fit prints inside it (user decision)
+*2026-11-03. Found while setting up a Mitsubishi CP-D70DW: its "10x15" driver page (448×295 pt) is larger than a 4×6 print and the printer trims the edges, by a different amount on each side.*
+- **Config.** Each event has `printCalibration`: whole mm trimmed per edge (`top`, `right`, `bottom`, `left`, 0 to 12; 0 for
+  events saved before it existed). It is edited in the event's "Printer calibration" section and saved with the rest.
+- **Measuring.** The section has a "Print clipping chart" button. It copies `assets/calibration/clipping-chart.png` (1229×1867,
+  the driver page upright, nested rectangles 0 to 12 mm in from each edge) to the event's blobs and queues it for the print
+  agent like an admin reprint (`jobId` `clipping-chart`, no quota, no promo, no stats). The admin enters, per edge, the
+  lowest number still visible: that is the trim in mm. The chart needs printing on for the event, as the agent cannot connect
+  otherwise, and one chart can wait at a time.
+- **Applying.** `GET /m/<token>` fits every `.print.png` to the page minus the trims (`applyCalibration`): scaled down, never
+  cropped, so frames and borders stay whole, and the leftover is filled by repeating the picture's edge pixels. The output is
+  the chart's page size, so CUPS prints it 1:1. It is done on download, not when the print is made, so a changed calibration
+  also reaches prints that are already queued, and the stored print PNG stays the 1200×1800 original. All zeros: untouched.
+  The chart is a `.chart.png` and is never calibrated.
+- **Agent.** The queue's driver is read once from `lpoptions -p <queue> -l`. A queue that lists `ME_10x15` gets
+  `-o PageSize=ME_10x15 -o fit-to-page`, with no forced orientation, since that page is landscape and CUPS turns the portrait
+  picture; anything else keeps the DS620 options (PROTOCOL.md §5).
+- **Limits.** The canvas is fixed to the CP-D70DW page, so the numbers only mean mm on that printer. Another model needs
+  its own chart and `CALIBRATION_PAGE`. A DS620 event should leave all four at 0. The doctor learned the CP-D70DW in D-46.
+
+### D-46 The doctor knows both printers; the agent asks which printer to use (user decision)
+*2026-11-03. Found after D-45: `printer:doctor` still checked everything against the DS620, and the admin command still said `--simulate`.*
+- **Doctor profiles.** `PROFILES` in `apps/print-agent/src/doctor.ts` holds, per printer: how to recognise it (device URI, queue
+  name or driver name), its own driver, the queue defaults, the name of a queue it creates. The doctor works out which printer a
+  queue is for from its device, then its driver, then the page sizes the driver lists (`ME_10x15` vs `dnp6x4`). If that says
+  nothing, `--model ds620|cp70` decides; it never falls back to the DS620. Several queues are listed, not guessed at.
+- **CP-D70DW defaults are only `PageSize=ME_10x15`.** That is the one option name checked on the real printer (D-45). More
+  can be added to its profile once `lpoptions -p <queue> -l` has been looked at. Its driver is recognised by description, not
+  file name, because the PPD's file name was not seen on a real Mac.
+- **Windows.** The Windows doctor is unchanged and still only knows the DS620.
+- **Start-up question.** With neither `--printer` nor `--simulate`, the agent lists the simulator (1, also the answer to Enter)
+  and the printers from `lpstat -p` (`Get-Printer` on Windows), labels the supported models, and asks for a number. It logs the
+  flag that skips the question. Without a terminal it exits with code 2. `--printer` together with `--simulate` is refused.
+- **Admin command.** It is now `node agent.mjs --url <app> --token <token>`: no printer, no `--simulate`, no `--out` (the
+  default `./prints` is the same). This replaces the `--simulate` default from D-33.
+- **Leftover "Filter failed".** CUPS keeps this on the queue after a print failed, even when the printer is idle again (seen on the
+  CP-D70DW: `com.mitsubishi-error0023`). `parseLpstat` no longer treats it as an `error` that holds back the next print; the status
+  stays `idle` with the note "the last print failed". The failed print is still reported by its own job. For other errors, the detail
+  is now the reason line, not the "is idle" state line.
+
+### D-47 A dead print job and a dead connection must not stop the agent (found while testing)
+*2026-11-03. The agent seemed to stop after a Wi-Fi drop and needed a restart. The logs showed two different causes.*
+- **A stopped job blocked the queue.** The CP-D70DW reported an error (`com.mitsubishi-error0023`), its filter exited 1 and CUPS
+  left the job `processing-stopped`, which never finishes. The agent treated "stopped" as "still printing" and waited the
+  full 10 minutes with the printer idle. It prints one job at a time, so nothing else came out. The heartbeat kept running, so
+  the admin showed it online. A restart reset the wait, and ~2 minutes later (the dead job's lease) the next agent resumed it
+  first and blocked again.
+- **Now:** a job that CUPS has `stopped` or `held` while the printer is ready is cancelled and retried after 30 s (while the
+  printer is off or paused it is still waited for). The retry's error carries the job's `job-printer-state-reasons` and
+  message. The 10 min stall limit is counted from `timestamps.printing`, so a restart does not start it over; each step counts
+  at most 30 s, so a sleeping laptop does not add up to a stall.
+- **Reconnecting.** Opening the print queue, reading it, every Sync write and the SDK shutdown now have time limits (30 s,
+  shutdown 5 s), and a session that is ending stops waiting for them at once. Before, any of them could stay pending on a
+  dead connection and the session never returned to reconnect. This is hardening from reading the code: the logs showed
+  one clean reconnect (16:57) and one inconclusive case, so it is not proven to have been a cause.
+- **Not done:** printing several jobs at once. One job at a time is what keeps one print one copy (D-25); the two limits above
+  bound how long a bad job can hold the line. A hung SDK client that never shuts down is left behind, not killed.
+
+### D-48 Old buttons and menus keep working; a restyle starts a new portrait from the same photo (user decision)
+*2026-11-05. Attendees scroll up in the chat to print again, change their answer, or pick another style or background for the photo they already sent. The bot only accepted a style or background while that photo was waiting for an answer.*
+- **Print and big-screen buttons** already carried the job id and worked at any time (D-24). New: **No** after an earlier **Yes** removes the
+  portrait from the big screen (own portrait only; `slideshowYes` goes down by one, so the stat counts portraits on the screen).
+- **Menu ids carry the job id**: `ps:opt:style:<jobId>:<style>` and `ps:opt:background:<jobId>:<background>` (`ACTION_OPTION`). The id fits a WhatsApp
+  list item (200 characters). Menus sent before this carried only `opt:<id>`; those are still read, for the photo waiting for an answer.
+- **A tap on a menu for the photo waiting for an answer** is the normal flow. **A tap for a photo that was already chosen for** is a **restyle**
+  (`optionTap`, `lib/conversation/inbound.ts`): the tapped style or background is used and the other is kept from that photo, so the portrait is
+  generated at once with no second menu. The photo was screened already, so the job starts in `queued` with `subjects` and `pet` copied.
+- **Quota (user decision).** A restyle counts as a portrait (`quotaLeft`, `inFlight`, stats `imagesRequested`, `style:*`, `background:*`). Nothing
+  new to configure.
+- **The selfie is copied**, not shared, because removing a portrait (admin or attendee) deletes its selfie. The copy happens before the session is
+  written, so a missing photo never leaves a counted slot.
+- **Gone photos** (selfie expired after 7 days, job rejected or removed, someone else's job) get `selfie.photoGone`. A photo still being checked gets
+  the "still checking" reply. A restyle does not touch a photo that is waiting for an answer: that one stays open.
+- **WhatsApp only (user decision).** SMS has no payloads and keeps the numbered, one-step flow.
+- **Not done:** WhatsApp's reply context (`OriginalRepliedMessageSid`). It would need every outbound message SID stored; the id inside the button
+  or list item says the same without it.
+
+### D-49 Hidden "ALL" at the style prompt renders every style (user decision)
+*2026-11-05. People wanted to try all styles with one photo. It is a team feature: no menu, hint, reply or chat-model context mentions it.*
+- **Trigger.** While a screened photo waits for its style (`step: awaiting_style`), a text that matches the keyword `all` (pt_BR: `todos`, `tudo`, `all`; `menus.allKeywords`) and no
+  button or list selection. Not at the background prompt, not with an event that has one style (there is no style prompt). WhatsApp and SMS.
+- **What it does** (`allStyles`, `lib/conversation/inbound.ts`). One job per enabled style on `gradient` (the event's first background without it). The waiting job gets the
+  first style (`choose` effect); the rest are created as in a restyle (D-48) with `batch: true`. One confirmation message; portraits arrive as they finish.
+- **Quota (user decision).** One slot per style: `quotaLeft + 1 >= number of styles` (the waiting photo already holds one). Otherwise a message says how many are needed and left,
+  the style menu is sent again, and nothing is created. No special exemption, so the per-person limit still bounds the cost (up to 6 generations per `ALL`).
+- **No question after the images (user decision).** `Job.batch` makes `deliver` skip the print / big-screen question and leave `pendingSlideshow` alone. The portraits are
+  still counted and kept in `session.delivered`, so `PRINT` lists them. Nothing goes on the big screen without an answer.
+- **Copies before the session.** The selfie copies are made before the session is written, so a failed copy never leaves a counted slot (as in D-48).
+- **Not done:** an "ALL" for a restyle (an old menu has no free text) and a summary question after the last image.
 

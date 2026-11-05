@@ -167,7 +167,7 @@ async function afterScreening(deps: WorkerDeps, event: PortraitEvent, job: Job, 
   if (!address) return;
   const step = style ? "awaiting_background" : "awaiting_style";
   const session = await sessions.update(job.address, (cur) => (cur ? { ...cur, step, pendingJobId: job.jobId } : SKIP));
-  const msg = step === "awaiting_style" ? styleMenu(event, c) : backgroundMenu(event, c);
+  const msg = step === "awaiting_style" ? styleMenu(event, c, job.jobId) : backgroundMenu(event, c, job.jobId);
   await deps.messenger.send(address, msg, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: senderFor(session, event) });
 }
 

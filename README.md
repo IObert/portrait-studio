@@ -13,7 +13,7 @@ How a selfie becomes a portrait, step by step: [docs/how-it-works.md](docs/how-i
 | Event **Settings** | Staff | Configure the event: name, language, styles, backgrounds, frame, uploads, limits, QR number and message, leads, printing, LA Kings promotion. Go live / Break / End. Printer token and agent command. |
 | Event **Review** | Staff | Triage portraits: **Approve & send** or **Discard** the ones the AI check held back; **Remove** a delivered one, **Reprint** it (not counted against the attendee), or take it off the print queue |
 | Event **Stats** | Staff | Counters, delivery time, per style and background, print agent status |
-| `/booth/<event>` | Booth display (basic auth) | Full-screen QR code, call to action and live slideshow; break and ended screens |
+| `/booth/<event>` | Booth display (public, no login) | Full-screen QR code, call to action and live slideshow; break and ended screens |
 | `/s/<share id>` | Attendees | Their portrait: download, share, and print at the booth if prints are left |
 
 ## How it fits together
@@ -60,7 +60,7 @@ for another project is never used by mistake.
 | Variables | Where they come from |
 |---|---|
 | `PUBLIC_BASE_URL` | Your tunnel (`https://<name>.ngrok.app`) locally; printed by `./deploy.sh` on Azure |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | You choose. Basic auth for `/admin` and `/booth` |
+| `ADMIN_USER`, `ADMIN_PASSWORD` | You choose. Basic auth for `/admin` |
 | `MEDIA_SIGNING_SECRET`, `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Generate once: `openssl rand -base64 48` / `32` |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Console → Account info |
 | `TWILIO_API_KEY_SID`, `TWILIO_API_KEY_SECRET` | Console → API keys & tokens → Create API key (Standard) |
@@ -123,7 +123,15 @@ See [docs/deployment.md](docs/deployment.md).
 5. **Review** tab: keep an eye on held-back portraits during the event.
 6. Afterwards, export leads with `pnpm --filter web leads:export`; reset counters with `pnpm --filter web stats:reset --event <id>`.
 
-### Booth printer (DNP DS620, 4x6)
+### Booth printer (4x6)
+
+Two printers are supported today: the **DNP DS620** and the **Mitsubishi CP-D70DW**. The list can be extended: the agent
+works with any CUPS queue, and only the driver's option names are specific to a model (see
+[Supported printers](apps/print-agent/README.md#supported-printers) in the print agent README). The steps below are for
+the DS620. For the CP-D70DW, install Mitsubishi's driver ("CP-D70 series" on their
+[download page](https://www.mitsubishielectric.com/printer/dowmload-01/)) instead of step 2; the doctor in step 4 knows
+both printers and works out which one it is looking at. Then measure the printer's trimmed edges in the event's
+"Printer calibration" section.
 
 On the booth laptop (macOS; Windows is beta, Linux not yet supported):
 
@@ -132,19 +140,26 @@ On the booth laptop (macOS; Windows is beta, Linux not yet supported):
    the printer by USB. macOS's automatic *Generic PostScript* driver prints the wrong size.
 3. **Copy the agent**: build it with `pnpm --filter @portrait-studio/print-agent build` and copy
    `apps/print-agent/dist/agent.mjs` to the laptop. It is one file with nothing to install.
-4. **Run the printer doctor**, which checks and fixes the print queue: DS620 driver, paused queue, 4x6 glossy
-   defaults, and creates the queue if none exists.
+4. **Run the printer doctor**, which checks and fixes the print queue: the printer's own driver, a paused queue, the
+   print defaults (4x6 glossy for the DS620), and creates the queue if none exists.
 
    ```sh
    node agent.mjs doctor          # check only
    node agent.mjs doctor --fix    # repair (prefix with sudo if it asks for admin rights)
    ```
 
-5. **Start the agent** with the command from the event page (token and URL filled in). Try `--simulate` first, then
-   replace `--simulate --out ./prints` with `--printer <queue>` (the queue name doctor printed).
+5. **Start the agent** with the command from the event page (token and URL filled in). It names no printer: the agent
+   lists the simulator and the printers it finds and asks which to use. Try the simulator first, then start it again and
+   pick the printer. To skip the question, add `--simulate` or `--printer <queue>` (the queue name doctor printed).
 
 The event page shows the printer's status. See the [print agent README](apps/print-agent/README.md) for flags and
 troubleshooting.
+
+### Hidden features
+
+Not shown to attendees in any message or menu; for the team only.
+
+- **ALL.** When the bot asks for a style, an attendee who types `ALL` (`TODOS` in Portuguese) gets the photo in **every style the event has enabled**, on the gradient background (the event's first background if it has no gradient). They get one confirmation, then each portrait as its own message when it is ready, with no print / big-screen question (`PRINT` later still lists them). Each portrait uses one slot of "max images per person", so it needs as many free slots as there are styles; otherwise the bot says how many it needs and keeps the style menu open. Every portrait is a normal generation, so one `ALL` costs as many as the event has styles (6 with all of them on). Details: SPEC §5.5, D-49.
 
 ## Tests
 

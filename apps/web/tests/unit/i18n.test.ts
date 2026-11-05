@@ -56,3 +56,20 @@ describe("catalog limits", () => {
       expect(catalogs[l].consent.askCode({ email: "a.very.long.address@example-company.com", privacyUrl: "https://portrait-studio.example.com/privacy/some-event-code", resendKeyword: "REENVIAR" }).length).toBeLessThan(1024);
   });
 });
+
+describe.each(LOCALES)("unlimited prints in %s", (locale) => {
+  const d = catalogs[locale].delivery;
+  const s = catalogs[locale].share;
+  it("no print message mentions a count", () => {
+    const texts = [
+      d.printQuestion({ printsLeft: Infinity }), d.printQuestionGroup({ printsLeft: Infinity }),
+      d.printQueued({ printsLeft: Infinity }), d.printQueuedPrinterOffline({ printsLeft: Infinity }),
+      d.printMenuOne({ styleName: "Sketch", printsLeft: Infinity }), d.printMenuMany({ printsLeft: Infinity }),
+      d.printHint({ printsLeft: Infinity }), s.print({ printsLeft: Infinity }), s.printAgain({ printsLeft: Infinity }),
+    ];
+    for (const t of texts) {
+      expect(t).not.toMatch(/Infinity|\d/);
+      expect(t).not.toMatch(/\s{2,}|\(\)|\s[.?]/);
+    }
+  });
+});

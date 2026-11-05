@@ -38,6 +38,8 @@ export const JobSchema = z.object({
   subjects: z.number().int().min(0).max(10).nullable().default(null),
   /** Pet from scene analysis, kept so generation does not analyse the photo twice. */
   pet: z.string().max(30).nullable().default(null),
+  /** One of the portraits made by the hidden "ALL" at the style prompt (D-49): delivered without the print / big-screen question. */
+  batch: z.boolean().default(false),
   state: z.enum(JOB_STATES),
   attempts: z.number().int().min(0).default(0),
   leaseUntil: z.iso.datetime().nullable().default(null),

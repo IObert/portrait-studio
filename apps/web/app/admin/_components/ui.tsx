@@ -80,6 +80,7 @@ export const SECTIONS = [
   { id: "booth", title: "Booth screen and QR code" },
   { id: "portraits", title: "Portraits" },
   { id: "printing", title: "Printing" },
+  { id: "calibration", title: "Printer calibration" },
   { id: "leads", title: "Lead collection" },
 ] as const;
 export type SectionId = (typeof SECTIONS)[number]["id"];

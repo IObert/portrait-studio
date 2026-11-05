@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { catalogs } from "@/i18n";
+import { ACTION_OPTION } from "@/lib/conversation/actions";
 import { ACTION } from "@/lib/conversation/consent";
 import { type Deps, handleInbound, type InboundMessage, initInbound } from "@/lib/conversation/inbound";
 import { EventRepo } from "@/lib/events/repo";
@@ -125,6 +126,15 @@ async function passScreening(w: World, slug: string, key: string, subjects = 1) 
   const cur = (await w.fake.getItem(ev.sessions, key))!;
   await w.fake.updateItem(ev.sessions, key, { ...(cur.data as object), step: "awaiting_style", pendingJobId: job!.jobId });
   return job!;
+}
+
+/** A portrait that was delivered, with its photo screened (two people and a dog), for tests of old buttons and menus. */
+function deliveredJob(jobId: string) {
+  return JobSchema.parse({
+    jobId, address: "whatsapp:+447700900123", channel: "whatsapp", style: "anime", background: "gradient", subjects: 2, pet: "dog",
+    selfieBlob: `events/ev/selfies/${jobId}.jpg`, outputBlobs: { printPng: `events/ev/generated/${jobId}.print.png`, deliveryJpeg: `events/ev/generated/${jobId}.jpg` },
+    shareId: "Q".repeat(24), state: "delivered", timestamps: {},
+  });
 }
 
 /** A print agent that is connected and has a ready printer, the normal condition at an event. Without it a print waits and the attendee is told the printer seems offline. */
@@ -360,6 +370,158 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await w.fake.getItem(ev.slideshow, "job_other_01").catch(() => null)).toBeNull();
     expect(await w.say(WA, "", { selection: "ps:slide:yes:job_slide_01" })).toEqual([catalogs.en.delivery.slideshowThanksYes]);
     expect((await w.fake.getItem(ev.slideshow, "job_slide_01"))!.data).toMatchObject({ blobPath: "events/ev/generated/job_slide_01.jpg" });
+  });
+
+  it("changing the answer: No after Yes takes the portrait off the big screen again (D-48)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const job = deliveredJob("job_back_01");
+    await w.fake.createItem(ev.jobs, job.jobId, job);
+    await w.say(WA, "", { selection: "ps:slide:yes:job_back_01" });
+    expect(await w.fake.getItem(ev.slideshow, "job_back_01")).not.toBeNull();
+    expect((await readStats(w.sync, "ev")).slideshowYes).toBe(1);
+
+    expect(await w.say(WA, "", { selection: "ps:slide:no:job_back_01" })).toEqual([catalogs.en.delivery.slideshowThanksNo]);
+    expect(await w.fake.getItem(ev.slideshow, "job_back_01").catch(() => null)).toBeNull();
+    expect((await readStats(w.sync, "ev")).slideshowYes ?? 0).toBe(0);
+    // A second No changes nothing, and neither does a No for someone else's portrait.
+    await w.say(WA, "", { selection: "ps:slide:no:job_back_01" });
+    expect((await readStats(w.sync, "ev")).slideshowYes ?? 0).toBe(0);
+    await w.fake.createItem(ev.jobs, "job_other_02", { ...job, jobId: "job_other_02", address: "whatsapp:+447700900999" });
+    await w.fake.createItem(ev.slideshow, "job_other_02", { blobPath: "x", addedAt: new Date().toISOString() });
+    await w.say(WA, "", { selection: "ps:slide:no:job_other_02" });
+    expect(await w.fake.getItem(ev.slideshow, "job_other_02")).not.toBeNull();
+  });
+
+  it("restyle: an old style or background list starts a new portrait from the same photo (D-48)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, maxImagesPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const key = "whatsapp:+447700900123";
+    const job = deliveredJob("job_restyle_01");
+    await w.fake.createItem(ev.jobs, job.jobId, job);
+    await w.blob.put(job.selfieBlob, Buffer.from("selfie"), "image/jpeg");
+    const counters = async () => ((await w.fake.getItem(ev.sessions, key))!.data as { counters: { inFlight: number } }).counters;
+
+    // Another style: the background of that photo is kept; the photo is copied, not shared.
+    expect(await w.say(WA, "", { selection: ACTION_OPTION.style("pop-art", "job_restyle_01") })).toEqual([catalogs.en.job.started]);
+    const [child] = (await jobs(w, "ev")).filter((j) => j.jobId !== "job_restyle_01");
+    expect(child).toMatchObject({ state: "queued", style: "pop-art", background: "gradient", subjects: 2, pet: "dog", address: key });
+    expect(child!.selfieBlob).not.toBe(job.selfieBlob);
+    expect(w.blob.blobs.has(child!.selfieBlob)).toBe(true);
+    expect(child!.shareId).not.toBe(job.shareId);
+    expect((await counters()).inFlight).toBe(1);
+    expect(await readStats(w.sync, "ev")).toMatchObject({ imagesRequested: 1, "style:pop-art": 1, "background:gradient": 1 });
+
+    // Another background keeps the style.
+    await w.say(WA, "", { selection: ACTION_OPTION.background("solid-white", "job_restyle_01") });
+    expect((await jobs(w, "ev")).filter((j) => j.style === "anime" && j.background === "solid-white")).toHaveLength(1);
+    expect((await counters()).inFlight).toBe(2);
+  });
+
+  it("restyle: refused for someone else's photo, a photo that is gone, or when the portraits are used up (D-48)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, maxImagesPerPerson: 1 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const key = "whatsapp:+447700900123";
+    const job = deliveredJob("job_gone_01");
+    await w.fake.createItem(ev.jobs, job.jobId, job);
+    await w.fake.createItem(ev.jobs, "job_other_03", { ...job, jobId: "job_other_03", address: "whatsapp:+447700900999" });
+    const tap = (jobId: string) => w.say(WA, "", { selection: ACTION_OPTION.style("pop-art", jobId) });
+
+    expect(await tap("job_other_03")).toEqual([catalogs.en.selfie.photoGone]);
+    expect(await tap("job_missing_1")).toEqual([catalogs.en.selfie.photoGone]);
+    // The photo expired (the 7-day rule): nothing is created and no slot is held.
+    expect(await tap("job_gone_01")).toEqual([catalogs.en.selfie.photoGone]);
+    expect(await jobs(w, "ev")).toHaveLength(2);
+    expect(((await w.fake.getItem(ev.sessions, key))!.data as { counters: { inFlight: number } }).counters.inFlight).toBe(0);
+
+    // One portrait allowed and already delivered: a restyle would be a second one.
+    await w.blob.put(job.selfieBlob, Buffer.from("selfie"), "image/jpeg");
+    const cur = (await w.fake.getItem(ev.sessions, key))!;
+    await w.fake.updateItem(ev.sessions, key, { ...(cur.data as { counters: object }), counters: { ...(cur.data as { counters: object }).counters, delivered: 1 } });
+    expect(await tap("job_gone_01")).toEqual([catalogs.en.selfie.quotaReached({ eventName: "Event ev", max: 1 })]);
+    expect(await jobs(w, "ev")).toHaveLength(2);
+  });
+
+  it("a menu tap for the photo waiting for an answer works like before, with the longer id (D-48)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, backgrounds: ["gradient", "solid-white"] });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "", selfieMsg);
+    const job = await passScreening(w, "ev", "whatsapp:+447700900123");
+    expect(await w.say(WA, "", { selection: ACTION_OPTION.style("pop-art", job.jobId) })).toEqual([catalogs.en.menus.backgroundBody]);
+    expect(await w.say(WA, "", { selection: ACTION_OPTION.background("solid-white", job.jobId) })).toEqual([catalogs.en.job.started]);
+    expect((await jobs(w, "ev"))[0]).toMatchObject({ state: "queued", style: "pop-art", background: "solid-white" });
+    // The menu is still in the chat: tapping it again is a restyle, not a second answer for the same job.
+    await w.blob.put((await jobs(w, "ev"))[0]!.selfieBlob, Buffer.from("selfie"), "image/jpeg");
+    expect(await w.say(WA, "", { selection: ACTION_OPTION.style("anime", job.jobId) })).toEqual([catalogs.en.job.started]);
+    expect(await jobs(w, "ev")).toHaveLength(2);
+  });
+
+  it("hidden ALL at the style prompt: one portrait per style on the gradient, one confirmation (D-49)", async () => {
+    for (const word of ["ALL", "all", "All!"]) {
+      const w = await world();
+      await liveEvent(w, "ev", { leadCollection: false });
+      await w.say(WA, "#ev");
+      await w.say(WA, "", { selection: ACTION.agree });
+      await w.say(WA, "", selfieMsg);
+      const first = await passScreening(w, "ev", "whatsapp:+447700900123");
+      const styles = defaultConfig("x", "+13203780782").styles;
+
+      expect(await w.say(WA, word)).toEqual([catalogs.en.menus.allAccepted({ count: styles.length })]);
+      const all = await jobs(w, "ev");
+      expect(all).toHaveLength(styles.length);
+      expect(all.map((j) => j.style).sort()).toEqual([...styles].sort());
+      for (const j of all) {
+        expect(j).toMatchObject({ state: "queued", background: "gradient", batch: true, subjects: 1, address: "whatsapp:+447700900123" });
+        expect(w.blob.blobs.has(j.selfieBlob)).toBe(true);
+      }
+      expect(all.find((j) => j.jobId === first.jobId)).toBeDefined(); // the waiting photo is one of them
+      expect(new Set(all.map((j) => j.selfieBlob)).size).toBe(styles.length); // each has its own copy
+      expect(new Set(all.map((j) => j.shareId)).size).toBe(styles.length);
+      const s = (await w.fake.getItem(eventObjects("ev").sessions, "whatsapp:+447700900123"))!.data as { step: string; pendingJobId: string | null; counters: { inFlight: number } };
+      expect(s).toMatchObject({ step: "ready", pendingJobId: null, counters: { inFlight: styles.length } });
+      expect(await readStats(w.sync, "ev")).toMatchObject({ imagesRequested: styles.length, "style:cartoon": 1, "background:gradient": styles.length });
+    }
+  });
+
+  it("hidden ALL in Portuguese, and with an event that has no gradient background (D-49)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, language: "pt_BR", backgrounds: ["solid-white", "original"] });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "", selfieMsg);
+    await passScreening(w, "ev", "whatsapp:+447700900123");
+    const n = defaultConfig("x", "+13203780782").styles.length;
+    expect(await w.say(WA, "Todos")).toEqual([catalogs.pt_BR.menus.allAccepted({ count: n })]);
+    expect((await jobs(w, "ev")).every((j) => j.background === "solid-white")).toBe(true);
+  });
+
+  it("hidden ALL needs one slot per style; otherwise it says so and the menu stays open (D-49)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, maxImagesPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "", selfieMsg);
+    await passScreening(w, "ev", "whatsapp:+447700900123");
+    const n = defaultConfig("x", "+13203780782").styles.length;
+    expect(await w.say(WA, "all")).toEqual([catalogs.en.menus.allNeedsMore({ needed: n, left: 3 }), catalogs.en.menus.styleBody]);
+    expect(await jobs(w, "ev")).toHaveLength(1);
+    expect(await w.say(WA, "2")).toEqual([catalogs.en.menus.backgroundBody]); // a normal pick still works
+  });
+
+  it("ALL is only a style answer: not at the background prompt (D-49)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, backgrounds: ["gradient", "solid-white"] });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "", selfieMsg);
+    await passScreening(w, "ev", "whatsapp:+447700900123");
+    await w.say(WA, "2"); // a style; the background menu follows
+    expect(await w.say(WA, "all")).toEqual([catalogs.en.menus.invalidChoice, catalogs.en.menus.backgroundBody]);
+    expect(await jobs(w, "ev")).toHaveLength(1);
   });
 
   it("slideshow consent on SMS uses exact keywords for the pending question", async () => {

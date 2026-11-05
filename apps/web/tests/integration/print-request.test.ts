@@ -11,11 +11,11 @@ import { FakeSync } from "../support/fake-sync";
 const NOW = new Date("2026-10-14T12:00:00Z");
 const KEY = "whatsapp:+447700900123";
 
-async function setup(maxPrints: number, printed = 0) {
+async function setup(maxPrints: number, printed = 0, unlimitedPrints = false) {
   const fake = new FakeSync();
   const sync = new SyncStore(fake, { warn: vi.fn() }, { baseDelayMs: 1, maxDelayMs: 2 });
   const event: PortraitEvent = {
-    slug: "ev", state: "live", config: { ...defaultConfig("Ev", "+13203780782"), printingEnabled: true, maxPrintsPerPerson: maxPrints },
+    slug: "ev", state: "live", config: { ...defaultConfig("Ev", "+13203780782"), printingEnabled: true, maxPrintsPerPerson: maxPrints, unlimitedPrints },
     uploads: { frame: null, background: null }, printerTokenHash: null, printerToken: null, createdAt: NOW.toISOString(), updatedAt: NOW.toISOString(),
   };
   const ev = eventObjects("ev");
@@ -45,6 +45,11 @@ describe("requestPrint (D-24, D-26)", () => {
   it("refuses once the owner's prints are used", async () => {
     const w = await setup(1, 1);
     expect(await w.go()).toEqual({ status: "none-left" });
+  });
+
+  it("unlimited prints: never runs out, and reports no count", async () => {
+    const w = await setup(1, 5, true);
+    expect(await w.go()).toEqual({ status: "queued", printsLeft: Infinity, printerReady: false });
   });
 
   it("a finished print can be printed again once it is counted; another copy uses another print", async () => {

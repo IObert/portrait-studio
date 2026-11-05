@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId } from "../src/cups.js";
+import { driverOf, jobNumber, lpArgs, parseJobPrinterError, parseJobState, parseLpstat, parseRequestId } from "../src/cups.js";
 import { claim, claimable, failed, LEASE_MS, MAX_ATTEMPTS, printed, type PrintItem, renew, resumable, resume, startPrinting } from "../src/queue.js";
 
 describe("CUPS command (SPEC §11.2, §16)", () => {
@@ -10,6 +10,24 @@ describe("CUPS command (SPEC §11.2, §16)", () => {
       "-o", "fit-to-page", "-o", "print-scaling=fill", "-o", "orientation-requested=3",
       "--", "/tmp/p.png",
     ]);
+  });
+  it("prints on the CP-D70DW with its own page size, turned by CUPS (D-45)", () => {
+    expect(lpArgs("MITSUBISHI_CP60D70D707D", "/tmp/p.png", "cp70")).toEqual(["-d", "MITSUBISHI_CP60D70D707D", "-o", "PageSize=ME_10x15", "-o", "fit-to-page", "--", "/tmp/p.png"]);
+    expect(() => lpArgs("x;rm", "/tmp/p.png", "cp70")).toThrow();
+  });
+  it("tells the drivers apart by their page sizes", () => {
+    // `lpoptions -p <queue> -l` on the Mitsubishi and on the DS620.
+    expect(driverOf("PageSize/Media Size: *ME_9x13 ME_10x15 ME_13x18\nResolution/Output Resolution: *300dpi\n")).toBe("cp70");
+    expect(driverOf("PageSize/Media Size: dnp5x3.5 *dnp6x4 dnp5x7\nCutter/Cutter: *Normal\n")).toBe("ds620");
+    expect(driverOf("")).toBe("ds620");
+  });
+  it("reads the printer's own error for a stopped job (D-47)", () => {
+    // Real ipptool output for the CP-D70DW job that never came out.
+    const out = "        job-state (enum) = processing-stopped\n        job-state-reasons (keyword) = job-completed-with-errors\n        job-printer-state-message (textWithoutLanguage) = Filter failed\n        job-printer-state-reasons (keyword) = com.mitsubishi-error0023\n";
+    expect(parseJobState(out)).toEqual({ state: "stopped", reasons: "job-completed-with-errors" });
+    expect(parseJobPrinterError(out)).toBe("Filter failed (com.mitsubishi-error0023)");
+    expect(parseJobPrinterError("        job-printer-state-reasons (keyword) = none\n")).toBe("");
+    expect(parseJobPrinterError("        job-state (enum) = completed\n")).toBe("");
   });
   it("rejects unsafe queue names (no shell injection)", () => {
     for (const q of ["a b", "x;rm -rf /", "$(id)", "", "-d"]) expect(() => lpArgs(q, "/tmp/p.png"), q).toThrow();
@@ -29,6 +47,17 @@ describe("CUPS command (SPEC §11.2, §16)", () => {
   });
 });
 
+describe("lpstat status after a failed print", () => {
+  // `lpstat -p` on the CP-D70DW after job 43 failed with com.mitsubishi-error0023.
+  const AFTER_FAILED = "printer MITSUBISHI_CP60D70D707D is idle.  enabled since Tue Nov  3 16:12:51 2026\n\tFilter failed\n";
+  it("does not hold the queue for the leftover Filter failed message", () => {
+    expect(parseLpstat(AFTER_FAILED, 0)).toEqual({ status: "idle", detail: "the last print failed (Filter failed)" });
+  });
+  it("shows the reason, not the state line, for a real error", () => {
+    expect(parseLpstat("printer Q is idle.  enabled since Mon\n\tCover open or fault\n", 0)).toEqual({ status: "error", detail: "Cover open or fault" });
+  });
+});
+
 describe("lpstat status (SPEC §11.2)", () => {
   it.each([
     ["printer DNP_DS620 is idle.  enabled since Mon", 0, "idle"],
@@ -37,7 +66,8 @@ describe("lpstat status (SPEC §11.2)", () => {
     ["printer DNP_DS620 is idle.\n\tMedia empty or ribbon end", 0, "out_of_paper"],
     ["printer DNP_DS620 is idle.\n\tWaiting for printer to become available.", 0, "offline"],
     ["lpstat: Invalid destination name in list \"NOPE\".", 1, "offline"],
-    ["printer DNP_DS620 is idle.\n\tFilter failed", 0, "error"],
+    ["printer DNP_DS620 is idle.\n\tFilter failed", 0, "idle"],
+    ["printer DNP_DS620 is idle.\n\tUnrecoverable fault", 0, "error"],
   ])("%s → %s", (out, code, status) => {
     expect(parseLpstat(out, code).status).toBe(status);
   });

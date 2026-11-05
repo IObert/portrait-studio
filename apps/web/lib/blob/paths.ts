@@ -7,6 +7,8 @@ export const BlobPaths = {
   /** Pending or normalized selfie. A fresh id per upload, so paths never collide. */
   selfie: (slug: string) => `events/${SlugSchema.parse(slug)}/selfies/${randomUUID()}.jpg`,
   printPng: (slug: string, jobId: string) => `events/${SlugSchema.parse(slug)}/generated/${safeId(jobId)}.print.png`,
+  /** The clipping chart queued from the calibration section (D-45); one per event, replaced on every print. */
+  clippingChart: (slug: string) => `events/${SlugSchema.parse(slug)}/generated/clipping-chart.chart.png`,
   deliveryJpeg: (slug: string, jobId: string) => `events/${SlugSchema.parse(slug)}/generated/${safeId(jobId)}.jpg`,
   /** Uploaded frame/background: never expire, deleted with the event. */
   assetPrefix: (slug: string) => `assets/events/${SlugSchema.parse(slug)}/`,

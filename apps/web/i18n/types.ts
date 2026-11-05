@@ -69,6 +69,8 @@ export interface Catalog {
     oneAtATime: string;
     quotaReached: (p: { eventName: string; max: number }) => string;
     notAnImage: string;
+    /** A menu from earlier in the chat names a photo that is gone (expired, replaced or removed) (D-48). */
+    photoGone: string;
   };
 
   menus: {
@@ -79,6 +81,10 @@ export interface Catalog {
     /** SMS: after a numbered list. */
     replyWithNumber: string;
     invalidChoice: string;
+    /** Hidden feature (D-49): typed at the style prompt to get every style. Never shown to attendees. */
+    allKeywords: readonly string[];
+    allAccepted: (p: { count: number }) => string;
+    allNeedsMore: (p: { needed: number; left: number }) => string;
   };
 
   /** Result messages (SPEC §5.6). */

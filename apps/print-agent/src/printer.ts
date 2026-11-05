@@ -2,12 +2,16 @@ import { execFile } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { JOB_STATE_TEST, jobNumber, lpArgs, parseJobState, parseLpstat, parseRequestId, type PrinterStatus } from "./cups.js";
+import { type Driver, driverOf, JOB_STATE_TEST, jobNumber, lpArgs, parseJobPrinterError, parseJobState, parseLpstat, parseRequestId, type PrinterStatus } from "./cups.js";
 
 const run = promisify(execFile);
 
 /** Where a submitted job stands. `waiting` covers a printer that is off or busy: CUPS keeps the job. */
-export type JobOutcome = { kind: "done" } | { kind: "failed"; reason: string } | { kind: "waiting"; detail: string };
+export type JobOutcome =
+  | { kind: "done" }
+  | { kind: "failed"; reason: string }
+  /** `stuck`: the job itself is stopped or held. With the printer ready it will not come out; waiting only helps while the printer is off. */
+  | { kind: "waiting"; detail: string; stuck?: boolean };
 
 /**
  * One way to put a PNG on paper: real CUPS, the Windows spooler (windows.ts) or
@@ -64,6 +68,10 @@ export function cupsPrinter(queue: string, outDir: string): Printer {
   lpArgs(queue, "/dev/null");
   const tmpDir = path.join(outDir, ".tmp");
   const printerUri = `ipp://localhost/printers/${queue}`;
+  // Which driver the queue uses decides the option names; asked once, on the first print. A failed
+  // lookup falls back to the DS620 set, like before.
+  let driver: Promise<Driver> | undefined;
+  const driverFor = () => (driver ??= run("lpoptions", ["-p", queue, "-l"], { timeout: 10_000 }).then(({ stdout }) => driverOf(stdout), () => "ds620" as const));
   const testFile = path.join(tmpDir, "job-state.test");
   return {
     mode: "cups",
@@ -75,7 +83,7 @@ export function cupsPrinter(queue: string, outDir: string): Printer {
       await mkdir(tmpDir, { recursive: true });
       const file = path.join(tmpDir, `${jobId.replace(/[^A-Za-z0-9_-]/g, "")}.png`);
       await writeFile(file, png);
-      const { stdout } = await run("lp", lpArgs(queue, file), { signal, timeout: 30_000 }).finally(() => rm(file, { force: true }));
+      const { stdout } = await run("lp", lpArgs(queue, file, await driverFor()), { signal, timeout: 30_000 }).finally(() => rm(file, { force: true }));
       const id = parseRequestId(stdout);
       if (!id) throw new Error(`lp did not return a request id: ${stdout.trim().slice(0, 120)}`);
       return id;
@@ -97,6 +105,11 @@ export function cupsPrinter(queue: string, outDir: string): Printer {
       const { state, reasons } = parseJobState(out);
       if (state === "completed") return { kind: "done" };
       if (state === "canceled" || state === "aborted") return { kind: "failed", reason: `printer job ${state}${reasons ? ` (${reasons})` : ""}` };
+      if (state === "stopped" || state === "held") {
+        // A driver that fails on a job (e.g. the printer reports an error) leaves it stopped for good.
+        const said = parseJobPrinterError(out);
+        return { kind: "waiting", stuck: true, detail: `printer job ${state}${reasons ? ` (${reasons})` : ""}${said ? `; printer said: ${said}` : ""}` };
+      }
       const st = await this.status();
       return { kind: "waiting", detail: st.detail || st.status };
     },

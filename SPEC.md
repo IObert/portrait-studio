@@ -348,6 +348,8 @@ In the admin form, an option that depends on a switched-off setting is ignored w
 5. **Background menu**, only if the event has more than one background. Same rules as the style menu. With one style and one background, the job goes straight to generation.
 6. **Job started.** Send the localized "started" message, for example "Got it! Your portrait is being created. It'll be ready in about a minute."
 7. **A new photo** sent while a photo is being checked, or while its menus are open, replaces that one. The old job ends as rejected and its selfie is deleted; it does not use another place of the quota.
+8. **Old menus keep working (D-48).** The style and background menu ids carry the job id (`ps:opt:style:<jobId>:<style>`), so a menu from earlier in the chat names its photo. On WhatsApp a tap on such a menu, for a photo that has already been chosen for, starts a **new portrait** from the same photo (a restyle): the tapped style or background is used and the other one is kept from that photo. The photo was screened already, so the new job starts in `queued`, with its own copy of the selfie. It counts against the per-person limit (§4.3) and the stats. A photo that is gone (expired after 7 days, replaced, rejected or removed) gets the "send a new photo" reply. SMS has no such menus and keeps the numbered, one-step flow.
+9. **Hidden: `ALL` at the style prompt (D-49).** Not mentioned in any menu, hint, reply or to the chat model; documented here and in the README only. While a screened photo waits for its style, a message whose text is `ALL` (`all`, `All!`; `todos`, `tudo` or `all` in pt_BR; matched like any keyword, §5.5 step 4) is not a style answer but a request for every style. It works on WhatsApp and SMS, only at the style prompt, and only if the event has more than one style. It queues one job per enabled style, in the configured order, all on `gradient` (the event's first background if `gradient` is not enabled): the waiting job gets the first style and the others are created like a restyle (§5.5 item 8: own copy of the selfie, `queued`). Each job uses a slot of the per-person limit (§4.3), so `ALL` needs `quotaLeft + 1 >= number of styles` free; otherwise the person gets "that takes N portraits and you have M left" and the style menu again, and nothing is created. The reply is one confirmation message; the portraits then arrive one by one through normal delivery (§6.1). Jobs of the batch carry `batch: true`: they are delivered **without the §5.8 question** and without a pending answer (so nothing is shown on the big screen unasked), and stay in the person's list for `PRINT` (D-28).
 
 ### 5.6 Result messages
 | Outcome | Message |
@@ -369,11 +371,11 @@ In every case that is not a delivery the person can send another photo straight 
 
 ### 5.8 The question after each delivery (D-24)
 Nothing is printed or shown automatically. After each delivery, inside the 24h window, one question is sent.
-- **Printing on and prints left:** three buttons, **Print + show**, **Show only**, **No thanks**. Printing a portrait also puts it on the booth screen.
-- **Printing off, or no prints left:** the plain "Can we show your portrait on the booth screen? Yes / No".
+- **Printing on and prints left:** three buttons, **Print + big screen**, **Big screen only**, **No thanks**. Printing a portrait also puts it on the big screen (the booth screen).
+- **Printing off, or no prints left:** the plain "Can we show your portrait on the big screen? Yes / No".
 - **Group photos (2–4 people):** the localized text adds that everyone in the photo should agree.
 - **Only a yes** adds the image to `ev_<slug>_slideshow`. "No" or no answer means it is not shown or printed.
-- **Old buttons keep working**, so an earlier portrait can still be printed later. The buttons carry the job id.
+- **Old buttons keep working**, so an earlier portrait can still be printed later. The buttons carry the job id. A later **No thanks** (or "No") takes the portrait off the big screen again (D-48), and a later **Print** or **Show** adds it.
 - **SMS has no buttons.** `PRINT`, `YES` and `NO` (localized) answer the last question, and only for 10 minutes: a stray "ok" hours later is not an answer. The keywords are matched in code, never by the model.
 - **Printing a portrait you already have (D-28).** A message containing the print word (`print` / `imprimir`) while nothing else awaits an answer lists the person's printable portraits, newest first: one **Print it** button or a numbered list. Choosing one prints it without adding it to the booth screen. On SMS, `PRINT 2` picks the second one listed.
 - **Print quota** is reserved when a print is requested, before it is queued, so two taps never print twice (§4.3). A portrait can be printed again once its earlier print is counted, and again after a failure.
@@ -586,7 +588,7 @@ A job with a single style and background goes from `screening` straight to `queu
 ## 10. Web app surfaces (Next.js)
 
 ### 10.1 Auth
-- **Basic auth** (`ADMIN_USER` and `ADMIN_PASSWORD` environment variables), enforced in `proxy.ts` (Next.js's middleware). It covers `/admin/**` and `/booth/**`, and fails closed when the variables are not set. Server Actions check the admin again.
+- **Basic auth** (`ADMIN_USER` and `ADMIN_PASSWORD` environment variables), enforced in `proxy.ts` (Next.js's middleware). It covers `/admin/**` only: the booth screen (`/booth/**`) is public so a kiosk needs no login. It fails closed when the variables are not set. Server Actions check the admin again.
 - **Public routes:**
   - `/api/twilio/*` (Twilio signature required)
   - `/s/*`
@@ -628,9 +630,7 @@ A job with a single style and background goes from `screening` straight to `queu
 
 ### 10.5 Stats `/admin/events/[slug]/stats`
 - **Counters, in `ev_<slug>_stats`.** They contain no personal data. Never use Twilio logs as a source.
-  - total interactions (inbound messages)
-  - unique opted-in users
-  - leads collected, split into verified email, returning and agree-only
+  - unique users (opted in), split by how they opted in: verified email (only when lead collection is on), returning and agree-only
   - images requested and delivered
   - flagged, rejected and failed
   - approved by admin
@@ -659,18 +659,18 @@ There is no privacy page of our own (D-19). Every consent message and the verifi
 - **Nothing to install at runtime.** The `twilio-sync` SDK is shipped as a pre-bundled single file, `dist/agent.mjs` (esbuild). It was checked on real Node (D-22): the bundle needs a `createRequire` banner, and CI starts the built bundle so this cannot regress. There is no polling fallback.
 - **How it is started:**
   ```
-  node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue>] [--simulate --out ./prints]
+  node agent.mjs --url https://<app> --token <event printer token> [--printer <queue> | --simulate] [--out ./prints]
   ```
-  The admin UI shows this command with the values filled in (D-33).
-- **Printer doctor.** `node agent.mjs doctor [--fix]` checks the CUPS queue (driver, paused or rejecting queue, the defaults below) and repairs what it can.
+  The admin UI shows this command with the values filled in (D-33), without a printer: when neither `--printer` nor `--simulate` is given, the agent lists the simulator and the printers it finds and asks which to use (D-46). Without a terminal it exits with an error instead.
+- **Printer doctor.** `node agent.mjs doctor [--printer <queue>] [--model ds620|cp70] [--fix]` checks the CUPS queue of a supported printer (its own driver, paused or rejecting queue, the defaults below) and repairs what it can. It works out which printer a queue is for (D-46).
 - No auto-start at login (decided).
 - macOS with CUPS is the tested platform. Windows printing is a beta, not yet tested on a real booth PC. Linux printing is a known gap (`TODO(linux)`).
 
 ### 11.2 Behavior
 - **Auth.** The agent exchanges its printer token at `/api/agent/token` for a Sync token for the identity `printer:<slug>`. That token can read and write only `ev_<slug>_print` and `ev_<slug>_printer`; everything else is denied. An unknown event, a rotated token and printing switched off all return the same 401. The agent refreshes the token before it expires (D-23).
-- **One printer per event.** It must be a DNP DS620 using 4x6 paper.
+- **One printer per event.** A DNP DS620 or a Mitsubishi CP-D70DW (D-45), using 4x6 paper. The rest of this section describes the DS620 print command; the CP-D70DW's is in `apps/print-agent/PROTOCOL.md` §5.
 - **Print command:** `lp -d <queue> -o PageSize=dnp6x4 -o Cutter=Normal -o Finish=Glossy -o Resolution=300x300dpi`, plus `fit-to-page` and `print-scaling=fill` so the print is borderless. Confirmed on paper: no white edge and nothing cropped (the printer itself cuts a few millimetres, §8.3). The doctor sets these as the queue's defaults.
-- **One print, one copy (D-25).** A print is submitted to CUPS once, and its request id is stored on the item (`printerJobId`). After that the agent only waits for that job or cancels it. A printer that is off, paused or out of paper is a reason to wait: the agent keeps its lease and takes nothing new. Done means IPP `job-state = completed`. Before any retry or final failure the CUPS job is cancelled. A job that stalls for 10 minutes while the printer reports ready counts as an error.
+- **One print, one copy (D-25).** A print is submitted to CUPS once, and its request id is stored on the item (`printerJobId`). After that the agent only waits for that job or cancels it. A printer that is off, paused or out of paper is a reason to wait: the agent keeps its lease and takes nothing new. Done means IPP `job-state = completed`. Before any retry or final failure the CUPS job is cancelled. A job that stalls for 10 minutes while the printer reports ready counts as an error, counted from when it reached the printer so a restart does not reset it; a job CUPS has stopped or held counts as one after 30 seconds, with the printer's own error in the message (D-47).
 - **Printer health.** Check the queue regularly for offline, paused, out-of-paper and error states. Report the status and a heartbeat every 15 seconds to `ev_<slug>_printer`. The admin UI and stats show it.
 - **Job flow:**
   1. Claim the item with the SDK's compare-and-set (`mutate`) and set a lease (2 minutes, renewed every 30 seconds while printing).
@@ -682,7 +682,7 @@ There is no privacy page of our own (D-19). Every consent message and the verifi
   The agent reads the first 100 items of the queue per look (`TODO(print-queue-pagination)`).
 - **Stuck jobs.** The server (`lib/pipeline/prints.ts`) puts a `claimed` item, or a `printing` item without a `printerJobId`, whose lease ran out 5 minutes ago back to `queued`, or fails it after 3 attempts. A `printing` item that has a `printerJobId` is never requeued, because that copy may already be on paper; the next agent resumes it.
 - **Settlement.** The server counts successful prints toward `maxPrintsPerPerson`, releases the reservation of a failed one, and sends the promo once per printed job. An item that does not parse is skipped and logged, so one bad item cannot stop it.
-- **Simulator (`--simulate`).** No printer is needed. "Printing" writes the PNG to `--out` with a short delay. This mode is the required hardware simulator. Real prints also keep a copy of every print in the output folder.
+- **Simulator (`--simulate`, or the first choice in the start-up question).** No printer is needed. "Printing" writes the PNG to `--out` with a short delay. This mode is the required hardware simulator. Real prints also keep a copy of every print in the output folder.
 - **Network drops.** Reconnect with back-off (1 s, doubling to 60 s while connecting keeps failing, starting over after a session that lasted a minute) and carry on with items that are still queued. With no successful heartbeat for 60 seconds the agent drops the session and starts a fresh one with a new token; a print at the printer is resumed (D-32).
 - Logs go to the console as readable lines.
 
@@ -829,5 +829,5 @@ No TwiML Bins, Functions or Studio. If the app ever needs static TwiML, it serve
   - a deletion request
   - admin approval of a flagged image
   - a portrait with the event's uploaded background, and one with the LA Kings jersey
-  - printing from the chat ("Print + show", then `PRINT` later) and from the share page, with a real DS620 and with `--simulate`
+  - printing from the chat ("Print + big screen", then `PRINT` later) and from the share page, with a real DS620 and with `--simulate`
   - the booth screen on a landscape and a portrait display

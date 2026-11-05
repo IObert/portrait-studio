@@ -7,8 +7,12 @@ for the Sync token scope; no test reads this file or its JSON examples, so keep 
 ## 1. Starting the agent
 
 ```
-node agent.mjs --url https://<app> --token <event printer token> [--printer <CUPS queue>] [--simulate --out ./prints]
+node agent.mjs --url https://<app> --token <event printer token> [--printer <queue> | --simulate] [--out ./prints]
 ```
+
+Without `--printer` and `--simulate` the agent lists the simulator and the printers on the computer (`lpstat -p`, or
+`Get-Printer` on Windows) and asks which to use, so the admin UI's command names no printer (D-46). Without a terminal
+it exits with code 2 instead.
 
 The printer token looks like `<event id>.XXXX-XXXX-XXXX-XXXX` (docs/decisions.md D-33). The admin UI keeps showing it, together with this command.
 
@@ -86,8 +90,11 @@ queued ──claim──▶ claimed ──▶ printing ──▶ printed
 
 **One print, one copy (docs/decisions.md D-25).** A print is submitted to CUPS once. While the printer is off, paused
 or out of paper, the agent keeps the lease and waits: CUPS holds the job and prints it when the printer is back.
-The agent claims nothing new while the printer is not ready. A job that makes no progress for 10 min while the
-printer says it is ready is cancelled and retried.
+The agent claims nothing new while the printer is not ready. With the printer ready, a job that makes no progress for
+10 min is cancelled and retried, and one that CUPS has `stopped` or `held` (a driver that failed on it, e.g. after a
+printer error) after 30 s. The 10 min are counted from `timestamps.printing`, so restarting the agent does not start them
+over; a step longer than 30 s (a laptop that slept) counts as 30 s. The retry's `error` carries what the printer said,
+e.g. `printer job stopped (job-completed-with-errors); printer said: Filter failed (com.mitsubishi-error0023)` (D-47).
 
 - The agent renews `leaseUntil` every 30 s while an item is `claimed` or `printing`, including while it waits for
   the printer.
@@ -133,3 +140,18 @@ lp -d <queue> -o PageSize=dnp6x4 -o Cutter=Normal -o Finish=Glossy -o Resolution
 The option names were verified on a real DS620 with the DNP-DS620 PPD (`lpoptions -p <queue> -l`); they live in
 `DS620_OPTIONS` in `src/cups.ts`. The agent logs that command's output at start-up. `node agent.mjs doctor --fix`
 switches a queue to the DS620 driver and sets these values as the queue defaults (see README, "Printer doctor").
+`doctor` works out which printer a queue is for (its device, then its driver, then its page sizes) and checks that
+printer's own driver and defaults.
+
+### Mitsubishi CP-D70DW (D-45)
+
+A queue whose `lpoptions -p <queue> -l` lists the page size `ME_10x15` ("MITSUBISHI CP70D Series" PPD) is sent
+
+```
+lp -d <queue> -o PageSize=ME_10x15 -o fit-to-page <file.png>
+```
+
+That page is landscape (448×295 pt) and a little larger than 4x6, so the orientation is left to CUPS, which turns the
+portrait PNG. The server sends a PNG of exactly the page size (1229×1867) when the event has a printer calibration; see
+`lib/image/calibration.ts`. `doctor` knows this printer too (D-46): it checks the Mitsubishi driver and sets
+`PageSize=ME_10x15` as the queue default. It sets nothing else, as the other option names of this driver were not checked.

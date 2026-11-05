@@ -24,9 +24,10 @@ export function canPrintAgain(item: { state: string; settledAt?: string }): bool
   return item.state === "failed" || (item.state === "printed" && !!item.settledAt);
 }
 
-/** Prints the person may still ask for (SPEC §4.3); queued prints reserve quota. */
+/** Prints the person may still ask for (SPEC §4.3); queued prints reserve quota. Infinity when the event has unlimited prints. */
 export function printsLeft(event: PortraitEvent, counters: { printed: number; printsReserved: number }): number {
   if (!event.config.printingEnabled) return 0;
+  if (event.config.unlimitedPrints) return Infinity;
   return Math.max(0, event.config.maxPrintsPerPerson - counters.printed - counters.printsReserved);
 }
 

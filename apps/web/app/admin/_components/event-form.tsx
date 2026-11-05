@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import type { ActionState } from "@/lib/admin/actions";
-import { DEFAULT_COPY, type EventConfigInput } from "@/lib/events/schema";
+import { DEFAULT_COPY, MAX_CLIP_MM, type EventConfigInput } from "@/lib/events/schema";
 import type { StyleId } from "@/lib/prompts/styles";
 import { btn, field, Panel, SECTIONS, type SectionId } from "./ui";
 
@@ -27,7 +27,7 @@ interface Props {
   senders: { e164: string; channel: "whatsapp" | "sms"; rcs?: boolean }[];
   submitLabel: string;
   /** Edit page only: widgets with their own actions, shown inside the section they belong to. */
-  slots?: { uploads: React.ReactNode; printAgent: React.ReactNode };
+  slots?: { uploads: React.ReactNode; printAgent: React.ReactNode; calibrationChart: React.ReactNode };
   /** Thumbnail for the "your own frame" tile, once one is uploaded. */
   framePreview?: string | null;
 }
@@ -61,6 +61,26 @@ function Toggle({ name, label, description, defaultChecked, children }: { name: 
           {children}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Prints per person, or no limit at all (then no message or button mentions a count). */
+function PrintLimit({ config, state }: { config: EventConfigInput; state: ActionState }) {
+  const [unlimited, setUnlimited] = useState(config.unlimitedPrints);
+  return (
+    <div className="space-y-3">
+      <label className="flex items-center gap-3 text-sm font-medium">
+        <input type="checkbox" name="unlimitedPrints" defaultChecked={config.unlimitedPrints} onChange={(e) => setUnlimited(e.target.checked)} className="h-4 w-4 rounded accent-signal" />
+        Unlimited prints
+      </label>
+      {/* Hidden, not unmounted, so the number is kept and still saves. */}
+      <div hidden={unlimited}>
+        <label className={field.label} htmlFor="maxPrintsPerPerson">Prints per person</label>
+        <input id="maxPrintsPerPerson" name="maxPrintsPerPerson" type="number" min={0} max={99} defaultValue={config.maxPrintsPerPerson} className={`${field.input} max-w-28`} />
+        <p className={field.hint}>Attendees pick which of their portraits to print.</p>
+        <FieldError state={state} name="maxPrintsPerPerson" />
+      </div>
     </div>
   );
 }
@@ -362,12 +382,7 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
 
       <Panel id="printing" title={title("printing")} description="Physical prints from the booth printer, and the promo sent after one.">
         <Toggle name="printingEnabled" label="Printing enabled" description="Attendees can ask for a print of their portraits." defaultChecked={config.printingEnabled}>
-          <div>
-            <label className={field.label} htmlFor="maxPrintsPerPerson">Prints per person</label>
-            <input id="maxPrintsPerPerson" name="maxPrintsPerPerson" type="number" min={0} max={99} defaultValue={config.maxPrintsPerPerson} className={`${field.input} max-w-28`} />
-            <p className={field.hint}>Attendees pick which of their portraits to print.</p>
-            <FieldError state={state} name="maxPrintsPerPerson" />
-          </div>
+          <PrintLimit config={config} state={state} />
           <Toggle name="promoEnabled" label="Send promo (needs printing)" description="A message sent after a successful print." defaultChecked={config.promo.enabled}>
             <div>
               <textarea name="promoText" defaultValue={config.promo.text} rows={3} maxLength={600} className={`${field.input} mt-0`} placeholder="Promo text, in the event language" aria-label="Promo text" />
@@ -382,6 +397,31 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
           <p className="mt-0.5 mb-3 text-sm text-slate">Runs on the laptop next to the printer and pulls print jobs from here.</p>
           {slots ? slots.printAgent : afterCreate("The printer token")}
         </div>
+      </Panel>
+
+      <Panel id="calibration" title={title("calibration")} description="Printers trim the edges of a print. Measure how much and every print is fitted inside what is left.">
+        {slots ? (
+          <>
+            <ol className="list-decimal space-y-1.5 pl-5 text-sm text-slate">
+              <li>Print the clipping chart. The print agent must be running and printing on.</li>
+              <li>Hold the print with the arrow at the top. On each edge, find the lowest number you can still see.</li>
+              <li>Enter the four numbers below and save. 0 means that edge is not trimmed.</li>
+            </ol>
+            {slots.calibrationChart}
+            <div className="grid max-w-md grid-cols-2 gap-4 sm:grid-cols-4">
+              {([["top", "Top"], ["right", "Right"], ["bottom", "Bottom"], ["left", "Left"]] as const).map(([edge, label]) => (
+                <div key={edge}>
+                  <label className={field.label} htmlFor={`calibration-${edge}`}>{label}</label>
+                  <input id={`calibration-${edge}`} name={`calibration${label}`} type="number" min={0} max={MAX_CLIP_MM} defaultValue={config.printCalibration[edge]} className={field.input} />
+                  <FieldError state={state} name={`printCalibration.${edge}`} />
+                </div>
+              ))}
+            </div>
+            <p className={field.hint}>Lowest visible number per edge, in mm (0 to {MAX_CLIP_MM}). With any trimming, prints are scaled down slightly to fit.</p>
+          </>
+        ) : (
+          afterCreate("The clipping chart")
+        )}
       </Panel>
 
       <Panel id="leads" title={title("leads")}>

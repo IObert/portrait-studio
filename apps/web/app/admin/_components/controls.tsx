@@ -4,6 +4,7 @@ import { startTransition, useActionState, useId, useRef, useState } from "react"
 import {
   type ActionState,
   deleteEventAction,
+  printClippingChartAction,
   removeAssetAction,
   rotatePrinterTokenAction,
   setStateAction,
@@ -136,6 +137,19 @@ export function AssetUpload({
   );
 }
 
+/** Queues the clipping chart on the print agent (D-45). Sits in the settings form, so no nested <form>. */
+export function PrintClippingChart({ slug }: { slug: string }) {
+  const [state, action, pending] = useActionState(printClippingChartAction, {});
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <button type="button" disabled={pending} className={`${btn.base} ${btn.secondary}`} onClick={() => send(action, { slug })}>
+        {pending ? "Sending…" : "Print clipping chart"}
+      </button>
+      <Status state={state} />
+    </div>
+  );
+}
+
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -172,8 +186,8 @@ function Credential({ label, value, testId, mono = true }: { label: string; valu
 export function PrinterToken({ slug, appUrl, token: saved }: { slug: string; appUrl: string; token: string | null }) {
   const [state, action, pending] = useActionState(rotatePrinterTokenAction, {});
   const token = state.token ?? saved;
-  // Simulator by default: it works with no printer attached (SPEC §11.2).
-  const command = token ? `node agent.mjs --url ${appUrl} --token ${token} --simulate --out ./prints` : null;
+  // No printer in it: the agent asks which one (or the simulator) when it starts (D-46).
+  const command = token ? `node agent.mjs --url ${appUrl} --token ${token}` : null;
   const rotate = (
     <button
       type="button"
@@ -210,7 +224,7 @@ export function PrinterToken({ slug, appUrl, token: saved }: { slug: string; app
                 <CopyButton text={command} label="command" />
               </div>
               <p className="text-xs leading-relaxed text-slate">
-                Needs Node.js 24 or newer (<code>node --version</code>). With a real printer, replace <code>--simulate --out ./prints</code> with <code>--printer &lt;CUPS queue&gt;</code> (see <code>lpstat -p</code>). Run <code>node agent.mjs doctor --fix</code> first to set up the DS620 queue. Needs Node.js 24+.
+                Needs Node.js 24 or newer (<code>node --version</code>). The agent asks whether to use the simulator or one of the printers it finds. Run <code>node agent.mjs doctor --fix</code> first to set up the queue of a DNP DS620 or Mitsubishi CP-D70DW.
               </p>
             </div>
           </details>

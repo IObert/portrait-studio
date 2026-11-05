@@ -2,6 +2,7 @@ import type { Catalog } from "../../i18n/types";
 import type { BackgroundId, PortraitEvent } from "../events/schema";
 import type { OutboundMessage } from "../messaging/outbound";
 import type { StyleId } from "../prompts/styles";
+import { ACTION_OPTION } from "./actions";
 import type { Session } from "./session";
 import { normalize } from "./text";
 
@@ -20,7 +21,7 @@ export type SelfieEffect =
   /** Create the job in `screening`: the worker checks the photo before any menu (D-18). */
   | { type: "create-job"; jobId: string; selfieBlob: string }
   /** Record a menu choice on the pending job; `start` moves it on to generation. */
-  | { type: "choose"; jobId: string; style?: StyleId; background?: BackgroundId; start: boolean }
+  | { type: "choose"; jobId: string; style?: StyleId; background?: BackgroundId; start: boolean; batch?: boolean }
   /** A newer photo replaces a pending one: its job is dropped (SPEC §5.5 step 6). */
   | { type: "supersede-job"; jobId: string }
   /** A pending selfie was replaced and its blob is no longer needed. */
@@ -63,10 +64,10 @@ export function pickOption<T extends string>(options: Option<T>[], answer: { tex
   return options.find((o) => normalize(o.name) === t || o.aliases.some((a) => normalize(a) === t))?.id;
 }
 
-function menu<T extends string>(options: Option<T>[], body: string, button: string, c: Catalog): OutboundMessage {
+function menu<T extends string>(options: Option<T>[], body: string, button: string, c: Catalog, idOf: (optionId: string) => string): OutboundMessage {
   const numbered = options.map((o, i) => `${i + 1}. ${o.name}`).join("\n");
   const smsBody = `${body}\n\n${numbered}\n\n${c.menus.replyWithNumber}`;
-  const items = options.map((o) => ({ id: `opt:${o.id}`, title: o.name }));
+  const items = options.map((o) => ({ id: idOf(o.id), title: o.name }));
   // WhatsApp: quick reply for up to 3 options, otherwise a list picker (SPEC §5.2 pattern, §5.5).
   return options.length <= 3
     ? { kind: "buttons", body, buttons: items, smsBody }
@@ -74,12 +75,12 @@ function menu<T extends string>(options: Option<T>[], body: string, button: stri
 }
 
 /** Style menu (SPEC §5.5), sent by the worker after a photo passes screening (D-18). */
-export function styleMenu(event: PortraitEvent, c: Catalog): OutboundMessage {
-  return menu(styleOptions(event, c), c.menus.styleBody, c.menus.styleButton, c);
+export function styleMenu(event: PortraitEvent, c: Catalog, jobId: string): OutboundMessage {
+  return menu(styleOptions(event, c), c.menus.styleBody, c.menus.styleButton, c, (id) => ACTION_OPTION.style(id, jobId));
 }
 
-export function backgroundMenu(event: PortraitEvent, c: Catalog): OutboundMessage {
-  return menu(backgroundOptions(event, c), c.menus.backgroundBody, c.menus.backgroundButton, c);
+export function backgroundMenu(event: PortraitEvent, c: Catalog, jobId: string): OutboundMessage {
+  return menu(backgroundOptions(event, c), c.menus.backgroundBody, c.menus.backgroundButton, c, (id) => ACTION_OPTION.background(id, jobId));
 }
 
 export function quotaLeft(session: Session, event: PortraitEvent): number {
@@ -121,7 +122,7 @@ function choose(session: Session, event: PortraitEvent, c: Catalog, choice: { st
   if (style && !background) {
     return {
       session: { ...session, step: "awaiting_background", style },
-      messages: [backgroundMenu(event, c)],
+      messages: [backgroundMenu(event, c, jobId)],
       effects: [{ type: "choose", jobId, style, start: false }],
       handled: true,
     };
@@ -154,13 +155,13 @@ export function handleSelfieFlow(session: Session, event: PortraitEvent, c: Cata
 
   if (session.step === "awaiting_style" && session.pendingJobId) {
     const style = pickOption(styleOptions(event, c), input);
-    if (!style) return none([{ kind: "text", body: c.menus.invalidChoice }, styleMenu(event, c)]);
+    if (!style) return none([{ kind: "text", body: c.menus.invalidChoice }, styleMenu(event, c, session.pendingJobId)]);
     return choose(session, event, c, { style });
   }
 
   if (session.step === "awaiting_background" && session.pendingJobId) {
     const background = pickOption(backgroundOptions(event, c), input);
-    if (!background) return none([{ kind: "text", body: c.menus.invalidChoice }, backgroundMenu(event, c)]);
+    if (!background) return none([{ kind: "text", body: c.menus.invalidChoice }, backgroundMenu(event, c, session.pendingJobId)]);
     return choose(session, event, c, { background });
   }
 

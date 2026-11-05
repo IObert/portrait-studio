@@ -21,6 +21,20 @@ export const STALLED_MS = 10 * 60 * 1000;
  * reconnect by itself (seen after a laptop slept: hours of timeouts).
  */
 export const DEAD_CONNECTION_MS = 60_000;
+/**
+ * Longest a Sync request (open, read, write) may take. On a dead connection the SDK can leave one pending for good,
+ * and a session stuck in one never reconnects.
+ */
+export const SYNC_TIMEOUT_MS = 30_000;
+/** Longest the SDK gets to shut down; it can wait for a connection that is not coming back. */
+const SHUTDOWN_TIMEOUT_MS = 5_000;
+/**
+ * A printer job that CUPS has stopped or held, while the printer says it is ready, will not come out (a driver that
+ * fails on a job, e.g. after a printer error, leaves it stopped): it is cancelled and retried after this.
+ */
+export const STUCK_MS = 30_000;
+/** Longest single step counted toward a wait, so a laptop that slept does not add up to a stall. */
+const MAX_STEP_MS = 30_000;
 
 /** Tracks heartbeat results; `dead()` once no beat succeeded for DEAD_CONNECTION_MS. */
 export function connectionWatch(now = () => Date.now()) {
@@ -94,14 +108,16 @@ export async function runAgent(opts: AgentOptions, connect: (opts: AgentOptions)
   }
 }
 
-/** One connected session. Returns or throws when it should be re-established. */
-async function session(opts: AgentOptions): Promise<void> {
+/** One connected session. Returns or throws when it should be re-established. `makeClient` is for tests. */
+export async function session(opts: AgentOptions, makeClient: (token: string) => SyncClient = (token) => new SyncClient(token)): Promise<void> {
   const s = await exchangeToken(opts.url, opts.token);
   log("info", `Connected to event "${s.slug}"`);
-  const client = new SyncClient(s.token);
+  const client = makeClient(s.token);
   const ended = new AbortController();
   const stop = () => ended.abort();
   opts.signal.addEventListener("abort", stop, { once: true });
+  /** A Sync request that gives up after SYNC_TIMEOUT_MS, and at once when the session ends; undefined then. */
+  const inSession = <T>(p: Promise<T>, what: string) => orAborted(withTimeout(p, SYNC_TIMEOUT_MS, `${what} timed out`), ended.signal);
 
   client.on("tokenAboutToExpire", async () => {
     try {
@@ -119,8 +135,9 @@ async function session(opts: AgentOptions): Promise<void> {
 
   let printing = false;
   try {
-    const queue = await client.map({ id: s.objects.print, mode: "open_existing" });
-    const status = await client.document({ id: s.objects.printer, mode: "open_existing" });
+    const queue = await inSession(client.map({ id: s.objects.print, mode: "open_existing" }), "opening the print queue");
+    const status = await inSession(client.document({ id: s.objects.printer, mode: "open_existing" }), "opening the printer status");
+    if (!queue || !status) throw new Error("session ended");
     log("info", `Printer: ${await opts.printer.describe()}`);
 
     // Wake up on new or changed queue items; also poll gently as a safety net.
@@ -143,7 +160,8 @@ async function session(opts: AgentOptions): Promise<void> {
       while (!ended.signal.aborted) {
         // A printer that is off, paused or out of paper takes nothing new: prints stay queued (D-25).
         const ready = !NOT_READY.includes((await opts.printer.status()).status);
-        const next = ready ? await nextWork(queue) : null;
+        const next = ready ? await inSession(nextWork(queue), "reading the print queue") : null;
+        if (ended.signal.aborted) break;
         if (next) {
           printing = true;
           await printOne(queue, next, opts.printer, ended.signal);
@@ -162,7 +180,7 @@ async function session(opts: AgentOptions): Promise<void> {
     }
   } finally {
     opts.signal.removeEventListener("abort", stop);
-    await client.shutdown().catch(() => {});
+    await withTimeout(client.shutdown(), SHUTDOWN_TIMEOUT_MS, "shutdown timed out").catch(() => {});
   }
   if (!opts.signal.aborted) throw new Error("session ended");
 }
@@ -195,7 +213,7 @@ async function transition(queue: Pick<SyncMap, "mutate">, jobId: string, fn: (cu
     result = fn((cur as PrintItem | undefined) ?? null);
     return result;
   }) as unknown as Mutator;
-  await queue.mutate(jobId, mutator);
+  await withTimeout(queue.mutate(jobId, mutator), SYNC_TIMEOUT_MS, "Sync write timed out");
   return result;
 }
 
@@ -213,6 +231,7 @@ export async function printOne(queue: Pick<SyncMap, "mutate">, work: Work, print
   const renewal = setInterval(() => void transition(queue, jobId, (cur) => renew(cur, new Date())).catch(() => {}), RENEW_MS);
   // Resume only a job this printer issued; one from another queue or the simulator is printed afresh (D-25).
   let printerJobId = work.resume && held.printerJobId && printer.owns(held.printerJobId) ? held.printerJobId : null;
+  let since: number | undefined;
   try {
     if (!printerJobId) {
       // Left over on this printer from a released item: make sure that copy never prints.
@@ -235,11 +254,13 @@ export async function printOne(queue: Pick<SyncMap, "mutate">, work: Work, print
         await printer.cancel(submitted);
         return;
       }
+      since = printingSince(started);
     } else {
       log("info", `Resuming ${jobId}: waiting for printer job ${printerJobId}`);
+      since = printingSince(held);
     }
 
-    const outcome = await waitForJob(printer, printerJobId, signal);
+    const outcome = await waitForJob(printer, printerJobId, signal, since);
     if (outcome === "stopped") return; // agent stopping: resumed on the next start
     if (outcome.kind === "done") {
       // The copy is out of the printer. If recording it keeps failing (network), leave the item
@@ -279,26 +300,43 @@ async function recordPrinted(queue: Pick<SyncMap, "mutate">, jobId: string, sign
   return false;
 }
 
+/** When the job reached the printer, from the item; undefined if it was not recorded. */
+function printingSince(item: PrintItem): number | undefined {
+  const t = Date.parse(item.timestamps.printing ?? "");
+  return Number.isNaN(t) ? undefined : t;
+}
+
 /**
  * Polls the submitted job until it is done or failed. Waits as long as the
- * printer is not ready (off, paused, out of paper), logging the reason once;
- * a job that stalls for STALLED_MS while the printer says it is ready fails.
+ * printer is not ready (off, paused, out of paper), logging the reason once.
+ * With the printer ready, a job that does not move for STALLED_MS fails, and one
+ * that CUPS has stopped or held fails after STUCK_MS. `since` (when the job
+ * reached the printer) seeds the stall count, so restarting the agent does not
+ * give a dead job another full wait.
  */
-async function waitForJob(printer: Printer, printerJobId: string, signal: AbortSignal): Promise<{ kind: "done" } | { kind: "failed"; reason: string } | "stopped"> {
-  let readyWaitMs = 0;
+export async function waitForJob(printer: Printer, printerJobId: string, signal: AbortSignal, since?: number): Promise<{ kind: "done" } | { kind: "failed"; reason: string } | "stopped"> {
+  let readyWaitMs = since === undefined ? 0 : Math.min(STALLED_MS, Math.max(0, Date.now() - since));
+  let stuckMs = 0;
   let lastDetail = "";
+  let last = Date.now();
   while (!signal.aborted) {
     const outcome = await printer.check(printerJobId);
     if (outcome.kind !== "waiting") return outcome;
     const st = await printer.status();
+    const now = Date.now();
+    const step = Math.min(now - last, MAX_STEP_MS);
+    last = now;
     if (NOT_READY.includes(st.status)) {
       readyWaitMs = 0;
+      stuckMs = 0;
       const detail = `${st.status}${st.detail ? `: ${st.detail}` : ""}`;
       if (detail !== lastDetail) log("warn", `Waiting for the printer (${detail}); the print stays at the printer and comes out when it is ready`);
       lastDetail = detail;
     } else {
       lastDetail = "";
-      readyWaitMs += POLL_MS;
+      readyWaitMs += step;
+      stuckMs = outcome.stuck ? stuckMs + step : 0;
+      if (stuckMs >= STUCK_MS) return { kind: "failed", reason: outcome.detail };
       if (readyWaitMs >= STALLED_MS) return { kind: "failed", reason: `printer job ${printerJobId} made no progress` };
     }
     await sleep(POLL_MS, signal);
@@ -324,6 +362,16 @@ async function heartbeat(doc: SyncDocument, printer: Printer, printing: boolean)
     log("warn", `Heartbeat failed: ${(err as Error).message}`);
     return false;
   }
+}
+
+/** The promise's result, or undefined as soon as the signal aborts (the promise is then left alone). */
+function orAborted<T>(p: Promise<T>, signal: AbortSignal): Promise<T | undefined> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return resolve(undefined);
+    const onAbort = () => resolve(undefined);
+    signal.addEventListener("abort", onAbort, { once: true });
+    p.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
+  });
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {

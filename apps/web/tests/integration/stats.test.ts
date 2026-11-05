@@ -17,14 +17,14 @@ function store() {
 describe("stats (SPEC §10.5)", () => {
   it("reset zeroes every counter and records lastResetAt; the page reads keep working", async () => {
     const { sync } = store();
-    await bump(sync, "ev", "interactions", 5);
+    await bump(sync, "ev", "imagesRequested", 5);
     await bump(sync, "ev", "style:anime", 2);
     expect(await readLastReset(sync, "ev")).toBeNull();
     expect(await resetStats(sync, "ev", NOW)).toBe(2);
     expect(await readStats(sync, "ev")).toEqual({});
     expect(await readLastReset(sync, "ev")).toBe(NOW.toISOString());
-    await bump(sync, "ev", "interactions");
-    expect(await readStats(sync, "ev")).toEqual({ interactions: 1 });
+    await bump(sync, "ev", "imagesRequested");
+    expect(await readStats(sync, "ev")).toEqual({ imagesRequested: 1 });
   });
 
   it("the reset record is deleted with the event", () => {

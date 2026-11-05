@@ -19,6 +19,10 @@ describe("signed media links", () => {
     expect(verifyMedia(secret, `${body}`)).toBeNull();
     expect(verifyMedia(secret, "garbage")).toBeNull();
   });
+  it("serves the clipping chart too (D-45)", () => {
+    const chart = "events/ev/generated/clipping-chart.chart.png";
+    expect(verifyMedia(secret, signMedia(secret, chart, 60))).toMatchObject({ p: chart });
+  });
   it("only serves generated images, never selfies or assets", () => {
     for (const p of ["events/ev/selfies/a.jpg", "assets/events/ev/frame.png", "../etc/passwd", "events/ev/generated/../selfies/a.jpg"])
       expect(verifyMedia(secret, signMedia(secret, p, 60)), p).toBeNull();
