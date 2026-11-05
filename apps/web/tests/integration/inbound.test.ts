@@ -463,6 +463,67 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await jobs(w, "ev")).toHaveLength(2);
   });
 
+  it("hidden ALL at the style prompt: one portrait per style on the gradient, one confirmation (D-49)", async () => {
+    for (const word of ["ALL", "all", "All!"]) {
+      const w = await world();
+      await liveEvent(w, "ev", { leadCollection: false });
+      await w.say(WA, "#ev");
+      await w.say(WA, "", { selection: ACTION.agree });
+      await w.say(WA, "", selfieMsg);
+      const first = await passScreening(w, "ev", "whatsapp:+447700900123");
+      const styles = defaultConfig("x", "+13203780782").styles;
+
+      expect(await w.say(WA, word)).toEqual([catalogs.en.menus.allAccepted({ count: styles.length })]);
+      const all = await jobs(w, "ev");
+      expect(all).toHaveLength(styles.length);
+      expect(all.map((j) => j.style).sort()).toEqual([...styles].sort());
+      for (const j of all) {
+        expect(j).toMatchObject({ state: "queued", background: "gradient", batch: true, subjects: 1, address: "whatsapp:+447700900123" });
+        expect(w.blob.blobs.has(j.selfieBlob)).toBe(true);
+      }
+      expect(all.find((j) => j.jobId === first.jobId)).toBeDefined(); // the waiting photo is one of them
+      expect(new Set(all.map((j) => j.selfieBlob)).size).toBe(styles.length); // each has its own copy
+      expect(new Set(all.map((j) => j.shareId)).size).toBe(styles.length);
+      const s = (await w.fake.getItem(eventObjects("ev").sessions, "whatsapp:+447700900123"))!.data as { step: string; pendingJobId: string | null; counters: { inFlight: number } };
+      expect(s).toMatchObject({ step: "ready", pendingJobId: null, counters: { inFlight: styles.length } });
+      expect(await readStats(w.sync, "ev")).toMatchObject({ imagesRequested: styles.length, "style:cartoon": 1, "background:gradient": styles.length });
+    }
+  });
+
+  it("hidden ALL in Portuguese, and with an event that has no gradient background (D-49)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, language: "pt_BR", backgrounds: ["solid-white", "original"] });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "", selfieMsg);
+    await passScreening(w, "ev", "whatsapp:+447700900123");
+    const n = defaultConfig("x", "+13203780782").styles.length;
+    expect(await w.say(WA, "Todos")).toEqual([catalogs.pt_BR.menus.allAccepted({ count: n })]);
+    expect((await jobs(w, "ev")).every((j) => j.background === "solid-white")).toBe(true);
+  });
+
+  it("hidden ALL needs one slot per style; otherwise it says so and the menu stays open (D-49)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, maxImagesPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "", selfieMsg);
+    await passScreening(w, "ev", "whatsapp:+447700900123");
+    const n = defaultConfig("x", "+13203780782").styles.length;
+    expect(await w.say(WA, "all")).toEqual([catalogs.en.menus.allNeedsMore({ needed: n, left: 3 }), catalogs.en.menus.styleBody]);
+    expect(await jobs(w, "ev")).toHaveLength(1);
+    expect(await w.say(WA, "2")).toEqual([catalogs.en.menus.backgroundBody]); // a normal pick still works
+  });
+
+  it("ALL is only a style answer: not at the background prompt (D-49)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, backgrounds: ["gradient", "solid-white"] });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    await w.say(WA, "", selfieMsg);
+    await passScreening(w, "ev", "whatsapp:+447700900123");
+    await w.say(WA, "2"); // a style; the background menu follows
+    expect(await w.say(WA, "all")).toEqual([catalogs.en.menus.invalidChoice, catalogs.en.menus.backgroundBody]);
+    expect(await jobs(w, "ev")).toHaveLength(1);
+  });
+
   it("slideshow consent on SMS uses exact keywords for the pending question", async () => {
     await liveEvent(w, "ev", { leadCollection: false });
     await w.say(SMS, "#ev");

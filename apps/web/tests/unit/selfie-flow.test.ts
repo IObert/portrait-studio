@@ -91,6 +91,20 @@ describe("menus after screening (SPEC §5.5)", () => {
   });
 });
 
+describe("the hidden ALL keyword (D-49)", () => {
+  it("is not mentioned in the style menu, its SMS text or the background menu, in any language", () => {
+    for (const cat of [catalogs.en, catalogs.pt_BR]) {
+      const text = JSON.stringify([styleMenu(event(), cat, "job_menu_01"), backgroundMenu(event(), cat, "job_menu_01"), cat.menus.styleBody, cat.menus.replyWithNumber, cat.menus.invalidChoice, cat.selfie]);
+      expect(text).not.toMatch(/\b(all|todos|tudo)\b/i);
+    }
+  });
+
+  it("is not a style name, so the normal flow treats it as an invalid choice", () => {
+    expect(pickOption(styleOptions(event(), c), { text: "all" })).toBeUndefined();
+    expect(pickOption(styleOptions(event(), catalogs.pt_BR), { text: "todos" })).toBeUndefined();
+  });
+});
+
 describe("afterOptIn", () => {
   it("asks for a selfie when none is pending", () => {
     expect(afterOptIn(ready(), event(), c, "job_a_0001").messages[0]).toMatchObject({ body: c.selfie.ask });

@@ -71,6 +71,9 @@ export const en = {
     backgroundButton: "Choose background",
     replyWithNumber: "Reply with a number or name.",
     invalidChoice: "That one isn't on the menu! Please pick from the list.",
+    allKeywords: ["all"],
+    allAccepted: ({ count }) => `Got it! All ${count} portraits are being created. They'll arrive one by one in a minute or two.`,
+    allNeedsMore: ({ needed, left }) => `That takes ${needed} portraits and you have ${left} left. Please pick one style from the list.`,
   },
 
   job: {

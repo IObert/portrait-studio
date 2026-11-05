@@ -81,6 +81,10 @@ export interface Catalog {
     /** SMS: after a numbered list. */
     replyWithNumber: string;
     invalidChoice: string;
+    /** Hidden feature (D-49): typed at the style prompt to get every style. Never shown to attendees. */
+    allKeywords: readonly string[];
+    allAccepted: (p: { count: number }) => string;
+    allNeedsMore: (p: { needed: number; left: number }) => string;
   };
 
   /** Result messages (SPEC §5.6). */

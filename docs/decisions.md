@@ -628,3 +628,17 @@ second copy:
 - **WhatsApp only (user decision).** SMS has no payloads and keeps the numbered, one-step flow.
 - **Not done:** WhatsApp's reply context (`OriginalRepliedMessageSid`). It would need every outbound message SID stored; the id inside the button
   or list item says the same without it.
+
+### D-49 Hidden "ALL" at the style prompt renders every style (user decision)
+*2026-11-05. People wanted to try all styles with one photo. It is a team feature: no menu, hint, reply or chat-model context mentions it.*
+- **Trigger.** While a screened photo waits for its style (`step: awaiting_style`), a text that matches the keyword `all` (pt_BR: `todos`, `tudo`, `all`; `menus.allKeywords`) and no
+  button or list selection. Not at the background prompt, not with an event that has one style (there is no style prompt). WhatsApp and SMS.
+- **What it does** (`allStyles`, `lib/conversation/inbound.ts`). One job per enabled style on `gradient` (the event's first background without it). The waiting job gets the
+  first style (`choose` effect); the rest are created as in a restyle (D-48) with `batch: true`. One confirmation message; portraits arrive as they finish.
+- **Quota (user decision).** One slot per style: `quotaLeft + 1 >= number of styles` (the waiting photo already holds one). Otherwise a message says how many are needed and left,
+  the style menu is sent again, and nothing is created. No special exemption, so the per-person limit still bounds the cost (up to 6 generations per `ALL`).
+- **No question after the images (user decision).** `Job.batch` makes `deliver` skip the print / big-screen question and leave `pendingSlideshow` alone. The portraits are
+  still counted and kept in `session.delivered`, so `PRINT` lists them. Nothing goes on the big screen without an answer.
+- **Copies before the session.** The selfie copies are made before the session is written, so a failed copy never leaves a counted slot (as in D-48).
+- **Not done:** an "ALL" for a restyle (an old menu has no free text) and a summary question after the last image.
+

@@ -21,7 +21,7 @@ export type SelfieEffect =
   /** Create the job in `screening`: the worker checks the photo before any menu (D-18). */
   | { type: "create-job"; jobId: string; selfieBlob: string }
   /** Record a menu choice on the pending job; `start` moves it on to generation. */
-  | { type: "choose"; jobId: string; style?: StyleId; background?: BackgroundId; start: boolean }
+  | { type: "choose"; jobId: string; style?: StyleId; background?: BackgroundId; start: boolean; batch?: boolean }
   /** A newer photo replaces a pending one: its job is dropped (SPEC §5.5 step 6). */
   | { type: "supersede-job"; jobId: string }
   /** A pending selfie was replaced and its blob is no longer needed. */

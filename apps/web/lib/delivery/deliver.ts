@@ -95,7 +95,8 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
     }
     left = printsLeft(event, counters);
     const delivered = [...s.delivered.filter((id) => id !== job.jobId), job.jobId].slice(-10);
-    return { ...s, counters, delivered, pendingSlideshow: { jobId: job.jobId, group, print: left > 0, askedAt: now.toISOString() } };
+    // A portrait of an "ALL" batch comes without the question (D-49); it can still be printed with PRINT.
+    return { ...s, counters, delivered, ...(job.batch ? {} : { pendingSlideshow: { jobId: job.jobId, group, print: left > 0, askedAt: now.toISOString() } }) };
   });
 
   // 5. Stats (SPEC §10.5): only for a portrait that was sent.
@@ -109,7 +110,7 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
 
   // 6. One question, inside the window only (SPEC §5.8, §5.11, D-24): print and
   // show, show only, or neither. Without prints left it is the slideshow question.
-  if (result === "sent") await deps.messenger.send(address, followUp(c, job.jobId, group, left), ctx);
+  if (result === "sent" && !job.batch) await deps.messenger.send(address, followUp(c, job.jobId, group, left), ctx);
   deps.log.info({ event: "delivered", slug: event.slug, jobId: job.jobId, channel: address.channel, result, printOffered: left > 0, approved: !!opts.approvedByAdmin }, "portrait delivered");
   return result;
 }

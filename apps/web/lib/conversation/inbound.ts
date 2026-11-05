@@ -17,7 +17,7 @@ import type { EmailVerifier } from "../twilio/verify";
 import { canPrintAgain, printsLeft, requestPrint } from "../delivery/print-request";
 import { PrintJobSchema } from "../delivery/print-schema";
 import { ACTION_OPTION, ACTION_SLIDESHOW } from "./actions";
-import { normalize } from "./text";
+import { matchesKeyword, normalize } from "./text";
 import { readSlideshowAnswer, SlideshowItemSchema } from "../delivery/slideshow";
 import { PRIVACY_NOTICE_URL } from "../privacy";
 import type { StyleId } from "../prompts/styles";
@@ -29,7 +29,7 @@ import { resolvePick, route } from "./routing";
 import { type ChatModel, chatReply } from "./chat";
 import { ACTION } from "./consent";
 import { deleteAddressData } from "./deletion";
-import { afterOptIn, backgroundOptions, handleSelfieFlow, quotaLeft, type SelfieEffect, styleOptions } from "./selfie";
+import { afterOptIn, backgroundOptions, handleSelfieFlow, quotaLeft, type SelfieEffect, styleMenu, styleOptions } from "./selfie";
 import { newSession, type Session, SessionSchema } from "./session";
 
 /** Sync TTLs (docs/decisions.md D-05): 7 days for attendee data, 24h for dedup (SPEC §3.4). */
@@ -255,7 +255,7 @@ type DeleteEffect = { type: "delete-data" };
  * A new portrait from a photo that was already sent, with another style or background (D-48). The
  * job starts in `queued`: the photo was screened before, so `subjects` and `pet` come along.
  */
-type RestyleEffect = { type: "restyle"; jobId: string; selfieBlob: string; style: StyleId; background: BackgroundId; subjects: number; pet: string | null };
+type RestyleEffect = { type: "restyle"; jobId: string; selfieBlob: string; style: StyleId; background: BackgroundId; subjects: number; pet: string | null; batch?: boolean };
 
 interface Outcome {
   session: Session;
@@ -345,6 +345,12 @@ async function decide(
     input = { ...input, selection: `opt:${tap.optionId}` };
   }
 
+  // Hidden feature (D-49): "ALL" instead of a style makes a portrait in every style. Never mentioned to attendees.
+  if (imageCount === 0 && !input.selection && session.step === "awaiting_style" && event.config.styles.length > 1 && matchesKeyword(input.text, c.menus.allKeywords)) {
+    const all = await allStyles(deps, session, event, c, keyOf(msg.from));
+    if (all) return all;
+  }
+
   if (unusableMedia) return { session, messages: [{ kind: "text", body: c.selfie.notAnImage }], effects: [] };
   // "print" in a message, when nothing else is waiting for an answer (D-28).
   if (imageCount === 0 && session.step === "ready" && event.config.printingEnabled && mentionsPrint(input.text, c)) {
@@ -423,6 +429,43 @@ async function optionTap(
   };
 }
 
+/**
+ * The hidden "ALL" at the style prompt (D-49): the waiting photo and one copy of it per other style, all on the
+ * gradient background (the event's first background if it has no gradient). Each portrait uses a slot of the
+ * per-person limit, so it is refused when too few are left. Null when there is no screened photo waiting: the
+ * message is then handled like any other text. The copies are made before the session is written, as in a restyle.
+ */
+async function allStyles(deps: Deps, session: Session, event: PortraitEvent, c: Catalog, key: string): Promise<Outcome | null> {
+  const jobId = session.pendingJobId;
+  if (!jobId) return null;
+  const job = await deps.sync.map(eventObjects(event.slug).jobs, JobSchema).get(jobId).catch(() => null);
+  if (!job || job.address !== key || job.state !== "awaiting_choice" || job.subjects === null) return null;
+
+  const styles = event.config.styles;
+  // The waiting photo already holds one slot (`inFlight`), which `quotaLeft` does not offer again.
+  const left = quotaLeft(session, event) + 1;
+  if (left < styles.length) return { session, messages: [{ kind: "text", body: c.menus.allNeedsMore({ needed: styles.length, left }) }, styleMenu(event, c, jobId)], effects: [] };
+
+  const photo = await deps.blob.get(job.selfieBlob);
+  if (!photo) return { session, messages: [{ kind: "text", body: c.selfie.photoGone }], effects: [] };
+  const background = event.config.backgrounds.includes("gradient") ? "gradient" : event.config.backgrounds[0]!;
+  const rest = styles.slice(1);
+  const copies: string[] = [];
+  for (let i = 0; i < rest.length; i++) {
+    const path = BlobPaths.selfie(event.slug);
+    await deps.blob.put(path, photo, "image/jpeg");
+    copies.push(path);
+  }
+  return {
+    session: { ...session, step: "ready", pendingJobId: null, style: null, background: null, counters: { ...session.counters, inFlight: session.counters.inFlight + rest.length } },
+    messages: [{ kind: "text", body: c.menus.allAccepted({ count: styles.length }) }],
+    effects: [
+      { type: "choose", jobId, style: styles[0]!, background, start: true, batch: true },
+      ...rest.map((style, i): RestyleEffect => ({ type: "restyle", jobId: newJobId(), selfieBlob: copies[i]!, style, background, subjects: job.subjects!, pet: job.pet, batch: true })),
+    ],
+  };
+}
+
 // TODO(profile-deletion): a profile deleted by us or another app looks like a new person here, so consent starts again (D-12).
 const newJobId = () => randomBytes(12).toString("base64url");
 
@@ -497,7 +540,7 @@ async function runEffect(
       const updated = await sync.map(ev.jobs, JobSchema).update(effect.jobId, (cur) => {
         // Only the attendee's own job, after screening passed.
         if (!cur || cur.address !== ctx.key || cur.state !== "awaiting_choice") return SKIP;
-        const next = { ...cur, style: effect.style ?? cur.style, background: effect.background ?? cur.background };
+        const next = { ...cur, style: effect.style ?? cur.style, background: effect.background ?? cur.background, ...(effect.batch ? { batch: true } : {}) };
         return effect.start ? { ...next, state: "queued", timestamps: { ...cur.timestamps, queued: now } } : next;
       });
       if (effect.start && updated?.state === "queued" && updated.style && updated.background) {
@@ -518,6 +561,7 @@ async function runEffect(
         shareId: randomBytes(18).toString("base64url"),
         subjects: effect.subjects,
         pet: effect.pet,
+        batch: effect.batch ?? false,
         state: "queued",
         timestamps: { queued: ctx.now.toISOString() },
       });

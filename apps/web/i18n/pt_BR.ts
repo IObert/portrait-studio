@@ -70,6 +70,9 @@ export const pt_BR = {
     backgroundButton: "Escolher fundo",
     replyWithNumber: "Responda com um número ou nome.",
     invalidChoice: "Essa opção não está no menu! Escolha uma da lista.",
+    allKeywords: ["todos", "tudo", "all"],
+    allAccepted: ({ count }) => `Combinado! Os ${count} retratos estão sendo criados. Eles chegam um a um em um ou dois minutos.`,
+    allNeedsMore: ({ needed, left }) => `Isso precisa de ${needed} retratos e você ainda tem ${left}. Escolha um estilo da lista.`,
   },
 
   job: {

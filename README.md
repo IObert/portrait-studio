@@ -155,6 +155,12 @@ On the booth laptop (macOS; Windows is beta, Linux not yet supported):
 The event page shows the printer's status. See the [print agent README](apps/print-agent/README.md) for flags and
 troubleshooting.
 
+### Hidden features
+
+Not shown to attendees in any message or menu; for the team only.
+
+- **ALL.** When the bot asks for a style, an attendee who types `ALL` (`TODOS` in Portuguese) gets the photo in **every style the event has enabled**, on the gradient background (the event's first background if it has no gradient). They get one confirmation, then each portrait as its own message when it is ready, with no print / big-screen question (`PRINT` later still lists them). Each portrait uses one slot of "max images per person", so it needs as many free slots as there are styles; otherwise the bot says how many it needs and keeps the style menu open. Every portrait is a normal generation, so one `ALL` costs as many as the event has styles (6 with all of them on). Details: SPEC §5.5, D-49.
+
 ## Tests
 
 ```sh

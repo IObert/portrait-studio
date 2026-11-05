@@ -82,6 +82,17 @@ describe("delivery (SPEC §6.1)", () => {
     expect((await w.fake.getItem(Global.shares, "S".repeat(24)))!.data).toMatchObject({ eventSlug: "ev", jobId: "job_00000001" });
   });
 
+  it("a portrait of an ALL batch comes without the print / big-screen question and leaves no pending answer (D-49)", async () => {
+    const w = await setup({ cfg: { printingEnabled: true } });
+    const job = { ...w.job, batch: true };
+    await w.fake.updateItem(eventObjects("ev").jobs, job.jobId, job);
+    expect(await deliver(w.deps, w.event, job, w.address)).toBe("sent");
+    expect(w.sent).toHaveLength(1); // the image only
+    expect(w.sent[0]).toMatchObject({ mediaUrl: [expect.stringContaining("job_00000001.jpg")] });
+    const s = await w.session();
+    expect(s).toMatchObject({ pendingSlideshow: null, delivered: ["job_00000001"], counters: { delivered: 1, inFlight: 0 } }); // still counted and printable with PRINT
+  });
+
   it("SMS to a US number: MMS with the JPEG", async () => {
     const w = await setup({ to: "+12025550123" });
     await deliver(w.deps, w.event, w.job, w.address);
