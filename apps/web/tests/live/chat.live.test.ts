@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { describe, expect, it } from "vitest";
 import { type ChatModel, chatReply } from "@/lib/conversation/chat";
 import { liveEnv } from "./env";
+import { getEnv } from "@/lib/env";
 
 /**
  * Chat replies against the real chat model (SPEC §5.10, §16). Opt-in:
@@ -13,7 +14,7 @@ const live = process.env.RUN_LIVE_AI_TESTS === "1";
 describe.skipIf(!live)("chat replies (live AI)", () => {
   // Created lazily: the describe body runs even when skipped, and CI has no key.
   let cached: ChatModel | undefined;
-  const model = () => (cached ??= { client: new OpenAI({ apiKey: liveEnv(["OPENAI_API_KEY"]).OPENAI_API_KEY, maxRetries: 0, timeout: 20_000 }), model: process.env.OPENAI_CHAT_MODEL ?? "gpt-6-luna" });
+  const model = () => (cached ??= { client: new OpenAI({ apiKey: liveEnv(["OPENAI_API_KEY"]).OPENAI_API_KEY, maxRetries: 0, timeout: 20_000 }), model: getEnv().OPENAI_CHAT_MODEL });
   const ctx = { eventName: "Twilio SIGNAL", styleNames: ["Anime", "Sketch"], remaining: 2 };
   // Words that only appear in a Portuguese reply (and the reverse).
   const portuguese = /\b(você|selfie para|envie|mande|retrato|obrigad|olá)\b/i;

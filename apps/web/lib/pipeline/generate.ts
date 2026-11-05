@@ -20,7 +20,7 @@ export interface RefImage {
  * D-01), 1024×1536, high quality, PNG. The selfie goes first, then any
  * reference images in order (brand_ref_N.png, then bg_ref_N.png, D-36).
  * Transparent background only for the event's uploaded background (§8.2).
- * No input_fidelity: gpt-image-2.5-flare rejects it (400, checked live).
+ * No input_fidelity: the image model rejected it (400, checked live), so it is not sent (D-51).
  */
 export async function generatePortrait(
   client: OpenAI,

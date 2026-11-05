@@ -31,7 +31,7 @@ describe("solidifyAlpha", () => {
 
 describe("compositeOnBackground", () => {
   it("does not let the background bleed through a near-opaque subject", async () => {
-    // Subject at alpha 253, as gpt-image-2.5 produces it.
+    // Subject at alpha 253, as the image model produces it.
     const subject = await sharp({ create: { width: CANVAS.width, height: CANVAS.height, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 253 / 255 } } }).png().toBuffer();
     const out = await compositeOnBackground(subject, await solidBackground("#0000ff"));
     expect(await pixel(out, 512, 768)).toEqual([255, 0, 0, 255]);

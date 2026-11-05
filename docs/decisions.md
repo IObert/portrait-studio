@@ -7,6 +7,7 @@ because it was approved later. Each entry gives the date, the decision and the r
 ## Changes to the spec
 
 ### D-01 Image model is `gpt-image-2.5-flare` (changes §8.2, §9.4)
+*The model was replaced by `gpt-image-2.6-flare` in D-51; the findings below were measured on 2.5.*
 *2026-10-09.* The §8.2 spike showed that `gpt-image-2` rejects `background: "transparent"`
 (`400 invalid_value: Transparent background is not supported for this model`).
 Both `gpt-image-2.5-flare` and `gpt-image-2.5-sunburst` produce clean cut-outs. Flare was
@@ -655,4 +656,14 @@ second copy:
 - **No personal data**: the page sends only the share id and the kind; the event comes from the share record (`trackShareAction`), so a made-up id counts nothing, and a
   link that is unknown, expired or whose portrait was removed is ignored. Anyone with a link can still raise its counters by calling the action, which is accepted for aggregate numbers.
 - **Not done:** unique visitors (would need a cookie or an identifier), referrer or device data, and counting print taps on the share page (prints are already counted).
+
+### D-51 Image model is `gpt-image-2.6-flare` (replaces the model of D-01)
+*2026-11-05.* OpenAI released `gpt-image-2.6-flare` and `gpt-image-2.6-sunburst`, as it did for 2.5. Flare stays the choice (D-01: about half the time of sunburst).
+- **What changed:** the default of `OPENAI_IMAGE_MODEL` in `lib/env.ts` and `.env.example`. `lib/env.ts` is now the only place with the model names (image, vision and chat):
+  the top-clearance eval and the live tests read them with `getEnv()` instead of repeating the strings. Production sets the variable explicitly, so the code default alone changes nothing there. The
+  `OPENAI_IMAGE_MODEL` variable of the GitHub `production` environment was set to `gpt-image-2.6-flare` on 2026-11-05 (it was `gpt-image-2.5-flare`); the container apps
+  take it at the next deploy.
+- **To check on 2.6 before an event** (D-01, D-02, D-40 were measured on 2.5): `background: "transparent"` still works and the subject alpha is still about 253 (the 250
+  threshold in D-02); `input_fidelity` is still rejected (it is not sent); the time per image; the cost per portrait (priced per token); the top margin
+  (`pnpm --filter web eval:top-clearance`, about $3); and the likeness of the styles on real photos.
 

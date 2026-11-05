@@ -8,6 +8,7 @@ import { type Job, JobSchema } from "@/lib/jobs/schema";
 import { runPipeline } from "@/lib/pipeline/run";
 import { FakeBlob } from "../support/fake-blob";
 import { liveEnv } from "./env";
+import { getEnv } from "@/lib/env";
 
 /**
  * Full pipeline against the real OpenAI API with the uploaded background
@@ -44,8 +45,8 @@ describe.skipIf(!live)("pipeline (live AI)", () => {
       {
         openai: new OpenAI({ apiKey: env.OPENAI_API_KEY, maxRetries: 0 }),
         blob,
-        imageModel: process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2.5-flare",
-        vision: { model: process.env.OPENAI_VISION_MODEL ?? "gpt-6.1-sol", effort: "low" },
+        imageModel: getEnv().OPENAI_IMAGE_MODEL,
+        vision: { model: getEnv().OPENAI_VISION_MODEL, effort: "low" },
         loadFixedFrame: async (id) => readFileSync(path.join(import.meta.dirname, `../../assets/frames/${id}.png`)),
         loadBrandAsset: async (key: string, file: string) => readFileSync(path.join(import.meta.dirname, "../../assets", key, file)),
       },
@@ -85,8 +86,8 @@ describe.skipIf(!live)("pipeline (live AI)", () => {
       {
         openai: new OpenAI({ apiKey: env.OPENAI_API_KEY, maxRetries: 0 }),
         blob,
-        imageModel: process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2.5-flare",
-        vision: { model: process.env.OPENAI_VISION_MODEL ?? "gpt-6.1-sol", effort: "low" },
+        imageModel: getEnv().OPENAI_IMAGE_MODEL,
+        vision: { model: getEnv().OPENAI_VISION_MODEL, effort: "low" },
         loadFixedFrame: async (id) => readFileSync(path.join(import.meta.dirname, `../../assets/frames/${id}.png`)),
         loadBrandAsset: async (key: string, file: string) => readFileSync(path.join(import.meta.dirname, "../../assets", key, file)),
       },

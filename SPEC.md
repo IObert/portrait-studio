@@ -489,7 +489,7 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
   4. Apply the frame (§8.3).
 - **Validate the upload:** PNG or JPEG, at least 1024×1536, 2:3 aspect ratio or croppable to it.
 
-**Transparency was proven first (D-01, D-02).** `gpt-image-2` rejects `background: "transparent"`. `gpt-image-2.5-flare` produces clean cut-outs and is the model (about 18–21 s per image). It renders the subject at alpha ≈ 253, so when compositing, pixels with alpha ≥ 250 are made fully opaque. This is not a background-removal step. The "20% fully transparent" check was only used in the spike, because tight group shots fall below it.
+**Transparency was proven first (D-01, D-02).** `gpt-image-2` rejects `background: "transparent"`. The image model (`OPENAI_IMAGE_MODEL`, D-01, D-51) produces clean cut-outs (about 18–21 s per image when it was chosen). It renders the subject at alpha ≈ 253, so when compositing, pixels with alpha ≥ 250 are made fully opaque. This is not a background-removal step. The "20% fully transparent" check was only used in the spike, because tight group shots fall below it.
 - **Regression tests:**
   - A unit test for the compositing step, using a fixture PNG that has alpha.
   - A test of the full pipeline with the uploaded background. It runs against the real API, and only when `RUN_LIVE_AI_TESTS=1` is set.
@@ -541,7 +541,7 @@ A job with a single style and background goes from `screening` straight to `queu
    - 1–4 subjects → the scene (`subjects`, `pet`) is stored and the menus open.
 4. **Build the prompt** (§9.3), once the person has chosen.
 5. **Generate:** `images.edit` with:
-   - model `OPENAI_IMAGE_MODEL` (`gpt-image-2.5-flare`, D-01)
+   - model `OPENAI_IMAGE_MODEL` (D-01, D-51)
    - input: the selfie, then, with the LA Kings promotion, the reference images (§8.4)
    - size 1024×1536, quality high, PNG output
    - if the event's uploaded background is chosen, add `background: "transparent"` (§8.2)
@@ -576,7 +576,7 @@ A job with a single style and background goes from `screening` straight to `queu
 ### 9.4 Models (environment variables, no admin UI)
 | Purpose | Variable | Default |
 |---|---|---|
-| Image generation | `OPENAI_IMAGE_MODEL` | `gpt-image-2.5-flare` |
+| Image generation | `OPENAI_IMAGE_MODEL` | `gpt-image-2.6-flare` |
 | Face, scene and AI review | `OPENAI_VISION_MODEL` | `gpt-6.1-sol`, reasoning effort `low` (it does not accept `none`, D-14) |
 | Chat replies and the deletion tool | `OPENAI_CHAT_MODEL` | `gpt-6-luna`, reasoning effort `none` |
 

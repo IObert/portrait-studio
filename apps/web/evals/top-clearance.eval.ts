@@ -10,6 +10,7 @@ import { bgRefName, brandRefName } from "../lib/prompts/brand";
 import { STYLE_IDS, type StyleId } from "../lib/prompts/styles";
 import { calibrationImages, judgeTopBand, markTopBand, type Verdict } from "./top-clearance";
 import { evalEnv } from "./env";
+import { getEnv } from "../lib/env";
 
 /**
  * Eval: does a generated portrait keep the top 10% free? (docs/decisions.md D-40)
@@ -63,8 +64,8 @@ async function main() {
   }
   const env = evalEnv(["OPENAI_API_KEY"]);
   const client = new OpenAI({ apiKey: env.OPENAI_API_KEY, maxRetries: 1, timeout: 240_000 });
-  const vision = { model: process.env.OPENAI_VISION_MODEL ?? "gpt-6.1-sol", effort: "low" } as const;
-  const model = process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-2.5-flare";
+  const vision = { model: getEnv().OPENAI_VISION_MODEL, effort: "low" } as const;
+  const model = getEnv().OPENAI_IMAGE_MODEL;
   mkdirSync(OUT, { recursive: true });
 
   // 1. The judge must tell a head in the band from a clear one, or its verdicts mean nothing.
