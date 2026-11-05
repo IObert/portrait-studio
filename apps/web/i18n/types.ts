@@ -69,6 +69,8 @@ export interface Catalog {
     oneAtATime: string;
     quotaReached: (p: { eventName: string; max: number }) => string;
     notAnImage: string;
+    /** A menu from earlier in the chat names a photo that is gone (expired, replaced or removed) (D-48). */
+    photoGone: string;
   };
 
   menus: {

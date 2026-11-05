@@ -609,3 +609,22 @@ second copy:
   one clean reconnect (16:57) and one inconclusive case, so it is not proven to have been a cause.
 - **Not done:** printing several jobs at once. One job at a time is what keeps one print one copy (D-25); the two limits above
   bound how long a bad job can hold the line. A hung SDK client that never shuts down is left behind, not killed.
+
+### D-48 Old buttons and menus keep working; a restyle starts a new portrait from the same photo (user decision)
+*2026-11-05. Attendees scroll up in the chat to print again, change their answer, or pick another style or background for the photo they already sent. The bot only accepted a style or background while that photo was waiting for an answer.*
+- **Print and big-screen buttons** already carried the job id and worked at any time (D-24). New: **No** after an earlier **Yes** removes the
+  portrait from the big screen (own portrait only; `slideshowYes` goes down by one, so the stat counts portraits on the screen).
+- **Menu ids carry the job id**: `ps:opt:style:<jobId>:<style>` and `ps:opt:background:<jobId>:<background>` (`ACTION_OPTION`). The id fits a WhatsApp
+  list item (200 characters). Menus sent before this carried only `opt:<id>`; those are still read, for the photo waiting for an answer.
+- **A tap on a menu for the photo waiting for an answer** is the normal flow. **A tap for a photo that was already chosen for** is a **restyle**
+  (`optionTap`, `lib/conversation/inbound.ts`): the tapped style or background is used and the other is kept from that photo, so the portrait is
+  generated at once with no second menu. The photo was screened already, so the job starts in `queued` with `subjects` and `pet` copied.
+- **Quota (user decision).** A restyle counts as a portrait (`quotaLeft`, `inFlight`, stats `imagesRequested`, `style:*`, `background:*`). Nothing
+  new to configure.
+- **The selfie is copied**, not shared, because removing a portrait (admin or attendee) deletes its selfie. The copy happens before the session is
+  written, so a missing photo never leaves a counted slot.
+- **Gone photos** (selfie expired after 7 days, job rejected or removed, someone else's job) get `selfie.photoGone`. A photo still being checked gets
+  the "still checking" reply. A restyle does not touch a photo that is waiting for an answer: that one stays open.
+- **WhatsApp only (user decision).** SMS has no payloads and keeps the numbered, one-step flow.
+- **Not done:** WhatsApp's reply context (`OriginalRepliedMessageSid`). It would need every outbound message SID stored; the id inside the button
+  or list item says the same without it.

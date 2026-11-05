@@ -5,7 +5,7 @@ import type { Catalog } from "../../i18n/types";
 import type { BlobStore } from "../blob/store";
 import { BlobPaths } from "../blob/paths";
 import type { EventRepo } from "../events/repo";
-import type { PortraitEvent } from "../events/schema";
+import type { BackgroundId, PortraitEvent } from "../events/schema";
 import { JobSchema, type Job } from "../jobs/schema";
 import { type Address, keyOf, mask } from "../messaging/address";
 import type { Messenger, OutboundMessage } from "../messaging/outbound";
@@ -16,10 +16,11 @@ import type { MemoryClient } from "../twilio/memory";
 import type { EmailVerifier } from "../twilio/verify";
 import { canPrintAgain, printsLeft, requestPrint } from "../delivery/print-request";
 import { PrintJobSchema } from "../delivery/print-schema";
-import { ACTION_SLIDESHOW } from "./actions";
+import { ACTION_OPTION, ACTION_SLIDESHOW } from "./actions";
 import { normalize } from "./text";
 import { readSlideshowAnswer, SlideshowItemSchema } from "../delivery/slideshow";
 import { PRIVACY_NOTICE_URL } from "../privacy";
+import type { StyleId } from "../prompts/styles";
 import { bump } from "../stats";
 import { advanceConsent, beginConsent, type ConsentEffect } from "./consent";
 import { verificationEmailSubstitutions } from "./email-substitutions";
@@ -28,7 +29,7 @@ import { resolvePick, route } from "./routing";
 import { type ChatModel, chatReply } from "./chat";
 import { ACTION } from "./consent";
 import { deleteAddressData } from "./deletion";
-import { afterOptIn, handleSelfieFlow, quotaLeft, type SelfieEffect } from "./selfie";
+import { afterOptIn, backgroundOptions, handleSelfieFlow, quotaLeft, type SelfieEffect, styleOptions } from "./selfie";
 import { newSession, type Session, SessionSchema } from "./session";
 
 /** Sync TTLs (docs/decisions.md D-05): 7 days for attendee data, 24h for dedup (SPEC §3.4). */
@@ -250,11 +251,16 @@ type SlideshowEffect = { type: "slideshow"; jobId: string; answer: "print" | "pr
 type PrintMenuEffect = { type: "print-menu" };
 /** "Yes, delete" confirmed (SPEC §5.10). */
 type DeleteEffect = { type: "delete-data" };
+/**
+ * A new portrait from a photo that was already sent, with another style or background (D-48). The
+ * job starts in `queued`: the photo was screened before, so `subjects` and `pet` come along.
+ */
+type RestyleEffect = { type: "restyle"; jobId: string; selfieBlob: string; style: StyleId; background: BackgroundId; subjects: number; pet: string | null };
 
 interface Outcome {
   session: Session;
   messages: OutboundMessage[];
-  effects: (ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect | DeleteEffect)[];
+  effects: (ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect | DeleteEffect | RestyleEffect)[];
 }
 
 async function decide(
@@ -330,6 +336,15 @@ async function decide(
     }
   }
 
+  // A style or background picked from a menu earlier in the chat (D-48): the id names the photo it was sent for.
+  const tap = imageCount === 0 ? ACTION_OPTION.parse(input.selection) : null;
+  if (tap) {
+    const r = await optionTap(deps, session, event, c, keyOf(msg.from), tap);
+    if (r.kind === "done") return r.outcome;
+    // The photo waiting for an answer: the normal flow, with the id in its short form.
+    input = { ...input, selection: `opt:${tap.optionId}` };
+  }
+
   if (unusableMedia) return { session, messages: [{ kind: "text", body: c.selfie.notAnImage }], effects: [] };
   // "print" in a message, when nothing else is waiting for an answer (D-28).
   if (imageCount === 0 && session.step === "ready" && event.config.printingEnabled && mentionsPrint(input.text, c)) {
@@ -356,6 +371,58 @@ async function decide(
   return { session: r.session, messages: r.messages, effects: r.effects };
 }
 
+/** The job states a restyle may start from: the photo passed screening and the person already chose once. */
+const RESTYLE_FROM: readonly Job["state"][] = ["queued", "processing", "delivered", "flagged", "approved_by_admin", "failed"];
+
+/**
+ * A tap on a style / background menu (D-48). For the photo that is waiting for an answer it returns
+ * `pending` and the normal flow takes over. For a photo that was already chosen for, it starts a new
+ * portrait with the tapped style or background and keeps the other from that photo. It counts as a
+ * portrait (`quotaLeft`). The photo is copied, so removing one portrait never deletes another's input.
+ */
+async function optionTap(
+  deps: Deps,
+  session: Session,
+  event: PortraitEvent,
+  c: Catalog,
+  key: string,
+  tap: NonNullable<ReturnType<typeof ACTION_OPTION.parse>>,
+): Promise<{ kind: "pending" } | { kind: "done"; outcome: Outcome }> {
+  const say = (body: string) => ({ kind: "done" as const, outcome: { session, messages: [{ kind: "text" as const, body }], effects: [] } });
+  const styles = styleOptions(event, c);
+  const backgrounds = backgroundOptions(event, c);
+  const enabled = tap.kind === "style" ? styles : backgrounds;
+  if (!enabled.some((o) => o.id === tap.optionId)) return say(c.menus.invalidChoice);
+
+  const job = await deps.sync.map(eventObjects(event.slug).jobs, JobSchema).get(tap.jobId).catch(() => null);
+  if (!job || job.address !== key) return say(c.selfie.photoGone);
+  if (job.state === "awaiting_choice") return session.pendingJobId === job.jobId ? { kind: "pending" } : say(c.selfie.photoGone);
+  if (job.subjects === null) return say(["screening", "processing", "queued"].includes(job.state) ? c.selfie.stillChecking : c.selfie.photoGone);
+  if (!RESTYLE_FROM.includes(job.state)) return say(c.selfie.photoGone);
+
+  const style = tap.kind === "style" ? (tap.optionId as StyleId) : job.style;
+  const background = tap.kind === "background" ? (tap.optionId as BackgroundId) : job.background;
+  if (!style || !background) return say(c.selfie.photoGone);
+  // The part that is kept must still be on offer in this event.
+  if (!styles.some((o) => o.id === style) || !backgrounds.some((o) => o.id === background)) return say(c.menus.invalidChoice);
+  if (quotaLeft(session, event) <= 0) return say(c.selfie.quotaReached({ eventName: event.config.name, max: event.config.maxImagesPerPerson }));
+
+  // Copy the photo before the session is written, so the session only counts a job whose photo exists.
+  const photo = await deps.blob.get(job.selfieBlob);
+  if (!photo) return say(c.selfie.photoGone);
+  const selfieBlob = BlobPaths.selfie(event.slug);
+  await deps.blob.put(selfieBlob, photo, "image/jpeg");
+
+  return {
+    kind: "done",
+    outcome: {
+      session: { ...session, counters: { ...session.counters, inFlight: session.counters.inFlight + 1 } },
+      messages: [{ kind: "text", body: c.job.started }],
+      effects: [{ type: "restyle", jobId: newJobId(), selfieBlob, style, background, subjects: job.subjects, pet: job.pet }],
+    },
+  };
+}
+
 // TODO(profile-deletion): a profile deleted by us or another app looks like a new person here, so consent starts again (D-12).
 const newJobId = () => randomBytes(12).toString("base64url");
 
@@ -373,7 +440,7 @@ async function lookupProfile(deps: Deps, from: Address) {
 /** Runs one effect; may return a reply that depends on its outcome. */
 async function runEffect(
   deps: Deps,
-  effect: ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect | DeleteEffect,
+  effect: ConsentEffect | SelfieEffect | SlideshowEffect | PrintMenuEffect | DeleteEffect | RestyleEffect,
   ctx: { event: PortraitEvent; key: string; address: Address; now: Date; session: Session },
 ): Promise<OutboundMessage | void> {
   const { sync } = deps;
@@ -440,6 +507,27 @@ async function runEffect(
       }
       return;
     }
+    case "restyle": {
+      const job: Job = JobSchema.parse({
+        jobId: effect.jobId,
+        address: ctx.key,
+        channel: ctx.address.channel,
+        style: effect.style,
+        background: effect.background,
+        selfieBlob: effect.selfieBlob,
+        shareId: randomBytes(18).toString("base64url"),
+        subjects: effect.subjects,
+        pet: effect.pet,
+        state: "queued",
+        timestamps: { queued: ctx.now.toISOString() },
+      });
+      await sync.map(ev.jobs, JobSchema, { ttlSeconds: SEVEN_DAYS }).create(effect.jobId, job);
+      await bump(sync, ctx.event.slug, "imagesRequested");
+      await bump(sync, ctx.event.slug, `style:${effect.style}`);
+      await bump(sync, ctx.event.slug, `background:${effect.background}`);
+      deps.log.info({ event: "job_restyled", slug: ctx.event.slug, jobId: effect.jobId, style: effect.style, background: effect.background }, "new portrait from an earlier photo");
+      return;
+    }
     case "supersede-job": {
       // A newer photo replaced this one before generation: drop it and its selfie.
       let selfie: string | null = null;
@@ -459,7 +547,11 @@ async function runEffect(
       await deps.blob.delete(effect.blobPath);
       return;
     case "slideshow": {
-      if (effect.answer === "no") return; // "No" or no answer: never shown (SPEC §5.8)
+      // "No", or no answer: never shown (SPEC §5.8). A "No" after an earlier "Yes" takes it off the screen again (D-48).
+      if (effect.answer === "no") {
+        await removeFromSlideshow(deps, ctx, effect.jobId);
+        return;
+      }
       let printReply: OutboundMessage | undefined;
       if (effect.answer === "print" || effect.answer === "printonly") {
         // Print + big screen (D-24): the print is requested first; the portrait is shown either way.
@@ -537,6 +629,18 @@ async function printMenu(deps: Deps, ctx: { event: PortraitEvent; key: string; s
   const body = d.printMenuMany({ printsLeft: left });
   const smsBody = `${body}\n\n${items.map((it) => it.title).join("\n")}\n\n${d.printSmsHintMany}`;
   return { kind: "list", body, button: d.printMenuButton, items, smsBody };
+}
+
+/** Takes the attendee's own portrait off the booth screen, if it is on it (D-48). */
+async function removeFromSlideshow(deps: Deps, ctx: { event: PortraitEvent; key: string }, jobId: string) {
+  const { sync } = deps;
+  const ev = eventObjects(ctx.event.slug);
+  const job = await sync.map(ev.jobs, JobSchema).get(jobId);
+  if (!job || job.address !== ctx.key) return;
+  const slides = sync.map(ev.slideshow, SlideshowItemSchema);
+  if (!(await slides.get(jobId))) return;
+  await slides.delete(jobId);
+  await bump(sync, ctx.event.slug, "slideshowYes", -1);
 }
 
 /** Adds the attendee's own delivered portrait to the booth screen (SPEC §5.8). */

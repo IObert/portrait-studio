@@ -348,6 +348,7 @@ In the admin form, an option that depends on a switched-off setting is ignored w
 5. **Background menu**, only if the event has more than one background. Same rules as the style menu. With one style and one background, the job goes straight to generation.
 6. **Job started.** Send the localized "started" message, for example "Got it! Your portrait is being created. It'll be ready in about a minute."
 7. **A new photo** sent while a photo is being checked, or while its menus are open, replaces that one. The old job ends as rejected and its selfie is deleted; it does not use another place of the quota.
+8. **Old menus keep working (D-48).** The style and background menu ids carry the job id (`ps:opt:style:<jobId>:<style>`), so a menu from earlier in the chat names its photo. On WhatsApp a tap on such a menu, for a photo that has already been chosen for, starts a **new portrait** from the same photo (a restyle): the tapped style or background is used and the other one is kept from that photo. The photo was screened already, so the new job starts in `queued`, with its own copy of the selfie. It counts against the per-person limit (§4.3) and the stats. A photo that is gone (expired after 7 days, replaced, rejected or removed) gets the "send a new photo" reply. SMS has no such menus and keeps the numbered, one-step flow.
 
 ### 5.6 Result messages
 | Outcome | Message |
@@ -373,7 +374,7 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
 - **Printing off, or no prints left:** the plain "Can we show your portrait on the big screen? Yes / No".
 - **Group photos (2–4 people):** the localized text adds that everyone in the photo should agree.
 - **Only a yes** adds the image to `ev_<slug>_slideshow`. "No" or no answer means it is not shown or printed.
-- **Old buttons keep working**, so an earlier portrait can still be printed later. The buttons carry the job id.
+- **Old buttons keep working**, so an earlier portrait can still be printed later. The buttons carry the job id. A later **No thanks** (or "No") takes the portrait off the big screen again (D-48), and a later **Print** or **Show** adds it.
 - **SMS has no buttons.** `PRINT`, `YES` and `NO` (localized) answer the last question, and only for 10 minutes: a stray "ok" hours later is not an answer. The keywords are matched in code, never by the model.
 - **Printing a portrait you already have (D-28).** A message containing the print word (`print` / `imprimir`) while nothing else awaits an answer lists the person's printable portraits, newest first: one **Print it** button or a numbered list. Choosing one prints it without adding it to the booth screen. On SMS, `PRINT 2` picks the second one listed.
 - **Print quota** is reserved when a print is requested, before it is queued, so two taps never print twice (§4.3). A portrait can be printed again once its earlier print is counted, and again after a failure.

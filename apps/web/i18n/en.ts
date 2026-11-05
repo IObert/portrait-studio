@@ -61,6 +61,7 @@ export const en = {
     quotaReached: ({ eventName, max }) =>
       `You've already used your ${max} free ${max === 1 ? "portrait" : "portraits"} for ${eventName}. Thanks for stopping by!`,
     notAnImage: "That file isn't a photo we can use. Please send a selfie as an image.",
+    photoGone: "That photo isn't available any more. Please send a new photo.",
   },
 
   menus: {

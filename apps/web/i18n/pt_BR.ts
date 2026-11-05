@@ -60,6 +60,7 @@ export const pt_BR = {
     quotaReached: ({ eventName, max }) =>
       `Você já usou ${max === 1 ? "o seu retrato gratuito" : `os seus ${max} retratos gratuitos`} do ${eventName}. Obrigado pela visita!`,
     notAnImage: "Esse arquivo não é uma foto que possamos usar. Envie uma selfie como imagem.",
+    photoGone: "Essa foto não está mais disponível. Envie uma nova foto, por favor.",
   },
 
   menus: {

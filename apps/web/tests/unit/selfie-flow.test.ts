@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { catalogs } from "@/i18n";
+import { ACTION_OPTION } from "@/lib/conversation/actions";
 import { afterOptIn, backgroundMenu, handleSelfieFlow, pickOption, styleMenu, styleOptions } from "@/lib/conversation/selfie";
 import { newSession, type Session } from "@/lib/conversation/session";
 import { defaultConfig, type EventConfigInput, type PortraitEvent } from "@/lib/events/schema";
@@ -81,10 +82,12 @@ describe("menus after screening (SPEC §5.5)", () => {
   });
 
   it("menu builders: list for 4+ options with numbered SMS text, buttons for ≤3", () => {
-    const list = styleMenu(event(), c);
+    const list = styleMenu(event(), c, "job_menu_01");
     expect(list.kind).toBe("list");
     if (list.kind === "list") expect(list.smsBody).toMatch(/1\. Cartoon[\s\S]*6\. Pixel Art/);
-    expect(backgroundMenu(event({ backgrounds: ["gradient", "original"] }), c).kind).toBe("buttons");
+    // The ids name the photo, so the menu still works after newer messages (D-48).
+    if (list.kind === "list") expect(list.items[0]!.id).toBe(ACTION_OPTION.style("cartoon", "job_menu_01"));
+    expect(backgroundMenu(event({ backgrounds: ["gradient", "original"] }), c, "job_menu_01").kind).toBe("buttons");
   });
 });
 
