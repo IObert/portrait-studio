@@ -2,7 +2,7 @@
 // every style (decision 2026-10-09, SPEC §9.3); preserve uses the settings text.
 
 export const PRESERVE =
-  "Preserve accurately for every subject: skin tone, eye color, hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.";
+  "Preserve accurately for every subject: face shape, jawline, nose and facial proportions, apparent age and build, skin tone, eye color, natural hair color, hairstyle, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features. Change only the rendering technique, never the person: do not reshape the face or recolor hair, eyes or skin to fit the style or its palette. The portrait must be immediately recognizable as the same person.";
 
 export const COMPOSITION =
   "Composition: Portrait framing from the chest up, with all subjects positioned naturally as they appear in the original photo.";
