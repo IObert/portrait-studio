@@ -68,6 +68,8 @@ async function Stats({ params }: { params: Promise<{ slug: string }> }) {
   const [s, lastReset, printer] = await Promise.all([readStats(sync, slug), readLastReset(sync, slug), printerStatus(sync, slug)]);
   const n = (k: string) => s[k] ?? 0;
   const avg = n("deliveryCount") ? `${Math.round(n("deliveryMsTotal") / n("deliveryCount") / 1000)} s` : "–";
+  const delivered = n("imagesDelivered") + n("approvedByAdmin");
+  const opened = delivered ? `${n("shareLinksOpened")} of ${delivered} (${Math.round((n("shareLinksOpened") / delivered) * 100)}%)` : n("shareLinksOpened");
   const styles = STYLE_IDS.filter((id) => n(`style:${id}`) > 0);
   const backgrounds = BACKGROUND_IDS.filter((id) => n(`background:${id}`) > 0);
 
@@ -106,6 +108,13 @@ async function Stats({ params }: { params: Promise<{ slug: string }> }) {
             <div className="pt-3">
               <Printer p={printer} />
             </div>
+          </Card>
+          <Card title="Share page">
+            <Row label="Page views" value={n("shareViews")} />
+            <Row label="Portraits whose link was opened" value={opened} />
+            <Row label="Shared (share sheet)" value={n("shareShares")} />
+            <Row label="Text copied" value={n("shareTextCopied")} />
+            <Row label="Downloads" value={n("shareDownloads")} />
           </Card>
           <Card title="Styles and backgrounds">
             {styles.length + backgrounds.length === 0 && <p className="py-2 text-sm text-slate">Nothing generated yet.</p>}

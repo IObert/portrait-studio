@@ -7,6 +7,7 @@ because it was approved later. Each entry gives the date, the decision and the r
 ## Changes to the spec
 
 ### D-01 Image model is `gpt-image-2.5-flare` (changes §8.2, §9.4)
+*The model was replaced by `gpt-image-2.6-flare` in D-51; the findings below were measured on 2.5.*
 *2026-10-09.* The §8.2 spike showed that `gpt-image-2` rejects `background: "transparent"`
 (`400 invalid_value: Transparent background is not supported for this model`).
 Both `gpt-image-2.5-flare` and `gpt-image-2.5-sunburst` produce clean cut-outs. Flare was
@@ -642,3 +643,43 @@ second copy:
 - **Copies before the session.** The selfie copies are made before the session is written, so a failed copy never leaves a counted slot (as in D-48).
 - **Not done:** an "ALL" for a restyle (an old menu has no free text) and a summary question after the last image.
 
+### D-50 Count what happens on the share page (user decision)
+*2026-11-05. We did not know how many attendees open their share link or use its buttons, so we could not tell whether the page is worth the work.*
+- **Counters in the event's stats** (SPEC §10.5): `shareViews`, `shareLinksOpened`, `shareShares`, `shareTextCopied`, `shareDownloads`. They reset with the other counters.
+  The stats page has a "Share page" card; "portraits whose link was opened" is shown against the portraits delivered.
+- **Views are sent by the page, not counted on the server**: `ShareTracker` runs in the browser after load, once per portrait and tab session (`sessionStorage`).
+  The crawlers that fetch a link for its preview (WhatsApp, iMessage, Slack) do not run JavaScript, so they are not counted; a reload is not counted twice.
+  Opening your own link counts. Clicks (share, copy, download) are counted per click, not per person.
+- **Share** counts when the phone's share sheet completes (`navigator.share` resolved), not when it is dismissed. **Copy text** is counted apart. **Download** counts the
+  link and the fallback used where sharing files is not supported.
+- **First open** is stored as `openedAt` on the share record, so "links opened" counts portraits, not visits.
+- **No personal data**: the page sends only the share id and the kind; the event comes from the share record (`trackShareAction`), so a made-up id counts nothing, and a
+  link that is unknown, expired or whose portrait was removed is ignored. Anyone with a link can still raise its counters by calling the action, which is accepted for aggregate numbers.
+- **Not done:** unique visitors (would need a cookie or an identifier), referrer or device data, and counting print taps on the share page (prints are already counted).
+
+### D-51 Image model is `gpt-image-2.6-flare` (replaces the model of D-01)
+*2026-11-05.* OpenAI released `gpt-image-2.6-flare` and `gpt-image-2.6-sunburst`, as it did for 2.5. Flare stays the choice (D-01: about half the time of sunburst).
+- **What changed:** the default of `OPENAI_IMAGE_MODEL` in `lib/env.ts` and `.env.example`. `lib/env.ts` is now the only place with the model names (image, vision and chat):
+  the top-clearance eval and the live tests read them with `getEnv()` instead of repeating the strings. Production sets the variable explicitly, so the code default alone changes nothing there. The
+  `OPENAI_IMAGE_MODEL` variable of the GitHub `production` environment was set to `gpt-image-2.6-flare` on 2026-11-05 (it was `gpt-image-2.5-flare`); the container apps
+  take it at the next deploy.
+- **To check on 2.6 before an event** (D-01, D-02, D-40 were measured on 2.5): `background: "transparent"` still works and the subject alpha is still about 253 (the 250
+  threshold in D-02); `input_fidelity` is still rejected (it is not sent); the time per image; the cost per portrait (priced per token); the top margin
+  (`pnpm --filter web eval:top-clearance`; the full run is 54 images, about $13.50, not the $3 the SPEC used to say); and the likeness of the styles on real photos.
+- **Checked on 2026-11-05** (mirror selfie, all six styles, three backgrounds): unit, integration and end-to-end tests and the frame safe-zone eval pass. With the prompts of D-40 the **uploaded
+  background failed 6 of 6** on 2.6 (the same two styles on 2.5 passed): the hair reached into the top 10% (about 60 px for pop-art, the whole hair for cartoon), the scene backgrounds passed 12 of 12.
+  Not run: the other two photos, the live pipeline test, alpha level, cost and time per image.
+- **Why, and the fix (user decision: 2.6 goes to production):** the margin line said the strip stays "plain background", which makes no sense for a cut-out, and a model told "10%" puts the hair
+  right on the 10% line. Changes in `lib/prompts/frame.ts` and `build.ts`: ask for **13%** (about 200 px, from one constant), say it in pixels, repeat it in the final reminder, and word the strip
+  per background (`stripRule`). Result: **17 of 18 fail-free** (the uploaded sketch crossed the line by a few pixels; one sample).
+- **Blank banner on the original background:** with "plain background" the model left a flat band across the top of portraits made with the original background (a flat orange strip in pop-art, bare paper
+  in the sketch). Scene backgrounds are now told to fill the strip: "continue the scene up to the top edge (more wall, ceiling, sky…), with no blank band, flat color block, solid stripe or border".
+  The six originals now show the ceiling, a row of tiles and the door frame; pop-art is still the most band-like (an orange halftone ceiling). The arena and uploaded cases were not regenerated after this change.
+- **Likeness wording (the middle ground):** the strict wording of the first likeness change made cartoon and pop-art look like unedited photos. The shared preserve line now says "an illustration of this person,
+  not a photo: simplify and stylize boldly" and keeps face shape and jaw width, hairstyle and the hair, eye and skin *color family*. Cartoon has its rounded Pixar features back, with the jaw width kept;
+  pop-art puts the bold palette on the background, clothing, shadows and highlights and keeps hair and eyes in their own color family. The user liked the six styles.
+- **A mistake worth remembering:** the eval marks the top 10% with a red overlay, which turns any dark hair inside it red. For a while that was read as "2.6 recolors hair", and a cartoon lighting line
+  ("the warm light tints skin and fabric only: hair keeps the exact color it has in the photo") was added for it. The hair was never recolored. The line is harmless and was kept; check the unmarked image before
+  blaming the model.
+- **Eval:** `--background=` joins `--style=` and `--people=`.
+- **If an uploaded-background event still shows heads cut by a frame tab:** raise the asked margin, or set `OPENAI_IMAGE_MODEL=gpt-image-2.5-flare` in the `production` environment and deploy.

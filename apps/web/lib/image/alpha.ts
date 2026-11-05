@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
 /**
- * gpt-image-2.5 renders the subject at alpha ~253, never 255, so ~1% of the
+ * The image model renders the subject at alpha ~253 (D-02), never 255, so ~1% of the
  * background would show through the person. Snap near-opaque pixels to fully
  * opaque; soft edges (hair) below the threshold are left untouched.
  */

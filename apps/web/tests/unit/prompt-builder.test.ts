@@ -53,9 +53,24 @@ describe("top margin (D-40)", () => {
     for (const style of STYLE_IDS)
       for (const bg of PLAIN_BACKGROUNDS) {
         const p = buildPrompt(style, bg, scene);
-        expect(p, `${style} × ${bg}`).toContain("Keep the top 10% of the image free");
+        expect(p, `${style} × ${bg}`).toContain("Keep the top 13% of the image height free");
         expect(p.indexOf("Top margin:")).toBeLessThan(p.indexOf("FINAL REMINDER"));
       }
+  });
+  it("asks for more than the 10% the eval checks, so a model that stops at the line still clears it (D-51)", () => {
+    expect(buildPrompt("anime", "gradient", scene)).toContain("about 200 px of a 1536 px tall image");
+  });
+  it("fills the strip with the scene for a scene background, and never asks for a blank band (D-51)", () => {
+    for (const style of STYLE_IDS) {
+      const p = buildPrompt(style, "original", scene);
+      expect(p, style).toContain("Fill the strip with the background: continue the scene up to the top edge");
+      expect(p, style).toContain("The background still fills it, with no blank band.");
+      expect(p, style).not.toContain("plain background");
+    }
+  });
+  it("keeps the strip transparent for the uploaded background and plain for gradients and solids (D-51)", () => {
+    expect(buildPrompt("anime", "uploaded", scene)).toContain("The strip stays transparent.");
+    for (const bg of ["gradient", "solid-white", "solid-black"] as const) expect(buildPrompt("anime", bg, scene)).toContain("The strip is simply more of the plain background.");
   });
   it("comes before the frame line, and the frame line still names its own larger share", () => {
     const p = buildPrompt("anime", "gradient", scene, { top: 0.12, bottom: 0 });

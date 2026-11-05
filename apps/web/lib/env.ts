@@ -37,7 +37,7 @@ const EnvSchema = z.object({
   /** Concurrent jobs per worker process. */
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(2),
   /** One image model, never switched at runtime (SPEC §9.4, docs/decisions.md D-01). */
-  OPENAI_IMAGE_MODEL: z.string().min(1).default("gpt-image-2.5-flare"),
+  OPENAI_IMAGE_MODEL: z.string().min(1).default("gpt-image-2.6-flare"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

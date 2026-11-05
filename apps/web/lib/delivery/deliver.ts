@@ -16,7 +16,8 @@ const SEVEN_DAYS = 7 * 24 * 60 * 60;
 /** Twilio fetches media right away; give it room for retries. */
 const MEDIA_LINK_TTL = 60 * 60;
 
-export const ShareSchema = z.object({ eventSlug: z.string(), jobId: z.string(), createdAt: z.iso.datetime() });
+/** `openedAt` is set on the first view of the link (D-50). */
+export const ShareSchema = z.object({ eventSlug: z.string(), jobId: z.string(), createdAt: z.iso.datetime(), openedAt: z.iso.datetime().optional() });
 
 export interface DeliveryDeps {
   sync: SyncStore;

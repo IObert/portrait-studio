@@ -4,6 +4,7 @@ import OpenAI from "openai";
 import { describe, expect, it } from "vitest";
 import { calibrationImages, judgeTopBand } from "../../evals/top-clearance";
 import { liveEnv } from "./env";
+import { getEnv } from "@/lib/env";
 
 /**
  * The judge behind the top-10% eval (docs/decisions.md D-40) must agree with a person. Opt-in:
@@ -14,7 +15,7 @@ import { liveEnv } from "./env";
  */
 const live = process.env.RUN_LIVE_AI_TESTS === "1";
 const DIR = path.join(import.meta.dirname, "../../../../.local/eval-examples/generated");
-const vision = { model: process.env.OPENAI_VISION_MODEL ?? "gpt-6.1-sol", effort: "low" } as const;
+const vision = { model: getEnv().OPENAI_VISION_MODEL, effort: "low" } as const;
 
 describe.skipIf(!live)("top-10% judge (live AI)", () => {
   const client = () => new OpenAI({ apiKey: liveEnv(["OPENAI_API_KEY"]).OPENAI_API_KEY, maxRetries: 1 });

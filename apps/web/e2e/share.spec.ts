@@ -30,6 +30,42 @@ test.describe("share page (SPEC §6.2)", () => {
     await ctx.close();
   });
 
+  test("counts a view once per tab session, a copy and a download, and the stats page shows them (D-50)", async ({ browser, baseURL }) => {
+    const admin = await browser.newPage();
+    const read = async () => {
+      await admin.goto(`${baseURL}/admin/events/e2e-share/stats`);
+      const num = async (label: string) => Number((await admin.getByTestId(`stat-${label}`).innerText()).trim());
+      return { views: await num("Page views"), copied: await num("Text copied"), downloads: await num("Downloads") };
+    };
+    const before = await read();
+
+    const ctx = await browser.newContext({ httpCredentials: undefined, permissions: ["clipboard-read", "clipboard-write"] });
+    const page = await ctx.newPage();
+    await page.goto(`${baseURL}${SHARE}`);
+    await page.reload(); // the same tab session: not a second view
+    await page.getByRole("button", { name: "Copy text" }).click();
+    await expect(page.getByRole("button", { name: "Copied!" })).toBeVisible();
+    // The click is counted; the browser's own download is not needed here.
+    await page.getByRole("link", { name: "Download" }).evaluate((a: HTMLAnchorElement) => a.addEventListener("click", (e) => e.preventDefault()));
+    await page.getByRole("link", { name: "Download" }).click();
+    await ctx.close();
+
+    await expect.poll(read).toEqual({ views: before.views + 1, copied: before.copied + 1, downloads: before.downloads + 1 });
+    await admin.close();
+  });
+
+  test("a plain request for the page, like a link-preview crawler, is not a view (D-50)", async ({ request, baseURL, browser }) => {
+    const admin = await browser.newPage();
+    const views = async () => {
+      await admin.goto(`${baseURL}/admin/events/e2e-share/stats`);
+      return Number((await admin.getByTestId("stat-Page views").innerText()).trim());
+    };
+    const before = await views();
+    expect((await request.get(`${baseURL}${SHARE}`, { headers: { "user-agent": "WhatsApp/2.23" } })).status()).toBe(200);
+    expect(await views()).toBe(before);
+    await admin.close();
+  });
+
   test("unknown or malformed ids show 'no longer available'", async ({ browser, baseURL }) => {
     const anon = await browser.newContext({ httpCredentials: undefined });
     const page = await anon.newPage();

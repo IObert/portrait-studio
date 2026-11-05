@@ -444,7 +444,7 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
   - a **Download** button, which is the fallback when sharing is not supported, for example on desktop
   - a **Print at the booth (N left)** button when the event has printing on and the owner still has prints. Anyone with the link may use it; it takes one of the owner's prints and never adds the portrait to the booth screen (D-26).
 - Add OpenGraph tags so a pasted link shows a preview.
-- No tracking pixels and no short links.
+- No tracking pixels, no cookies, no third-party scripts and no short links. The page only reports **counters** to the event's stats (§10.5, D-50): a page view (once per portrait and tab session, sent by the page itself, so link-preview crawlers are not counted), and the Share, Copy text and Download buttons. A portrait whose link was opened at least once is marked on the share record (`openedAt`). No address, browser details or IP are stored.
 
 ### 6.3 WhatsApp templates
 - **No approved templates (D-42).** Nothing is sent outside the 24h window (§5.11), so the app has none to maintain or to get approved.
@@ -489,7 +489,7 @@ Nothing is printed or shown automatically. After each delivery, inside the 24h w
   4. Apply the frame (§8.3).
 - **Validate the upload:** PNG or JPEG, at least 1024×1536, 2:3 aspect ratio or croppable to it.
 
-**Transparency was proven first (D-01, D-02).** `gpt-image-2` rejects `background: "transparent"`. `gpt-image-2.5-flare` produces clean cut-outs and is the model (about 18–21 s per image). It renders the subject at alpha ≈ 253, so when compositing, pixels with alpha ≥ 250 are made fully opaque. This is not a background-removal step. The "20% fully transparent" check was only used in the spike, because tight group shots fall below it.
+**Transparency was proven first (D-01, D-02).** `gpt-image-2` rejects `background: "transparent"`. The image model (`OPENAI_IMAGE_MODEL`, D-01, D-51) produces clean cut-outs (about 18–21 s per image when it was chosen). It renders the subject at alpha ≈ 253, so when compositing, pixels with alpha ≥ 250 are made fully opaque. This is not a background-removal step. The "20% fully transparent" check was only used in the spike, because tight group shots fall below it.
 - **Regression tests:**
   - A unit test for the compositing step, using a fixture PNG that has alpha.
   - A test of the full pipeline with the uploaded background. It runs against the real API, and only when `RUN_LIVE_AI_TESTS=1` is set.
@@ -541,7 +541,7 @@ A job with a single style and background goes from `screening` straight to `queu
    - 1–4 subjects → the scene (`subjects`, `pet`) is stored and the menus open.
 4. **Build the prompt** (§9.3), once the person has chosen.
 5. **Generate:** `images.edit` with:
-   - model `OPENAI_IMAGE_MODEL` (`gpt-image-2.5-flare`, D-01)
+   - model `OPENAI_IMAGE_MODEL` (D-01, D-51)
    - input: the selfie, then, with the LA Kings promotion, the reference images (§8.4)
    - size 1024×1536, quality high, PNG output
    - if the event's uploaded background is chosen, add `background: "transparent"` (§8.2)
@@ -564,19 +564,19 @@ A job with a single style and background goes from `screening` straight to `queu
   2. scene line (§E3)
   3. with the LA Kings promotion: the brand block (§E4) after the scene line, and its scene (§E6, AI mode) in place of the background
   4. background (§E6, or the plain background-choice prompt)
-  5. **top margin (D-40), always:** keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip.
+  5. **top margin (D-40), always:** keep the top 13% of the image height free (about 200 px of 1536; the eval checks 10%, because a model stops at the line it is given). Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip. What the strip holds depends on the background (D-51): a scene background runs on to the top edge with no blank band, an uploaded background stays transparent, a gradient or solid is more of itself.
   6. frame clearance (D-27), only when the frame covers 8% or more of an edge
   7. with the promotion: the style lock (§E10)
   8. final reminder (§E11)
 - **Left out entirely** (out of scope): container (§E5), palette (§E7), caricature (§E8), reviewer feedback (§E9) and landscape (§E12).
 - Prompts are code, not admin settings. Image-generation prompts are in English.
 - A snapshot test covers each style × background combination.
-- **The top margin is checked by an eval** (D-40): `pnpm --filter web eval:top-clearance` generates portraits and asks a vision model whether anything important reaches into the top 10%. It costs about $3 and is run when the prompt, the styles, the brand scenes or the image model change.
+- **The top margin is checked by an eval** (D-40): `pnpm --filter web eval:top-clearance` generates portraits and asks a vision model whether anything important reaches into the top 10%. The full run is 54 images, about $13.50; `--people`, `--style` and `--background` narrow it (the mirror selfie in every style is 18 images, about $4.50). It is run when the prompt, the styles, the brand scenes or the image model change.
 
 ### 9.4 Models (environment variables, no admin UI)
 | Purpose | Variable | Default |
 |---|---|---|
-| Image generation | `OPENAI_IMAGE_MODEL` | `gpt-image-2.5-flare` |
+| Image generation | `OPENAI_IMAGE_MODEL` | `gpt-image-2.6-flare` |
 | Face, scene and AI review | `OPENAI_VISION_MODEL` | `gpt-6.1-sol`, reasoning effort `low` (it does not accept `none`, D-14) |
 | Chat replies and the deletion tool | `OPENAI_CHAT_MODEL` | `gpt-6-luna`, reasoning effort `none` |
 
@@ -637,6 +637,7 @@ A job with a single style and background goes from `screening` straight to `queu
   - prints succeeded and failed
   - images per style and per background
   - slideshow consents (yes)
+  - share page (D-50): page views, portraits whose link was opened, share sheet used, text copied, downloads
   - deletion requests
   - average time from selfie to delivery
 - Show `lastResetAt`. The page also shows the average delivery time, the funnel, counts per style and background, and the print agent's status (offline after 45 s without a heartbeat) (D-31).
@@ -818,7 +819,7 @@ No TwiML Bins, Functions or Studio. If the app ever needs static TwiML, it serve
 - `RUN_LIVE_INBOUND_TESTS=1` and `RUN_LIVE_DELIVERY_TESTS=1`: send **real** messages.
 
 **Evals (opt-in, not part of `pnpm test`):**
-- `pnpm --filter web eval:top-clearance`: generates portraits and checks that nothing important reaches into the top 10% (§9.3, D-40). About $3.
+- `pnpm --filter web eval:top-clearance`: generates portraits and checks that nothing important reaches into the top 10% (§9.3, D-40). The full run is about $13.50; the filters (`--people`, `--style`, `--background`) cut it down.
 - `pnpm --filter web eval:frame-safe-zone`: checks that frames keep logos 60 px from every edge (§8.3, D-41). Free.
 
 **Real-life test checklist.** Run it after every major upgrade:
