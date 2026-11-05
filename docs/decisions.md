@@ -666,4 +666,10 @@ second copy:
 - **To check on 2.6 before an event** (D-01, D-02, D-40 were measured on 2.5): `background: "transparent"` still works and the subject alpha is still about 253 (the 250
   threshold in D-02); `input_fidelity` is still rejected (it is not sent); the time per image; the cost per portrait (priced per token); the top margin
   (`pnpm --filter web eval:top-clearance`, about $3); and the likeness of the styles on real photos.
+- **Checked on 2026-11-05:** unit, integration and end-to-end tests and the frame safe-zone eval pass. The top-margin eval (D-40) on the tall mirror selfie, all six styles:
+  scene backgrounds (`original`, `crypto-arena`) **0 of 12 fail**, the **uploaded background fails 6 of 6** (hair reaches into the top 10%). The same photo on 2.5 passed the
+  uploaded background in the two styles run (cartoon, pop-art), so this is a change in the model, not in the prompts. One photo and one sample per case: not a rate. Not run: the other two photos, the live pipeline
+  test, alpha level, cost and time per image.
+- **Decision (user):** 2.6 goes to production anyway. Known issue: with an uploaded background, a head or hair can reach into the top strip a frame may cover. Remedies to try if it shows up at an event:
+  a stronger `TOP_FREE_LINE` for transparent output, or `OPENAI_IMAGE_MODEL=gpt-image-2.5-flare` in the `production` environment (then deploy).
 
