@@ -20,9 +20,9 @@ flowchart TD
   V -->|fail| F[Asked for another photo; portrait held for admin review] -->|Approve & send| D
   F -->|Discard| Z[Never sent; files expire after 7 days]
   V -->|pass| D[Delivered: image and share link]
-  D --> K{Print + show / Show only / No thanks}
-  K -->|Print + show| PR[Print queue] --> PA[Printed at the booth] --> PM[Promo message]
-  K -->|Print + show, Show only| BS[Booth screen slideshow]
+  D --> K{Print + big screen / Big screen only / No thanks}
+  K -->|Print + big screen| PR[Print queue] --> PA[Printed at the booth] --> PM[Promo message]
+  K -->|Print + big screen, Big screen only| BS[Booth screen slideshow]
 ```
 
 ## 1. Finding the event
@@ -89,8 +89,8 @@ at once. A fail is **held for admin review**: the attendee is asked for another 
 
 ## 8. Booth screen and print
 
-After delivery one question follows: **Print + show**, **Show only** or **No thanks**. Without printing (or with no
-prints left) it is a plain "show on the booth screen?" yes/no.
+After delivery one question follows: **Print + big screen**, **Big screen only** or **No thanks**. Without printing (or with no
+prints left) it is a plain "show on the big screen?" yes/no.
 
 - **Booth screen**: the portrait joins the slideshow at once (Twilio Sync push).
 - **Print**: each person has `maxPrintsPerPerson` prints. The print agent on the booth laptop prints it on the DS620;

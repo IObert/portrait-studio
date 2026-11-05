@@ -369,8 +369,8 @@ In every case that is not a delivery the person can send another photo straight 
 
 ### 5.8 The question after each delivery (D-24)
 Nothing is printed or shown automatically. After each delivery, inside the 24h window, one question is sent.
-- **Printing on and prints left:** three buttons, **Print + show**, **Show only**, **No thanks**. Printing a portrait also puts it on the booth screen.
-- **Printing off, or no prints left:** the plain "Can we show your portrait on the booth screen? Yes / No".
+- **Printing on and prints left:** three buttons, **Print + big screen**, **Big screen only**, **No thanks**. Printing a portrait also puts it on the big screen (the booth screen).
+- **Printing off, or no prints left:** the plain "Can we show your portrait on the big screen? Yes / No".
 - **Group photos (2–4 people):** the localized text adds that everyone in the photo should agree.
 - **Only a yes** adds the image to `ev_<slug>_slideshow`. "No" or no answer means it is not shown or printed.
 - **Old buttons keep working**, so an earlier portrait can still be printed later. The buttons carry the job id.
@@ -628,9 +628,7 @@ A job with a single style and background goes from `screening` straight to `queu
 
 ### 10.5 Stats `/admin/events/[slug]/stats`
 - **Counters, in `ev_<slug>_stats`.** They contain no personal data. Never use Twilio logs as a source.
-  - total interactions (inbound messages)
-  - unique opted-in users
-  - leads collected, split into verified email, returning and agree-only
+  - unique users (opted in), split by how they opted in: verified email (only when lead collection is on), returning and agree-only
   - images requested and delivered
   - flagged, rejected and failed
   - approved by admin
@@ -829,5 +827,5 @@ No TwiML Bins, Functions or Studio. If the app ever needs static TwiML, it serve
   - a deletion request
   - admin approval of a flagged image
   - a portrait with the event's uploaded background, and one with the LA Kings jersey
-  - printing from the chat ("Print + show", then `PRINT` later) and from the share page, with a real DS620 and with `--simulate`
+  - printing from the chat ("Print + big screen", then `PRINT` later) and from the share page, with a real DS620 and with `--simulate`
   - the booth screen on a landscape and a portrait display

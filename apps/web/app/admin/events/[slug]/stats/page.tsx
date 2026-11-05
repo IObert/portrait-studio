@@ -28,18 +28,20 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-/** The attendee journey as one sequence; each bar is its share of the first step. */
-function Funnel({ steps }: { steps: { label: string; value: number }[] }) {
+/** The headline numbers; each bar is its share of the first step. A step without `bar` is a count of people, not part of that sequence. */
+function Funnel({ steps }: { steps: { label: string; value: number; bar?: boolean }[] }) {
   const max = Math.max(1, steps[0]!.value);
   return (
-    <ol className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3 lg:grid-cols-5">
+    <ol className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-3 lg:grid-cols-4">
       {steps.map((s) => (
         <li key={s.label} className="bg-white px-5 py-4">
           <p className="text-sm text-slate">{s.label}</p>
           <p className="mt-1 font-display text-3xl font-semibold tabular-nums tracking-tight">{s.value}</p>
-          <div className="mt-3 h-1 rounded-full bg-mist" aria-hidden>
-            <div className="h-1 rounded-full bg-ink" style={{ width: `${Math.min(100, (s.value / max) * 100)}%` }} />
-          </div>
+          {s.bar !== false && (
+            <div className="mt-3 h-1 rounded-full bg-mist" aria-hidden>
+              <div className="h-1 rounded-full bg-ink" style={{ width: `${Math.min(100, (s.value / max) * 100)}%` }} />
+            </div>
+          )}
         </li>
       ))}
     </ol>
@@ -77,11 +79,10 @@ async function Stats({ params }: { params: Promise<{ slug: string }> }) {
         </div>
         <Funnel
           steps={[
-            { label: "Interactions", value: n("interactions") },
-            { label: "Opted in", value: n("uniqueOptIns") },
             { label: "Portraits requested", value: n("imagesRequested") },
             { label: "Delivered", value: n("imagesDelivered") },
             { label: "Printed", value: n("printsSucceeded") },
+            { label: "Unique users", value: n("uniqueOptIns"), bar: false },
           ]}
         />
         <div className="grid gap-4 md:grid-cols-2">
@@ -93,10 +94,10 @@ async function Stats({ params }: { params: Promise<{ slug: string }> }) {
             <Row label="Average selfie to delivery" value={avg} />
             <Row label="Shown on the booth screen" value={n("slideshowYes")} />
           </Card>
-          <Card title="Leads">
-            <Row label="Leads: verified email" value={n("leadsVerifiedEmail")} />
-            <Row label="Leads: returning" value={n("leadsReturning")} />
-            <Row label="Leads: agree only" value={n("leadsAgreeOnly")} />
+          <Card title="How people opted in">
+            {event.config.leadCollection && <Row label="With verified email" value={n("leadsVerifiedEmail")} />}
+            <Row label="Returning (known profile)" value={n("leadsReturning")} />
+            <Row label="Agreed only (no contact details)" value={n("leadsAgreeOnly")} />
             <Row label="Deletion requests" value={n("deletionRequests")} />
           </Card>
           <Card title="Printing">

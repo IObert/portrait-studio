@@ -200,8 +200,8 @@ API is needed.
 *2026-10-14. Changes SPEC §6.1, §9.2 and §11: nothing is printed automatically any more.*
 - Two per-event limits: `maxImagesPerPerson` (X, portraits delivered for free) and `maxPrintsPerPerson` (Y, portraits
   sent to the printer).
-- After each delivery, one question with three buttons replaces the slideshow question: **Print + show**, **Show
-  only**, **No thanks**. Printing a portrait also puts it on the booth screen. When printing is off or no prints are
+- After each delivery, one question with three buttons replaces the slideshow question: **Print + big screen**, **Big
+  screen only**, **No thanks**. Printing a portrait also puts it on the booth screen. When printing is off or no prints are
   left, the question is the plain slideshow Yes / No.
 - The buttons carry the job id, so an earlier portrait can still be printed later. SMS: `PRINT` / `YES` / `NO` answer
   the latest question.
@@ -229,7 +229,7 @@ when it was switched on.*
 - The share page shows **Print at the booth (N left)** when the event has printing on and the owner still has prints.
 - **Anyone with the link** may use it (the user's choice): it takes one of the *owner's* prints, never more than
   their quota. The page sends only the share id; the server looks up the job and owner.
-- It never adds the portrait to the booth screen. "Print + show" in the chat is the way to do both.
+- It never adds the portrait to the booth screen. "Print + big screen" in the chat is the way to do both.
 - Same rules as the chat print (`requestPrint`): own delivered portrait, one print per portrait, a failed print can
   be asked for again.
 

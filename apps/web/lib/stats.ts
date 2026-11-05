@@ -8,7 +8,6 @@ import { SKIP, type SyncStore } from "./sync/store";
  * TODO(scalability): counters are the hottest per-event objects (SPEC §3.4).
  */
 export const METRICS = [
-  "interactions",
   "uniqueOptIns",
   "leadsVerifiedEmail",
   "leadsReturning",

@@ -171,7 +171,6 @@ async function process(deps: Deps, msg: InboundMessage, now: Date): Promise<void
   }
 
   await ensureEventMaps(sync, event.slug);
-  await bump(sync, event.slug, "interactions");
   await handleForEvent(deps, msg, event, now);
 }
 
@@ -463,7 +462,7 @@ async function runEffect(
       if (effect.answer === "no") return; // "No" or no answer: never shown (SPEC §5.8)
       let printReply: OutboundMessage | undefined;
       if (effect.answer === "print" || effect.answer === "printonly") {
-        // Print + show (D-24): the print is requested first; the portrait is shown either way.
+        // Print + big screen (D-24): the print is requested first; the portrait is shown either way.
         const d = catalogs[ctx.event.config.language].delivery;
         const r = await requestPrint({ sync, mediaUrl: deps.mediaUrl }, ctx.event, ctx.key, ctx.address, effect.jobId, ctx.now);
         const body = r.status === "queued" ? (r.printerReady ? d.printQueued : d.printQueuedPrinterOffline)({ printsLeft: r.printsLeft }) : r.status === "none-left" ? d.printNoneLeft : r.status === "already" ? d.printAlready : d.printUnavailable;
