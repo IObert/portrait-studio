@@ -564,14 +564,14 @@ A job with a single style and background goes from `screening` straight to `queu
   2. scene line (§E3)
   3. with the LA Kings promotion: the brand block (§E4) after the scene line, and its scene (§E6, AI mode) in place of the background
   4. background (§E6, or the plain background-choice prompt)
-  5. **top margin (D-40), always:** keep the top 10% of the image free. Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip.
+  5. **top margin (D-40), always:** keep the top 13% of the image height free (about 200 px of 1536; the eval checks 10%, because a model stops at the line it is given). Every head, all hair, hats, goggles and raised hands, and any readable sign, building name or logo, must start below that strip. What the strip holds depends on the background (D-51): a scene background runs on to the top edge with no blank band, an uploaded background stays transparent, a gradient or solid is more of itself.
   6. frame clearance (D-27), only when the frame covers 8% or more of an edge
   7. with the promotion: the style lock (§E10)
   8. final reminder (§E11)
 - **Left out entirely** (out of scope): container (§E5), palette (§E7), caricature (§E8), reviewer feedback (§E9) and landscape (§E12).
 - Prompts are code, not admin settings. Image-generation prompts are in English.
 - A snapshot test covers each style × background combination.
-- **The top margin is checked by an eval** (D-40): `pnpm --filter web eval:top-clearance` generates portraits and asks a vision model whether anything important reaches into the top 10%. It costs about $3 and is run when the prompt, the styles, the brand scenes or the image model change.
+- **The top margin is checked by an eval** (D-40): `pnpm --filter web eval:top-clearance` generates portraits and asks a vision model whether anything important reaches into the top 10%. The full run is 54 images, about $13.50; `--people`, `--style` and `--background` narrow it (the mirror selfie in every style is 18 images, about $4.50). It is run when the prompt, the styles, the brand scenes or the image model change.
 
 ### 9.4 Models (environment variables, no admin UI)
 | Purpose | Variable | Default |
@@ -819,7 +819,7 @@ No TwiML Bins, Functions or Studio. If the app ever needs static TwiML, it serve
 - `RUN_LIVE_INBOUND_TESTS=1` and `RUN_LIVE_DELIVERY_TESTS=1`: send **real** messages.
 
 **Evals (opt-in, not part of `pnpm test`):**
-- `pnpm --filter web eval:top-clearance`: generates portraits and checks that nothing important reaches into the top 10% (§9.3, D-40). About $3.
+- `pnpm --filter web eval:top-clearance`: generates portraits and checks that nothing important reaches into the top 10% (§9.3, D-40). The full run is about $13.50; the filters (`--people`, `--style`, `--background`) cut it down.
 - `pnpm --filter web eval:frame-safe-zone`: checks that frames keep logos 60 px from every edge (§8.3, D-41). Free.
 
 **Real-life test checklist.** Run it after every major upgrade:

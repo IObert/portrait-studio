@@ -4,7 +4,7 @@ import { backgroundPrompt } from "./backgrounds";
 import { brandBlock, brandScene, PRESERVE_BRAND, styleLock } from "./brand";
 import { PRESERVE } from "./defaults";
 import { finalReminder, type Scene, sceneLine } from "./scene";
-import { type FrameClearance, frameLine, TOP_FREE_LINE } from "./frame";
+import { type FrameClearance, frameLine, topFreeLine, topFreeReminder } from "./frame";
 import { type StyleId, stylePrompt } from "./styles";
 
 /**
@@ -19,15 +19,15 @@ import { type StyleId, stylePrompt } from "./styles";
  */
 export function buildPrompt(style: StyleId, background: BackgroundId, scene: Scene, clearance?: FrameClearance, brand?: Brand): string {
   const frame = clearance ? frameLine(clearance) : null;
-  if (!brand) return [stylePrompt(style), sceneLine(scene), backgroundPrompt(background), TOP_FREE_LINE, ...(frame ? [frame] : []), finalReminder(scene)].join("\n");
+  if (!brand) return [stylePrompt(style), sceneLine(scene), backgroundPrompt(background), topFreeLine(background), ...(frame ? [frame] : []), finalReminder(scene) + topFreeReminder(background)].join("\n");
   return [
     stylePrompt(style).replace(PRESERVE, PRESERVE_BRAND),
     sceneLine(scene),
     brandBlock(brand, scene),
     brandScene(brand, background) ?? backgroundPrompt(background),
-    TOP_FREE_LINE,
+    topFreeLine(background),
     ...(frame ? [frame] : []),
     styleLock(style),
-    finalReminder(scene),
+    finalReminder(scene) + topFreeReminder(background),
   ].join("\n");
 }

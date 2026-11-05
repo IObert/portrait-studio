@@ -665,11 +665,21 @@ second copy:
   take it at the next deploy.
 - **To check on 2.6 before an event** (D-01, D-02, D-40 were measured on 2.5): `background: "transparent"` still works and the subject alpha is still about 253 (the 250
   threshold in D-02); `input_fidelity` is still rejected (it is not sent); the time per image; the cost per portrait (priced per token); the top margin
-  (`pnpm --filter web eval:top-clearance`, about $3); and the likeness of the styles on real photos.
-- **Checked on 2026-11-05:** unit, integration and end-to-end tests and the frame safe-zone eval pass. The top-margin eval (D-40) on the tall mirror selfie, all six styles:
-  scene backgrounds (`original`, `crypto-arena`) **0 of 12 fail**, the **uploaded background fails 6 of 6** (hair reaches into the top 10%). The same photo on 2.5 passed the
-  uploaded background in the two styles run (cartoon, pop-art), so this is a change in the model, not in the prompts. One photo and one sample per case: not a rate. Not run: the other two photos, the live pipeline
-  test, alpha level, cost and time per image.
-- **Decision (user):** 2.6 goes to production anyway. Known issue: with an uploaded background, a head or hair can reach into the top strip a frame may cover. Remedies to try if it shows up at an event:
-  a stronger `TOP_FREE_LINE` for transparent output, or `OPENAI_IMAGE_MODEL=gpt-image-2.5-flare` in the `production` environment (then deploy).
-
+  (`pnpm --filter web eval:top-clearance`; the full run is 54 images, about $13.50, not the $3 the SPEC used to say); and the likeness of the styles on real photos.
+- **Checked on 2026-11-05** (mirror selfie, all six styles, three backgrounds): unit, integration and end-to-end tests and the frame safe-zone eval pass. With the prompts of D-40 the **uploaded
+  background failed 6 of 6** on 2.6 (the same two styles on 2.5 passed): the hair reached into the top 10% (about 60 px for pop-art, the whole hair for cartoon), the scene backgrounds passed 12 of 12.
+  Not run: the other two photos, the live pipeline test, alpha level, cost and time per image.
+- **Why, and the fix (user decision: 2.6 goes to production):** the margin line said the strip stays "plain background", which makes no sense for a cut-out, and a model told "10%" puts the hair
+  right on the 10% line. Changes in `lib/prompts/frame.ts` and `build.ts`: ask for **13%** (about 200 px, from one constant), say it in pixels, repeat it in the final reminder, and word the strip
+  per background (`stripRule`). Result: **17 of 18 fail-free** (the uploaded sketch crossed the line by a few pixels; one sample).
+- **Blank banner on the original background:** with "plain background" the model left a flat band across the top of portraits made with the original background (a flat orange strip in pop-art, bare paper
+  in the sketch). Scene backgrounds are now told to fill the strip: "continue the scene up to the top edge (more wall, ceiling, sky…), with no blank band, flat color block, solid stripe or border".
+  The six originals now show the ceiling, a row of tiles and the door frame; pop-art is still the most band-like (an orange halftone ceiling). The arena and uploaded cases were not regenerated after this change.
+- **Likeness wording (the middle ground):** the strict wording of the first likeness change made cartoon and pop-art look like unedited photos. The shared preserve line now says "an illustration of this person,
+  not a photo: simplify and stylize boldly" and keeps face shape and jaw width, hairstyle and the hair, eye and skin *color family*. Cartoon has its rounded Pixar features back, with the jaw width kept;
+  pop-art puts the bold palette on the background, clothing, shadows and highlights and keeps hair and eyes in their own color family. The user liked the six styles.
+- **A mistake worth remembering:** the eval marks the top 10% with a red overlay, which turns any dark hair inside it red. For a while that was read as "2.6 recolors hair", and a cartoon lighting line
+  ("the warm light tints skin and fabric only: hair keeps the exact color it has in the photo") was added for it. The hair was never recolored. The line is harmless and was kept; check the unmarked image before
+  blaming the model.
+- **Eval:** `--background=` joins `--style=` and `--people=`.
+- **If an uploaded-background event still shows heads cut by a frame tab:** raise the asked margin, or set `OPENAI_IMAGE_MODEL=gpt-image-2.5-flare` in the `production` environment and deploy.
