@@ -4,7 +4,7 @@ const MULTI_IDENTITY =
   " Each person has DISTINCT facial features, hair, and build — do NOT merge, swap, or blend their features. Each person must remain visually distinct from the others and recognizable as themselves.";
 
 export interface Scene {
-  /** Primary human subjects, 1–4 (SPEC §9.2). */
+  /** Primary human subjects, 1 up to MAX_SUBJECTS (SPEC §9.2). */
   subjects: number;
   /** Pet type from scene analysis, or null for none. */
   pet: string | null;

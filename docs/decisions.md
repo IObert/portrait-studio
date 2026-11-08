@@ -683,3 +683,13 @@ second copy:
   blaming the model.
 - **Eval:** `--background=` joins `--style=` and `--people=`.
 - **If an uploaded-background event still shows heads cut by a frame tab:** raise the asked margin, or set `OPENAI_IMAGE_MODEL=gpt-image-2.5-flare` in the `production` environment and deploy.
+
+### D-52 Up to 6 people in a portrait (user decision)
+*2026-11-08. The limit was 4 people. Groups at events are bigger.*
+- **One number:** `MAX_SUBJECTS` in `lib/pipeline/run.ts` (now 6). The rejection message takes it as a parameter (`job.tooManyPeople({ max })`, English and Portuguese), so the number is no longer
+  written in the catalogs. The tests and the docs name 6 on purpose; a change of the limit means editing `MAX_SUBJECTS`, the message test and the two doc lines (SPEC §5.6, §5.8, §9.2, `docs/how-it-works.md`).
+- **Unchanged:** the scene analysis counts only the primary people (bystanders, edge figures and people on screens do not count); the generation prompt already names the exact count and, for groups, says
+  not to merge or blend faces; `Job.subjects` allows up to 10.
+- **Not checked:** how well the image model draws 5 and 6 faces on one 1024x1536 portrait (faces get small, and the model may merge or drop people), and how reliably the vision model counts 5 or 6.
+  The top-clearance eval has only a 3-person photo. Try a real 5 and a 6-person photo, in every style, before an event with groups.
+

@@ -31,7 +31,8 @@ export interface PipelineDeps {
   signal?: AbortSignal;
 }
 
-const MAX_SUBJECTS = 4;
+/** The most people a portrait can have (SPEC §9.2, D-52). The rejection message and the docs take the number from here. */
+export const MAX_SUBJECTS = 6;
 
 /** Result of screening a photo before the menus (SPEC §9.2 steps 1–3, D-18). */
 export type ScreeningOutcome =

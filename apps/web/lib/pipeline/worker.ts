@@ -10,7 +10,7 @@ import { eventObjects } from "../sync/names";
 import { ConcurrentModification, SKIP, type SyncStore } from "../sync/store";
 import { bump } from "../stats";
 import { backgroundMenu, styleMenu } from "../conversation/selfie";
-import { type PipelineDeps, type PipelineOutcome, runPipeline, type ScreeningOutcome, screenPhoto } from "./run";
+import { MAX_SUBJECTS, type PipelineDeps, type PipelineOutcome, runPipeline, type ScreeningOutcome, screenPhoto } from "./run";
 
 export const LEASE_MS = 3 * 60 * 1000;
 export const MAX_ATTEMPTS = 3;
@@ -244,7 +244,7 @@ async function finish(deps: WorkerDeps, event: PortraitEvent, job: Job, outcome:
         : outcome.reason === "moderation" || outcome.reason === "generation_refused"
           ? c.job.moderationRejected
           : outcome.reason === "too_many_people"
-            ? c.job.tooManyPeople
+            ? c.job.tooManyPeople({ max: MAX_SUBJECTS })
             : c.job.noFace;
   const session = await deps.sync.map(ev.sessions, SessionSchema).get(job.address);
   await deps.messenger.send(address, { kind: "text", body }, { lastInboundAt: session?.lastInboundAt ?? null, locale: event.config.language, from: senderFor(session, event) });

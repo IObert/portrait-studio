@@ -6,6 +6,7 @@ import { EventRepo } from "@/lib/events/repo";
 import { defaultConfig, type EventConfigInput } from "@/lib/events/schema";
 import { type Job, JobSchema } from "@/lib/jobs/schema";
 import { Messenger, type TwilioMessagingApi } from "@/lib/messaging/outbound";
+import { MAX_SUBJECTS } from "@/lib/pipeline/run";
 import { MAX_ATTEMPTS, workOnce, type WorkerDeps } from "@/lib/pipeline/worker";
 import { eventObjects } from "@/lib/sync/names";
 import { SyncStore } from "@/lib/sync/store";
@@ -243,7 +244,7 @@ describe("screening before the menus (D-18)", () => {
     ["moderation", { flagged: true }, catalogs.en.job.moderationRejected],
     ["no face", { face: "NO" }, catalogs.en.job.noFace],
     ["0 subjects", { scene: "Subjects: 0\nPets: none\nPositions: centered" }, catalogs.en.job.noFace],
-    ["5 people", { scene: "Subjects: 5\nPets: none\nPositions: group" }, catalogs.en.job.tooManyPeople],
+    [`${MAX_SUBJECTS + 1} people`, { scene: `Subjects: ${MAX_SUBJECTS + 1}\nPets: none\nPositions: group` }, catalogs.en.job.tooManyPeople({ max: MAX_SUBJECTS })],
   ])("%s → rejected right after the photo, before any menu", async (_n, o, message) => {
     const ai = fakeOpenAI(o);
     const { fake, deps, sent } = await setup(ai);
@@ -265,6 +266,20 @@ describe("screening before the menus (D-18)", () => {
     expect(ai.calls.edit).toBe(0);
     expect(sent).toHaveLength(1); // the style menu (interactive, so no body)
     expect(((await fake.getItem(ev.sessions, KEY))!.data as { step: string; pendingJobId: string }).step).toBe("awaiting_style");
+  });
+
+  it("the most people that fit (MAX_SUBJECTS) pass screening; one more does not (SPEC §9.2, D-52)", async () => {
+    const ai = fakeOpenAI({ scene: `Subjects: ${MAX_SUBJECTS}\nPets: none\nPositions: group` });
+    const { fake, deps } = await setup(ai);
+    await screening(fake);
+    await workOnce(deps);
+    expect(await getJob(fake)).toMatchObject({ state: "awaiting_choice", subjects: MAX_SUBJECTS });
+  });
+
+  it("the rejection message names the limit in both languages, taken from MAX_SUBJECTS (D-52)", () => {
+    expect(MAX_SUBJECTS).toBe(6);
+    expect(catalogs.en.job.tooManyPeople({ max: MAX_SUBJECTS })).toBe("We can fit up to 6 people in a portrait. Please send a photo with 6 people or fewer.");
+    expect(catalogs.pt_BR.job.tooManyPeople({ max: MAX_SUBJECTS })).toBe("Cabem até 6 pessoas em um retrato. Envie uma foto com no máximo 6 pessoas.");
   });
 
   it("one style and one background: goes straight to generation after screening", async () => {

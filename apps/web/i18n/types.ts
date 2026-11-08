@@ -92,7 +92,8 @@ export interface Catalog {
     started: string;
     moderationRejected: string;
     noFace: string;
-    tooManyPeople: string;
+    /** More people than fit in a portrait; `max` is MAX_SUBJECTS (SPEC §9.2). */
+    tooManyPeople: (p: { max: number }) => string;
     /** AI review flagged the image; it goes to the admin review list. */
     reviewFlagged: string;
     /** Technical failure after retries. */
@@ -106,7 +107,7 @@ export interface Catalog {
     /** SMS without MMS: link only. */
     linkOnly: (p: { styleName: string; shareUrl: string }) => string;
     slideshowQuestion: string;
-    /** Group photos (2–4 people): everyone should agree. */
+    /** Group photos (more than one person): everyone should agree. */
     slideshowQuestionGroup: string;
     slideshowYes: string;
     slideshowNo: string;

@@ -13,7 +13,7 @@ flowchart TD
   L -->|yes| L2[Name, email, 6-digit code] --> S
   L -->|no| S[Send a selfie]
   S --> Q{Photo checks}
-  Q -->|unsafe, no face, more than 4 people| R[Asked for another photo]
+  Q -->|unsafe, no face, more than 6 people| R[Asked for another photo]
   Q -->|ok| M[Choose style, then background]
   M --> G[Generate: style, background, sponsor jersey, frame]
   G --> V{AI review}
@@ -46,7 +46,7 @@ check fails:
 
 - **Moderation**: unsafe images are refused.
 - **A face** must be visible.
-- **1 to 4 people**: the people count is kept for generation and for group-photo wording later.
+- **1 to 6 people**: the people count is kept for generation and for group-photo wording later.
 
 Each person gets `maxImagesPerPerson` portraits per event (counted per channel address).
 
