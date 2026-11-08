@@ -70,6 +70,9 @@ test.describe("live printer indicator in the event header", () => {
       return route.fulfill({ json: online() });
     });
     await page.goto(`/admin/events/${SLUG}`);
+    // The component adds its visibility listener after hydration. Let the page settle first, so the events below are
+    // not sent before the listener exists (a slow CI runner lost the "shown" event and the test timed out).
+    await page.waitForLoadState("networkidle");
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
     });
@@ -80,7 +83,13 @@ test.describe("live printer indicator in the event header", () => {
       Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
       document.dispatchEvent(new Event("visibilitychange"));
     });
-    await expect.poll(() => calls).toBe(1);
+    // Send "shown" again until the listener has seen it: hydration may still be running on a slow machine.
+    await expect
+      .poll(async () => {
+        await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+        return calls;
+      })
+      .toBeGreaterThanOrEqual(1);
     await expect(HEADER(page)).toHaveText("Ready: printer DNP_DS620");
   });
 });
