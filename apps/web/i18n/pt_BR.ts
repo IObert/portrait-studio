@@ -79,7 +79,7 @@ export const pt_BR = {
     started: "Recebido! Seu retrato está sendo criado. Fica pronto em cerca de um minuto.",
     moderationRejected: "Desculpe, não podemos usar esta foto. Envie outra selfie.",
     noFace: "Precisamos de uma selfie com o seu rosto bem visível. Envie outra!",
-    tooManyPeople: "Cabem até 4 pessoas em um retrato. Envie uma foto com no máximo 4 pessoas.",
+    tooManyPeople: ({ max }) => `Cabem até ${max} pessoas em um retrato. Envie uma foto com no máximo ${max} pessoas.`,
     reviewFlagged: "Essa não ficou tão boa. Envie outra selfie que tentamos de novo!",
     failed: "Desculpe, algo deu errado ao criar seu retrato. Envie sua selfie de novo.",
   },

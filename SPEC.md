@@ -356,7 +356,7 @@ In the admin form, an option that depends on a switched-off setting is ignored w
 |---|---|
 | Delivered | See §6 |
 | Moderation flagged | Localized "can't use this photo" message, plus an invitation to send another. Does not count toward quota. |
-| No face, or more than 4 people | Localized message ("we need a clear selfie" / "up to 4 people"), plus an invitation to resend. Sent right after the photo, before any menu (§5.5). |
+| No face, or more than 6 people | Localized message ("we need a clear selfie" / "up to 6 people"), plus an invitation to resend. Sent right after the photo, before any menu (§5.5). |
 | AI review flagged | Localized "that one didn't turn out great — please send another selfie". The job goes to the admin review list (§10.3). Does not count toward quota. |
 | Technical failure after retries | Localized apology plus an invitation to try again |
 
@@ -373,7 +373,7 @@ In every case that is not a delivery the person can send another photo straight 
 Nothing is printed or shown automatically. After each delivery, inside the 24h window, one question is sent.
 - **Printing on and prints left:** three buttons, **Print + big screen**, **Big screen only**, **No thanks**. Printing a portrait also puts it on the big screen (the booth screen).
 - **Printing off, or no prints left:** the plain "Can we show your portrait on the big screen? Yes / No".
-- **Group photos (2–4 people):** the localized text adds that everyone in the photo should agree.
+- **Group photos (2–6 people):** the localized text adds that everyone in the photo should agree.
 - **Only a yes** adds the image to `ev_<slug>_slideshow`. "No" or no answer means it is not shown or printed.
 - **Old buttons keep working**, so an earlier portrait can still be printed later. The buttons carry the job id. A later **No thanks** (or "No") takes the portrait off the big screen again (D-48), and a later **Print** or **Show** adds it.
 - **SMS has no buttons.** `PRINT`, `YES` and `NO` (localized) answer the last question, and only for 10 minutes: a stray "ok" hours later is not an answer. The keywords are matched in code, never by the model.
@@ -538,7 +538,7 @@ A job with a single style and background goes from `screening` straight to `queu
    - If the scene analysis can't be parsed, retry, then fail. Never default to "1 subject".
    - 0 faces → `rejected` (no face).
    - More than 4 subjects → `rejected` (too many people).
-   - 1–4 subjects → the scene (`subjects`, `pet`) is stored and the menus open.
+   - 1–6 subjects (`MAX_SUBJECTS` in `lib/pipeline/run.ts`, D-52) → the scene (`subjects`, `pet`) is stored and the menus open.
 4. **Build the prompt** (§9.3), once the person has chosen.
 5. **Generate:** `images.edit` with:
    - model `OPENAI_IMAGE_MODEL` (D-01, D-51)
