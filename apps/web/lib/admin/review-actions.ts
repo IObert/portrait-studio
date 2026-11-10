@@ -5,7 +5,7 @@ import { z } from "zod";
 import { log } from "../log";
 import { Messenger } from "../messaging/outbound";
 import { deliveryDeps } from "../pipeline/context";
-import { approveFlagged, discardFlagged, removeFromPrintQueue, removePortrait, reprint, ReviewError } from "../review/actions";
+import { approveFlagged, discardFlagged, hideFromSlideshow, removeFromPrintQueue, removePortrait, reprint, ReviewError, showOnSlideshow } from "../review/actions";
 import { getServices } from "../services";
 import { SlugSchema } from "../sync/names";
 import { createTwilioMessagingApi } from "../twilio/messaging-api";
@@ -24,7 +24,7 @@ export interface ReviewState {
 const Input = z.object({
   slug: SlugSchema,
   jobId: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
-  action: z.enum(["approve", "discard", "remove", "print_remove", "reprint"]),
+  action: z.enum(["approve", "discard", "remove", "print_remove", "reprint", "slideshow_hide", "slideshow_show"]),
 });
 
 /** One entry point for all review buttons (SPEC §10.3). Auth is re-checked here. */
@@ -67,6 +67,12 @@ export async function reviewAction(_prev: ReviewState, form: FormData): Promise<
       }
       case "print_remove":
         await removeFromPrintQueue(base, event, jobId);
+        break;
+      case "slideshow_hide":
+        await hideFromSlideshow(base, event, jobId);
+        break;
+      case "slideshow_show":
+        await showOnSlideshow(base, event, jobId);
         break;
       case "reprint": {
         const env = requireEnv(getEnv(), ["MEDIA_SIGNING_SECRET", "PUBLIC_BASE_URL"]);

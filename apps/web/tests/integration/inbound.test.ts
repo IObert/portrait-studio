@@ -395,6 +395,20 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect(await w.fake.getItem(ev.slideshow, "job_other_02")).not.toBeNull();
   });
 
+  it("a portrait an admin hid from the booth screen is not put back by the attendee's old button (D-54)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const job = { ...deliveredJob("job_hidden_01"), hiddenFromScreen: true };
+    await w.fake.createItem(ev.jobs, job.jobId, job);
+    await w.say(WA, "", { selection: "ps:slide:yes:job_hidden_01" });
+    expect(await w.fake.getItem(ev.slideshow, "job_hidden_01").catch(() => null)).toBeNull();
+    // Hiding is only about the screen: printing the same portrait still works.
+    expect((await w.say(WA, "", { selection: "ps:slide:print:job_hidden_01" }))[0]).toBeDefined();
+    expect(await w.fake.getItem(ev.slideshow, "job_hidden_01").catch(() => null)).toBeNull();
+  });
+
   it("restyle: an old style or background list starts a new portrait from the same photo (D-48)", async () => {
     await liveEvent(w, "ev", { leadCollection: false, maxImagesPerPerson: 3 });
     await w.say(WA, "#ev");

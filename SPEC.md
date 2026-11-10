@@ -614,7 +614,10 @@ A job with a single style and background goes from `screening` straight to `queu
 - **Delivered tab:**
   - **Remove** (with a confirmation) is a full takedown (D-16): the portrait leaves the booth screen at once, a print that has not started is cancelled (one already printing cannot be recalled, and the admin is told), the selfie and both output files are deleted immediately, and the share link shows "removed by the event organizer". If a file could not be deleted, Remove can be run again.
   - **Remove from the print queue**, if the job is not printed yet.
-  - **Reprint.** It does not count toward the person's print quota and sends no promo.
+  - **Print / Reprint.** The button says **Print** for a portrait that was never printed and **Reprint** once a print exists; it is not offered while a print is queued or at the printer. It does not count toward the person's print quota and sends no promo.
+  - **Hide from booth screen** (D-54), for a portrait that is on the screen. It only takes it off the screen: the share link, the files and the print stay, and an attendee's old "show it" button cannot put it back (`hiddenFromScreen` on the job). **Show on booth screen again** undoes it. It is not **Remove**, which is final.
+- **Printing tab** (D-54): prints that have not come out (queued, picked up, printing, failed), the oldest first, with how long each has waited and the print agent's state. A queued print that waits is explained: no agent, agent offline, printer off, paused, out of paper or in error, or (after 2 minutes) "the agent is online and the printer is ready, but nothing picked this up. Restart the print agent". Buttons: **Remove from print queue**, and **Reprint** for a failed one.
+- **In progress tab** (D-54): portraits that are not done: being checked, waiting for the attendee's choice, queued, generating, or failed; the longest-waiting first. One that has been checked or queued for 5 minutes, or generating for 10, is marked as slow; a failed one always is. Rejected portraits are not listed. Read-only.
 - Each action is logged without personal data. The log does not carry the admin's name.
 
 ### 10.4 Booth screen `/booth/[slug]`

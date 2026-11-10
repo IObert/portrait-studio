@@ -694,6 +694,7 @@ async function addToSlideshow(deps: Deps, ctx: { event: PortraitEvent; key: stri
   // Only the attendee's own delivered job can be added.
   const job = await sync.map(ev.jobs, JobSchema).get(jobId);
   if (!job || job.address !== ctx.key || job.state !== "delivered" || !job.outputBlobs) return;
+  if (job.hiddenFromScreen) return; // an admin took it off the screen: the attendee's buttons cannot put it back (D-54)
   await sync.ensureMap(ev.slideshow);
   // The signed link travels with the item, so the booth gets a ready URL in the push (D-17).
   const url = deps.slideUrl(job.outputBlobs.deliveryJpeg);

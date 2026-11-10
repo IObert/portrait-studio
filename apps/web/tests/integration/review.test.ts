@@ -4,7 +4,7 @@ import type { DeliveryDeps } from "@/lib/delivery/deliver";
 import { defaultConfig, type EventConfigInput, type PortraitEvent } from "@/lib/events/schema";
 import { JobSchema, type Job } from "@/lib/jobs/schema";
 import { Messenger, type TwilioMessagingApi } from "@/lib/messaging/outbound";
-import { approveFlagged, discardFlagged, removeFromPrintQueue, removePortrait, reprint, ReviewError } from "@/lib/review/actions";
+import { approveFlagged, discardFlagged, hideFromSlideshow, removeFromPrintQueue, removePortrait, reprint, ReviewError, showOnSlideshow } from "@/lib/review/actions";
 import { FakeBlob } from "../support/fake-blob";
 import { eventObjects } from "@/lib/sync/names";
 import { SyncStore } from "@/lib/sync/store";
@@ -89,6 +89,33 @@ describe("admin review (SPEC §10.3)", () => {
     expect(await w.fake.getItem(w.ev.print, "job_00000001")).toBeNull();
     expect((await w.counters()).printsReserved).toBe(0);
     expect(w.log.info).toHaveBeenCalledWith(expect.objectContaining({ action: "portrait_remove", filesDeleted: 3 }), expect.any(String));
+  });
+
+  it("hide takes a portrait off the booth screen and nothing else: share link, files, print and consent stay (D-54)", async () => {
+    const w = await setup({ printingEnabled: true }, { state: "delivered" });
+    const blob = new FakeBlob();
+    await blob.put("events/ev/generated/job_00000001.jpg", Buffer.from("x"), "image/jpeg");
+    await w.fake.createItem(w.ev.slideshow, "job_00000001", { blobPath: "events/ev/generated/job_00000001.jpg", addedAt: new Date().toISOString() });
+    await w.fake.createItem(w.ev.print, "job_00000001", { jobId: "job_00000001", blobPath: "p.png", url: "https://x.test/m/t", who: "x", state: "queued", attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: {} });
+
+    await hideFromSlideshow({ sync: w.sync, log: w.log }, w.event, "job_00000001");
+    expect(await w.fake.getItem(w.ev.slideshow, "job_00000001")).toBeNull();
+    expect(await w.getJob()).toMatchObject({ state: "delivered", hiddenFromScreen: true }); // not removed_by_admin
+    expect(blob.blobs.size).toBe(1); // the files are untouched
+    expect(await w.fake.getItem(w.ev.print, "job_00000001")).not.toBeNull();
+    expect(w.log.info).toHaveBeenCalledWith(expect.objectContaining({ action: "slideshow_hide" }), expect.any(String));
+  });
+
+  it("show puts a hidden portrait back, and only a delivered one can be hidden or shown (D-54)", async () => {
+    const w = await setup({}, { state: "delivered" });
+    await hideFromSlideshow({ sync: w.sync, log: w.log }, w.event, "job_00000001"); // nothing to delete: still fine
+    await showOnSlideshow({ sync: w.sync, log: w.log }, w.event, "job_00000001", new Date("2026-11-10T12:00:00Z"));
+    expect((await w.fake.getItem(w.ev.slideshow, "job_00000001"))!.data).toMatchObject({ blobPath: "events/ev/generated/job_00000001.jpg", addedAt: "2026-11-10T12:00:00.000Z" });
+    expect(await w.getJob()).toMatchObject({ hiddenFromScreen: false });
+
+    const flagged = await setup(); // flagged, not delivered
+    await expect(hideFromSlideshow({ sync: flagged.sync, log: flagged.log }, flagged.event, "job_00000001")).rejects.toBeInstanceOf(ReviewError);
+    await expect(showOnSlideshow({ sync: flagged.sync, log: flagged.log }, flagged.event, "job_00000001")).rejects.toBeInstanceOf(ReviewError);
   });
 
   it("remove reports a print already in progress, and still takes the portrait down", async () => {
