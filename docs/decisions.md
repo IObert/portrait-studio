@@ -374,9 +374,7 @@ lock), for one brand.*
   The current behaviour (D-12) is a best guess. Every relevant line is tagged `TODO(profile-deletion)`; list them
   with `git grep -n "TODO(profile-deletion)"`.
 
-- **Print agent reads only the first 100 queue items** (user, 2026-10-20): left as it is for now. Settled items
-  stay for 7 days, so on a long, busy event a new print can sort after the first 100 and be missed. Marked
-  `TODO(print-queue-pagination)` in `apps/print-agent/src/agent.ts`. Page through `getItems` with `nextPage()`.
+- ~~Print agent reads only the first 100 queue items~~ (user, 2026-10-20): fixed in D-53 after it stuck two prints at LeadDev Berlin.
 
 ### Closed
 
@@ -692,4 +690,15 @@ second copy:
   not to merge or blend faces; `Job.subjects` allows up to 10.
 - **Not checked:** how well the image model draws 5 and 6 faces on one 1024x1536 portrait (faces get small, and the model may merge or drop people), and how reliably the vision model counts 5 or 6.
   The top-clearance eval has only a 3-person photo. Try a real 5 and a 6-person photo, in every style, before an event with groups.
+
+### D-53 The print agent reads every page of the print queue (found at LeadDev Berlin)
+*2026-11-10. Two prints stayed `queued` with 0 attempts while the agent was online and the printer idle: an admin reprint (11:00) and an attendee print (11:05).*
+- **Cause:** `nextWork` asked Sync for one page of 100 items. Sync lists items by id (not by time) and settled items stay for 7 days (D-25). The queue had 129 items and the two prints sat at
+  positions 125 and 126, so the agent never saw them. The known limit of 2026-10-20 (`TODO(print-queue-pagination)`) had become a live fault.
+- **How bad:** a new print is seen only if its id sorts into the first 100, so at 129 items about 1 in 4 new prints was missed, and more as the queue grew. Prints from the chat, the share page and the admin reprint go
+  through the same queue.
+- **Fix:** `readQueue` (`apps/print-agent/src/agent.ts`) reads every page with `nextPage()` until `hasNextPage` is false; `nextWork` uses it. A resumable print is found wherever it sits. At 129 items that is 2
+  requests per look (every 10 s or on a queue change). The agent's `FakeQueue` now pages and sorts by id like Sync, and three tests fail on the old behavior.
+- **To get the stuck prints out:** build the agent (`pnpm --filter @portrait-studio/print-agent build`), copy `apps/print-agent/dist/agent.mjs` to the printing computer and restart it. Nothing in the queue needs touching.
+- **Not done:** the server side is unaffected (it uses its own listing). Settled items could be removed sooner than 7 days; D-25 keeps them to avoid a second copy.
 
