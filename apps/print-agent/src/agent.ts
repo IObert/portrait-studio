@@ -185,16 +185,29 @@ export async function session(opts: AgentOptions, makeClient: (token: string) =>
   if (!opts.signal.aborted) throw new Error("session ended");
 }
 
-type Work = { jobId: string; resume: boolean };
+export type Work = { jobId: string; resume: boolean };
 
-/** A print already at the printer from before a restart comes first; then the oldest claimable item.
- *
- * TODO(print-queue-pagination): reads only the first 100 items. Settled items stay for 7 days (D-25), so on a long,
- * busy event a new print can sort after them and be missed. Page through with `nextPage()`. */
-async function nextWork(queue: SyncMap): Promise<Work | null> {
-  const page = await queue.getItems({ pageSize: 100 });
+const PAGE_SIZE = 100;
+
+/**
+ * Every item of the queue. Sync lists items by id and returns one page at a time; settled items stay for 7 days
+ * (D-25), so a busy event holds hundreds. Reading only the first page missed any print whose id sorted after the
+ * first 100 (D-53).
+ */
+export async function readQueue(queue: Pick<SyncMap, "getItems">): Promise<PrintItem[]> {
+  const out: PrintItem[] = [];
+  let page = await queue.getItems({ pageSize: PAGE_SIZE });
+  for (;;) {
+    out.push(...page.items.map((i: SyncMapItem) => i.data as PrintItem));
+    if (!page.hasNextPage) return out;
+    page = await page.nextPage();
+  }
+}
+
+/** A print already at the printer from before a restart comes first; then the oldest claimable item. */
+export async function nextWork(queue: Pick<SyncMap, "getItems">): Promise<Work | null> {
   const now = new Date();
-  const all = page.items.map((i: SyncMapItem) => i.data as PrintItem);
+  const all = await readQueue(queue);
   const again = all.find((i) => resumable(i, now));
   if (again) return { jobId: again.jobId, resume: true };
   const items = all.filter((i: PrintItem) => claimable(i, now));

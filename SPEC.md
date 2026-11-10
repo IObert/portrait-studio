@@ -680,7 +680,7 @@ There is no privacy page of our own (D-19). Every consent message and the verifi
   4. Report the result:
      - **Success:** mark it `printed`. If that write keeps failing, the item stays `printing` with its `printerJobId` and the next start records it, so a copy is never printed twice. The server then counts it and sends the promo (§5.9).
      - **Failure:** retry up to 3 times, then mark it `failed`. The attendee already has the image digitally, so they are not sent anything.
-  The agent reads the first 100 items of the queue per look (`TODO(print-queue-pagination)`).
+  The agent reads every page of the queue per look (100 items per page), because settled items stay for 7 days and sort by id, not by time (D-53).
 - **Stuck jobs.** The server (`lib/pipeline/prints.ts`) puts a `claimed` item, or a `printing` item without a `printerJobId`, whose lease ran out 5 minutes ago back to `queued`, or fails it after 3 attempts. A `printing` item that has a `printerJobId` is never requeued, because that copy may already be on paper; the next agent resumes it.
 - **Settlement.** The server counts successful prints toward `maxPrintsPerPerson`, releases the reservation of a failed one, and sends the promo once per printed job. An item that does not parse is skipped and logged, so one bad item cannot stop it.
 - **Simulator (`--simulate`, or the first choice in the start-up question).** No printer is needed. "Printing" writes the PNG to `--out` with a short delay. This mode is the required hardware simulator. Real prints also keep a copy of every print in the output folder.

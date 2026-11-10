@@ -66,8 +66,9 @@ Value (SPEC §11.3). It holds no personal data; `who` is a masked address at mos
 - `printerJobId` (string or `null`, optional) is set while printing. `settledAt` is set by the server once a
   `printed` or `failed` item is counted; the agent leaves it alone. `reprint` is `true` for an admin reprint, which
   does not count toward the person's print limit and sends no promo. `error` is at most 300 characters.
-- The agent reads only the first 100 items of the map each time it looks for work. Settled items stay for 7 days, so
-  on a long, busy event a new print can be missed (known limit, `TODO(print-queue-pagination)` in `src/agent.ts`).
+- The agent reads **every page** of the map each time it looks for work (`getItems({ pageSize: 100 })`, then `nextPage()`
+  until `hasNextPage` is false). Sync lists items by id and settled items stay for 7 days, so a busy event holds more
+  than one page; reading only the first page missed prints whose id sorted late (D-53).
 
 ### State machine
 

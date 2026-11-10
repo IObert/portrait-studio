@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AgentUnauthorized, exchangeToken, runAgent, session, SYNC_TIMEOUT_MS } from "../src/agent.js";
+import { AgentUnauthorized, exchangeToken, nextWork, readQueue, runAgent, session, SYNC_TIMEOUT_MS } from "../src/agent.js";
 import { claim, type PrintItem } from "../src/queue.js";
 import { FakeQueue } from "./support/fake-queue.js";
 
@@ -24,6 +24,39 @@ describe("token exchange (PROTOCOL.md §2)", () => {
     await expect(exchangeToken("https://app.test", "t", down as unknown as typeof fetch)).rejects.toThrow(/HTTP 503/);
     const junk = vi.fn(async () => Response.json({ token: "" }));
     await expect(exchangeToken("https://app.test", "t", junk as unknown as typeof fetch)).rejects.toThrow();
+  });
+});
+
+describe("finding work in a long queue (D-53)", () => {
+  // Settled items stay for 7 days, so a busy event holds more than one page. Sync lists them by id.
+  const settled = (n: number) => item({ jobId: `a${String(n).padStart(3, "0")}`, state: "printed", timestamps: { queued: "2026-10-13T10:00:00Z", printed: "2026-10-13T10:01:00Z" }, settledAt: "2026-10-13T10:02:00Z" });
+  const longQueue = (extra: PrintItem[]) => new FakeQueue([...Array.from({ length: 127 }, (_, n) => settled(n)), ...extra]);
+
+  it("reads every page, not only the first 100 items", async () => {
+    const q = longQueue([item({ jobId: "xsdp86Bg78_q8_Jq" }), item({ jobId: "ygHLAmb6Yj4oG9vg" })]);
+    expect(await readQueue(q as never)).toHaveLength(129);
+    expect(q.pagesRead).toBe(2);
+  });
+
+  it("finds a queued print whose id sorts after the first 100 items (it was missed before)", async () => {
+    // The two prints stuck at LeadDev Berlin: positions 125 and 126 of 129.
+    const q = longQueue([
+      item({ jobId: "ygHLAmb6Yj4oG9vg", timestamps: { queued: "2026-11-10T11:05:50Z" } }),
+      item({ jobId: "xsdp86Bg78_q8_Jq", timestamps: { queued: "2026-11-10T11:00:59Z" } }),
+    ]);
+    expect(await nextWork(q as never)).toEqual({ jobId: "xsdp86Bg78_q8_Jq", resume: false }); // the oldest
+  });
+
+  it("a print at the printer from before a restart comes first, wherever it sits in the queue", async () => {
+    const q = longQueue([
+      item({ jobId: "zzz_resume", state: "printing", printerJobId: "DNP-7", leaseUntil: "2026-10-13T12:00:00Z", attempts: 1 }),
+      item({ jobId: "ygHLAmb6Yj4oG9vg" }),
+    ]);
+    expect(await nextWork(q as never)).toEqual({ jobId: "zzz_resume", resume: true });
+  });
+
+  it("nothing to do in a long queue of settled items", async () => {
+    expect(await nextWork(longQueue([]) as never)).toBeNull();
   });
 });
 
