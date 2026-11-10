@@ -702,3 +702,20 @@ second copy:
 - **To get the stuck prints out:** build the agent (`pnpm --filter @portrait-studio/print-agent build`), copy `apps/print-agent/dist/agent.mjs` to the printing computer and restart it. Nothing in the queue needs touching.
 - **Not done:** the server side is unaffected (it uses its own listing). Settled items could be removed sooner than 7 days; D-25 keeps them to avoid a second copy.
 
+### D-54 Review shows what is not done: Printing and In progress tabs, Print/Reprint, hide from the booth screen (user decision)
+*2026-11-10. Two prints sat in the queue at LeadDev Berlin without anyone seeing them (D-53), and the Delivered tab always said "Reprint", even for a portrait never printed.*
+- **Two tabs, not one list.** A print item and a portrait job are different things with different states and actions, so **Printing** (the print queue) and **In progress** (the pipeline) are separate tabs next to
+  Flagged and Delivered. Tab numbers come from `reviewCounts` (job and print states only, no image links).
+- **Printing** (`listPrinting`): prints that are queued, picked up, printing or failed, oldest first, with the wait and the agent's state. `printWaitHint` (`lib/review/pending.ts`) names why a queued print waits,
+  and after 2 minutes with an online agent and a ready printer says nothing picked it up: the case of D-53, now visible.
+- **In progress** (`listInProgress`): screening, waiting for the attendee's choice, queued, generating, failed; the longest-waiting first. Slow after 5 min (checking, queued) or 10 min (generating); failed always.
+  Rejected jobs are left out (superseded photos and screening rejections would bury the stuck ones). Read-only for now.
+- **Print / Reprint:** the Delivered button says **Print** when no print exists and **Reprint** after one did, and is not shown while a print is queued or at the printer (it would only say "already pending").
+- **Hide from booth screen** (user decision): deletes the slideshow item and sets `Job.hiddenFromScreen`, so the attendee's "Big screen only" / "Print + big screen" buttons (which can be pressed any time, D-48) do not
+  put it back. **Show on booth screen again** clears the flag and re-adds it (no signed link stored; the booth signs on read). It is not **Remove** (D-16): share link, files and print stay. The slideshow-consent count
+  (`slideshowYes`) is not changed by it.
+- **A bug found on the way:** `SKIP` (the "leave unchanged" value of `update`) was a plain `Symbol`, and Next.js bundles `lib/sync/store.ts` separately for server actions and for pages, so an action's `SKIP` was not
+  the store's `SKIP`: the store tried to save it and failed with "Invalid data". Any admin action whose update meant "no change" showed "Something went wrong" (found when removing a queued print for an address with no
+  session). `SKIP` is now `Symbol.for("portrait-studio.sync.skip")`.
+- **Not done:** actions on In progress jobs (retry, cancel), a link from a stuck print to a restart hint on the Printing tab beyond the text, and a badge on the Review header for pending prints (the header still shows flagged only).
+

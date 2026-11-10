@@ -40,6 +40,8 @@ export const JobSchema = z.object({
   pet: z.string().max(30).nullable().default(null),
   /** One of the portraits made by the hidden "ALL" at the style prompt (D-49): delivered without the print / big-screen question. */
   batch: z.boolean().default(false),
+  /** An admin took this portrait off the booth screen without removing it (D-54). The attendee's buttons cannot put it back. */
+  hiddenFromScreen: z.boolean().default(false),
   state: z.enum(JOB_STATES),
   attempts: z.number().int().min(0).default(0),
   leaseUntil: z.iso.datetime().nullable().default(null),
