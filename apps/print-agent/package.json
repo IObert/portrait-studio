@@ -22,7 +22,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^10.14.0",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.72.1",
+    "typescript-eslint": "^8.72.2",
     "vitest": "^5.1.0",
     "zod": "^4.6.7"
   },
