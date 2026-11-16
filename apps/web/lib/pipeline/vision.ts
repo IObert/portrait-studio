@@ -66,14 +66,18 @@ export async function analyzeScene(client: OpenAI, cfg: VisionConfig, jpeg: Buff
   return parseScene(answer);
 }
 
+/** The most characters of the animals text that are kept (`Job.pet`). */
+export const PET_MAX = 80;
+
 export function parseScene(answer: string): Scene {
   const subjects = /Subjects:\s*\[?\s*(\d+)/i.exec(answer);
   const pets = /Pets:\s*\[?\s*([^\]\n]+)/i.exec(answer);
   if (!subjects || !pets) throw new UnparseableAnswer("scene", answer);
   const n = Number(subjects[1]);
   if (!Number.isInteger(n) || n < 0 || n > 50) throw new UnparseableAnswer("scene", answer);
+  // "none", "None.", "no pets" and the like mean no animals; otherwise the text ("2 dogs, 1 cat") goes into the prompt as it is.
   const pet = pets[1]!.trim().replace(/\.$/, "").toLowerCase();
-  return { subjects: n, pet: pet === "none" || pet === "" ? null : pet.slice(0, 30) };
+  return { subjects: n, pet: pet === "" || /^(none|no|n\/a|nil)\b/.test(pet) ? null : pet.slice(0, PET_MAX) };
 }
 
 export type ReviewResult = { pass: true } | { pass: false; reason: string };

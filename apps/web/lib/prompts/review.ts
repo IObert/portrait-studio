@@ -3,11 +3,12 @@
 // D-36). Criteria are numbered in order.
 
 export const REVIEW_CRITERIA = [
-  "Subject likeness — the person(s) in the portrait must be recognizable as the same person(s) from the original, accounting for the requested art style. Key features to check: face shape, skin tone, eye color, hair color/style.",
+  "Subject likeness — the person(s) in the portrait must be recognizable as the same person(s) from the original, accounting for the requested art style. Key features to check: face shape, skin tone, eye color, hair color/style. For an animal in a photo of animals only, check the kind of animal, coat or fur color, markings, ear shape and eye color instead.",
   "Subject count — the portrait must contain the same number of PRIMARY subjects as the original photo. Minor background figures, crowds, or partially visible people in the background do NOT count as added subjects. Only fail if a completely new prominent foreground person was added or a primary subject was removed.",
-  "Gender accuracy — each primary subject's apparent gender must be preserved. No gender swaps.",
+  "Gender accuracy — each primary person's apparent gender must be preserved. No gender swaps. (People only.)",
   "Key accessories — glasses and distinctive facial hair from the original should be preserved (not removed entirely). Style changes, color shifts, and artistic reinterpretation of accessories are perfectly fine. Only fail if signature accessories like glasses were completely removed.",
   "Anatomical quality — no SEVERE anomalies like extra limbs, merged faces, or badly distorted facial features. Minor hand/finger imperfections, slightly awkward object interactions, and small proportional oddities are acceptable — only fail if the anatomy is clearly broken and distracting at a glance.",
+  "Animals — if the original photo shows a pet or other animal with the subject(s), or as the subject, every one of them must appear in the portrait as the same kind of animal, with similar coloring and markings, and fully in the picture. FAIL if an animal was removed, cut out or left as part of the background, cropped away by the edge of the picture, turned into a person, or merged with a person or another animal. If the original shows no animal, this criterion does not apply.",
 ] as const;
 
 export function reviewPrompt(criteria: readonly string[], generationPrompt: string): string {

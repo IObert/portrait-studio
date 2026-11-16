@@ -729,3 +729,26 @@ Some events have no big screen. A per-event setting, **Booth screen**, on by def
 - **Admin:** the "Open booth screen" links, the CTA headline and steps, the "Shown on the booth screen" stat and the hide / show buttons (except hiding something already on the screen) are not shown.
 - **QR code:** the QR code was only on the booth screen, so the event page now has an SVG and a PNG download (`/admin/events/<slug>/qr`), for a sign or a slide.
 - Slideshow items already on the screen when it is switched off are left alone; nothing new is added.
+
+### D-56 Pets: a photo of a pet alone is accepted, and animals are subjects of the portrait (found at LeadDev Berlin)
+*2026-11-16. Attendees' pet-only photos were refused, and in photos with a person the animal was sometimes cut out, treated as background or cropped.*
+- **Why a pet-only photo was refused:** two checks asked for a person. The face check ("a person's face") answered NO for a dog, and the scene analysis listed a pet only "if the pet belongs to the
+  subject(s)", so a photo with no person gave 0 subjects (`rejected`, `no_face`, and the message asked for a selfie). Nothing in the generation prompts could have handled it either.
+- **Why animals were lost or cropped (from reading the prompts; three real outputs agree):** the pet appeared only in the scene line and the final reminder. "Render only the subject as a cut-out" (uploaded
+  background) and "Recreate the background environment" (original background) left an animal outside "the subject"; "chest up" framing crops a pet in a lap or on the floor; the preserve line lists only
+  human features; and the scene analysis returned one animal type, so two pets became "a dogs" and "no more, no fewer" allowed one. The AI review had no check for animals and passes when in doubt.
+- **Seen in the three examples from the event** (generated images; the originals could not be read, see below): a watercolor of a couple with two dogs kept both dogs; a pop-art portrait of a woman with a dog
+  cut the dog off at the right and bottom edge; an anime portrait of a man with a dog had the man's face cut in half by the right edge and the dog cut by the bottom edge. The cropping is the same family of problem.
+- **Changes:**
+  - **Screening:** the face check accepts a person's or a pet's face; the scene analysis counts people (may be 0) and lists every real animal with a count ("2 dogs, 1 cat"), wherever it is in the frame. A photo
+    passes with a person or with an animal; neither is `no_face`. Animals do not count toward `MAX_SUBJECTS` (D-52). `Job.pet` may be 80 characters (was 30).
+  - **Prompts:** the scene line names the animals as a list and, for a photo with no person, says there are no people and not to invent one; a new **Animals line** (`animalLine`, PROMPTS.md §E3b) makes every
+    animal a main subject whatever the background says, keeps its coat, markings, ears and collar, and keeps it (and every face) inside the picture; the final reminder says the same. The Kings jersey is not put
+    on anyone for a pet-only photo.
+  - **Review:** a new criterion fails a portrait in which an animal was removed, cut out, left as background, cropped away, turned into a person or merged.
+  - **Message:** `noFace` now asks for a face, "yours, or your pet's".
+- **Not checked:** the model's behavior on real pet photos. The originals of the three examples are in the production storage account, which this machine cannot read (the local `.env.local` points at the
+  Azurite emulator, and the account's keys are not stored on disk: `deploy.sh` fetches them with `az`), and selfies expire after 7 days. Checks to run when photos are available: a dog alone, a person with a dog
+  (on the lap, on the floor, at the edge), two kinds of pets, in every style and in the original, uploaded and Kings backgrounds; the vision model's count of animals; and a judge for "the animal is still there".
+- **Not done:** a cap on the number of animals; a composition rule against cutting a person's face at the edge for photos without animals (the anime example above shows it can happen).
+

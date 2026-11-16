@@ -357,7 +357,7 @@ In the admin form, an option that depends on a switched-off setting is ignored w
 |---|---|
 | Delivered | See §6 |
 | Moderation flagged | Localized "can't use this photo" message, plus an invitation to send another. Does not count toward quota. |
-| No face, or more than 6 people | Localized message ("we need a clear selfie" / "up to 6 people"), plus an invitation to resend. Sent right after the photo, before any menu (§5.5). |
+| No face (a person's or a pet's), or more than 6 people | Localized message ("we need a clear photo with a face: yours, or your pet's" / "up to 6 people"), plus an invitation to resend. Sent right after the photo, before any menu (§5.5). |
 | AI review flagged | Localized "that one didn't turn out great — please send another selfie". The job goes to the admin review list (§10.3). Does not count toward quota. |
 | Technical failure after retries | Localized apology plus an invitation to try again |
 
@@ -538,9 +538,9 @@ A job with a single style and background goes from `screening` straight to `queu
 2. **Moderation:** `omni-moderation-latest`. If the image is flagged, the job ends as `rejected` (moderation). If the call errors, retry; after the retries are used up, the job `failed` (fail closed).
 3. **Face detection and scene analysis**, run in parallel on the vision model, with the prompts from PROMPTS.md §A1 and §A2. Steps 2–3 run in `screening`, before any menu (§5.5).
    - If the scene analysis can't be parsed, retry, then fail. Never default to "1 subject".
-   - 0 faces → `rejected` (no face).
-   - More than 4 subjects → `rejected` (too many people).
-   - 1–6 subjects (`MAX_SUBJECTS` in `lib/pipeline/run.ts`, D-52) → the scene (`subjects`, `pet`) is stored and the menus open.
+   - No face, or neither a person nor an animal in the photo → `rejected` (no face). A face is a person's or a pet's (D-56): a photo of only a pet is accepted.
+   - More than 6 people → `rejected` (too many people). Animals do not count toward the limit.
+   - 1–6 people, or none with an animal (`MAX_SUBJECTS` in `lib/pipeline/run.ts`, D-52) → the scene is stored (`subjects` = people, `pet` = the animals as text such as "2 dogs, 1 cat") and the menus open.
 4. **Build the prompt** (§9.3), once the person has chosen.
 5. **Generate:** `images.edit` with:
    - model `OPENAI_IMAGE_MODEL` (D-01, D-51)

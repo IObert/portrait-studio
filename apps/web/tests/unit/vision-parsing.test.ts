@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseReview, parseScene, UnparseableAnswer } from "@/lib/pipeline/vision";
+import { parseReview, parseScene, PET_MAX, UnparseableAnswer } from "@/lib/pipeline/vision";
 import { REVIEW_CRITERIA, reviewPrompt } from "@/lib/prompts/review";
 
 describe("parseScene (fails closed, SPEC §9.2 step 3)", () => {
@@ -7,6 +7,18 @@ describe("parseScene (fails closed, SPEC §9.2 step 3)", () => {
     expect(parseScene("Subjects: 1\nPets: none\nPositions: centered")).toEqual({ subjects: 1, pet: null });
     expect(parseScene("Subjects: [3]\nPets: [dog]\nPositions: [group]")).toEqual({ subjects: 3, pet: "dog" });
     expect(parseScene("subjects: 2\npets: Cat.\npositions: left-right pair")).toEqual({ subjects: 2, pet: "cat" });
+  });
+  it("reads animals as a list with counts, and a photo of animals only (D-56)", () => {
+    expect(parseScene("Subjects: 2\nPets: 2 dogs, 1 cat\nPositions: group")).toEqual({ subjects: 2, pet: "2 dogs, 1 cat" });
+    expect(parseScene("Subjects: 0\nPets: 1 dog\nPositions: centered")).toEqual({ subjects: 0, pet: "1 dog" });
+    expect(parseScene("Subjects: 1\nPets: [1 Cat.]")).toEqual({ subjects: 1, pet: "1 cat" });
+  });
+  it("reads every way of saying there are no animals as none", () => {
+    for (const none of ["none", "None.", "[none]", "no pets", "No animals", "n/a"]) expect(parseScene(`Subjects: 1\nPets: ${none}`), none).toEqual({ subjects: 1, pet: null });
+    expect(parseScene("Subjects: 1\nPets: noisy parrot").pet).toBe("noisy parrot"); // begins with "no", but is not "none"
+  });
+  it("keeps a long answer to what the job can store", () => {
+    expect(parseScene(`Subjects: 1\nPets: ${"1 dog, ".repeat(30)}`).pet!.length).toBeLessThanOrEqual(PET_MAX);
   });
   it("never defaults to 1 subject on a bad answer", () => {
     for (const bad of ["I see one person.", "Subjects: some\nPets: none", "Pets: none", ""]) expect(() => parseScene(bad)).toThrow(UnparseableAnswer);
@@ -33,10 +45,12 @@ describe("parseReview (fails closed, SPEC §9.2 step 7)", () => {
 });
 
 describe("review prompt (PROMPTS.md §B1)", () => {
-  it("numbers the five applicable criteria and includes the generation prompt", () => {
+  it("numbers the applicable criteria and includes the generation prompt", () => {
     const p = reviewPrompt(REVIEW_CRITERIA, "GEN PROMPT");
     expect(p).toContain("1. Subject likeness");
     expect(p).toContain("5. Anatomical quality");
+    expect(p).toContain("6. Animals"); // D-56: a missing or cut-out pet is caught
+    expect(p).toContain("FAIL if an animal was removed, cut out or left as part of the background");
     expect(p).not.toContain("Branding & logos");
     expect(p).toContain("---\nGEN PROMPT\n---");
     expect(p).toContain("When in doubt, PASS.");

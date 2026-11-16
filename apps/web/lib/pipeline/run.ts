@@ -56,7 +56,8 @@ export async function screenPhoto(deps: PipelineDeps, job: Job): Promise<Screeni
   if (await moderate(deps.openai, jpeg)) return { kind: "rejected", reason: "moderation" };
   // 3. Face detection and scene analysis, in parallel.
   const [hasFace, scene] = await Promise.all([detectFace(deps.openai, deps.vision, jpeg), analyzeScene(deps.openai, deps.vision, jpeg)]);
-  if (!hasFace || scene.subjects === 0) return { kind: "rejected", reason: "no_face" };
+  // A face, and someone to make a portrait of: a person, or (D-56) a pet. A photo of only a pet is accepted.
+  if (!hasFace || (scene.subjects === 0 && scene.pet === null)) return { kind: "rejected", reason: "no_face" };
   if (scene.subjects > MAX_SUBJECTS) return { kind: "rejected", reason: "too_many_people" };
   return { kind: "passed", subjects: scene.subjects, pet: scene.pet };
 }

@@ -39,13 +39,17 @@ export const bgRefName = (i: number) => `bg_ref_${i}.png`;
 /** §E4 with references, no analysis: clothing, then preserve, instruction, wardrobe, reminder. */
 export function brandBlock(brand: Brand, { subjects: n, pet }: Scene): string {
   const s = brand.refs.length === 1 ? "" : "s";
-  const petNote = pet ? (n > 1 ? ` Include the ${pet} naturally without branded clothing.` : ` Include the ${pet} naturally in the image.`) : "";
+  const petNote = pet ? (n > 1 ? ` Include the animals (${pet}) naturally without branded clothing.` : ` Include the animals (${pet}) naturally in the image.`) : "";
   const names = brand.refs.map((_, i) => brandRefName(i)).join(", ");
   const clothing =
-    n > 1
+    n === 0
+      ? `Clothing: There is no person in this photo. Do not add anyone to wear the outfit/gear, and do not dress the animals.${petNote}`
+      : n > 1
       ? `Clothing: There are ${n} people — dress EVERY person in the outfit/gear from the brand reference photo${s}.${petNote}`
       : `Clothing: Dress the subject in the outfit/gear from the brand reference photo${s}.${petNote}`;
   const preserve = n > 1 ? `Preserve accurately for every subject: ${PRESERVE_BRAND.replace(/^Preserve accurately:\s*/, "")}` : PRESERVE_BRAND;
+  // Nobody to dress in a photo of animals only (D-56): no outfit, no wardrobe text ("Dress the subject in the jersey").
+  if (n === 0) return [clothing, BRAND_INSTRUCTION, BRAND_REMINDER].join("\n");
   return [`${clothing}\n\nThe input images named ${names} show the outfit visually.`, preserve, BRAND_INSTRUCTION, brand.wardrobe, BRAND_REMINDER].join("\n");
 }
 
