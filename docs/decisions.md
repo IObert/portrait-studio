@@ -747,8 +747,14 @@ Some events have no big screen. A per-event setting, **Booth screen**, on by def
     on anyone for a pet-only photo.
   - **Review:** a new criterion fails a portrait in which an animal was removed, cut out, left as background, cropped away, turned into a person or merged.
   - **Message:** `noFace` now asks for a face, "yours, or your pet's".
-- **Not checked:** the model's behavior on real pet photos. The originals of the three examples are in the production storage account, which this machine cannot read (the local `.env.local` points at the
-  Azurite emulator, and the account's keys are not stored on disk: `deploy.sh` fetches them with `az`), and selfies expire after 7 days. Checks to run when photos are available: a dog alone, a person with a dog
-  (on the lap, on the floor, at the edge), two kinds of pets, in every style and in the original, uploaded and Kings backgrounds; the vision model's count of animals; and a judge for "the animal is still there".
-- **Not done:** a cap on the number of animals; a composition rule against cutting a person's face at the edge for photos without animals (the anime example above shows it can happen).
+- **Checked on real photos (2026-11-16).** The originals came from the production storage account (kept only on this machine in the git-ignored `.local/pet-eval/`, never in the repo).
+  - **At the event, 5 of the 7 "no face" rejections were pet-only photos** (a dog on a field, a cat, two dogs; the cat was sent twice). The other two were correct: two children seen from behind and a face hidden by a cap.
+  - **Screening with the new prompts, 9 photos:** all four pet-only photos are accepted (`Subjects: 0`, "1 dog" / "1 cat"); the three examples are counted right, including "2 dogs" for the lounger photo (the old
+    answer was "dogs", and the second dog was dropped); the two photos without a visible face are still rejected.
+  - **Generation, 7 photos:** a dog alone, a cat and a dog on a field are drawn complete with their markings; a dog as a transparent cut-out stays in; two couples/people with two dogs keep both dogs, framed fully
+    inside the picture. In the one that stayed cropped (a selfie whose original already cuts the man's face and the dog at the edges) the new review criterion fails it, so it goes to the admin's Flagged list.
+  - **Moderation:** the lounger photo (it shows a nude classical statue in the garden) is refused by the image model's input moderation in pop-art on both 2.5 and 2.6, with or without the animal text, and passes in
+    cartoon. So the refusals are about that photo, not about pets, and the event's one delivery of it was luck. Prompts cannot fix it; the attendee gets the moderation message.
+  - **Not checked:** the Kings backgrounds with pets, every style on every photo, and the rate of any of this (7 generations, one sample each).
+- **Not done:** a cap on the number of animals; a composition rule that moves the subjects inside the picture when the original already cuts them at the edge (the man with the dog is still cut); the Kings backgrounds with pets.
 
