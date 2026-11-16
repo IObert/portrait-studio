@@ -287,28 +287,30 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
         </div>
       </Panel>
 
-      <Panel id="booth" title={title("booth")} description="What attendees see on the booth screen, and where the QR code takes them.">
-        <div className="space-y-3">
-          <div>
-            <label className={field.label} htmlFor="ctaHeadline">Headline</label>
-            <input id="ctaHeadline" name="ctaHeadline" defaultValue={config.ctaText.headline} maxLength={80} className={field.input} placeholder={config.name || DEFAULT_COPY[config.language].ctaHeadline} />
-            <p className={field.hint}>Empty shows the event name.</p>
+      <Panel id="booth" title={title("booth")} description="Whether the event has a big screen, and where the QR code takes people.">
+        <Toggle name="boothScreenEnabled" label="Booth screen" description="Show a big screen with the QR code and a slideshow of portraits. Off: attendees are not asked about showing their portrait, and the QR code is a download." defaultChecked={config.boothScreenEnabled}>
+          <div className="space-y-3">
+            <div>
+              <label className={field.label} htmlFor="ctaHeadline">Headline</label>
+              <input id="ctaHeadline" name="ctaHeadline" defaultValue={config.ctaText.headline} maxLength={80} className={field.input} placeholder={config.name || DEFAULT_COPY[config.language].ctaHeadline} />
+              <p className={field.hint}>Empty shows the event name.</p>
+            </div>
+            <fieldset>
+              <legend className={field.label}>Steps</legend>
+              <ol className="mt-1.5 space-y-2">
+                {steps.map((s, i) => (
+                  <li key={i} className="flex items-center gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mist text-xs font-semibold text-slate" aria-hidden>
+                      {i + 1}
+                    </span>
+                    <input name="ctaStep" defaultValue={s} maxLength={120} className={`${field.input} mt-0`} placeholder={DEFAULT_COPY[config.language].ctaSteps[i] ?? "Another step"} aria-label={`Step ${i + 1}`} />
+                  </li>
+                ))}
+              </ol>
+              <p className={`${field.hint} pl-9`}>Empty steps are left out. Save to get room for another, up to five.</p>
+            </fieldset>
           </div>
-          <fieldset>
-            <legend className={field.label}>Steps</legend>
-            <ol className="mt-1.5 space-y-2">
-              {steps.map((s, i) => (
-                <li key={i} className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-mist text-xs font-semibold text-slate" aria-hidden>
-                    {i + 1}
-                  </span>
-                  <input name="ctaStep" defaultValue={s} maxLength={120} className={`${field.input} mt-0`} placeholder={DEFAULT_COPY[config.language].ctaSteps[i] ?? "Another step"} aria-label={`Step ${i + 1}`} />
-                </li>
-              ))}
-            </ol>
-            <p className={`${field.hint} pl-9`}>Empty steps are left out. Save to get room for another, up to five.</p>
-          </fieldset>
-        </div>
+        </Toggle>
         <div className="space-y-5 border-t border-line pt-5">
           <QrSender senders={senders} channel={config.leadChannel} number={config.qrSender} />
           <FieldError state={state} name="qrSender" />
@@ -320,6 +322,14 @@ export function EventForm({ action, config: initial, slug, styles, backgrounds, 
             </p>
             <FieldError state={state} name="qrText" />
           </div>
+          {slug && (
+            <p className={field.hint}>
+              Download the QR code for a sign or a slide (saved settings):{" "}
+              <a href={`/admin/events/${slug}/qr`} download className="font-medium text-ink underline">SVG</a>
+              {" · "}
+              <a href={`/admin/events/${slug}/qr?format=png`} download className="font-medium text-ink underline">PNG</a>
+            </p>
+          )}
         </div>
       </Panel>
 

@@ -99,6 +99,13 @@ export const pt_BR = {
     printQuestion: ({ printsLeft }) => `Quer imprimir? ${printsLeft === Infinity ? "" : `Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}. `}Retratos impressos também aparecem no telão.`,
     printQuestionGroup: ({ printsLeft }) =>
       `Quer imprimir? ${printsLeft === Infinity ? "" : `Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}. `}Retratos impressos também aparecem no telão, então só escolha isso se todos na foto concordarem.`,
+    printQuestionNoScreen: ({ printsLeft }) => `Quer imprimir? ${printsLeft === Infinity ? "" : `Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}.`}`.trim(),
+    printQuestionNoScreenGroup: ({ printsLeft }) =>
+      `Quer imprimir? ${printsLeft === Infinity ? "" : `Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}. `}Só escolha imprimir se todos na foto concordarem.`,
+    printOnly: "Imprimir",
+    printSmsHintNoScreen: "Responda IMPRIMIR para imprimir, ou NAO.",
+    printThanksNo: "Tudo bem!",
+    noBigScreen: "Este evento não tem telão, então nada foi exibido.",
     printAndSlideshow: "Imprimir + telão",
     slideshowOnly: "Só no telão",
     noThanks: "Não, obrigado",

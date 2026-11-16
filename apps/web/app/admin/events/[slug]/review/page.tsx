@@ -205,7 +205,7 @@ async function Review({ params, searchParams }: { params: Promise<{ slug: string
                 ...(printPending ? [{ action: "print_remove" as const, label: "Remove from print queue" }] : []),
                 // Only hides it from the booth screen; "Remove" below is final (share link and files).
                 ...(item.inSlideshow ? [{ action: "slideshow_hide" as const, label: "Hide from booth screen" }] : []),
-                ...(item.hiddenFromScreen && !item.inSlideshow ? [{ action: "slideshow_show" as const, label: "Show on booth screen again" }] : []),
+                ...(event.config.boothScreenEnabled && item.hiddenFromScreen && !item.inSlideshow ? [{ action: "slideshow_show" as const, label: "Show on booth screen again" }] : []),
                 { action: "remove" as const, label: "Remove" },
               ];
               return (
@@ -214,7 +214,9 @@ async function Review({ params, searchParams }: { params: Promise<{ slug: string
                   <div className="min-w-0 flex-1 space-y-3">
                     <Meta job={item.job} who={item.who} />
                     <ul className="space-y-0.5 text-sm text-slate">
-                      <li>{item.inSlideshow ? "On the booth screen" : item.hiddenFromScreen ? "Hidden from the booth screen" : "Not on the booth screen"}</li>
+                      {(event.config.boothScreenEnabled || item.inSlideshow) && (
+                        <li>{item.inSlideshow ? "On the booth screen" : item.hiddenFromScreen ? "Hidden from the booth screen" : "Not on the booth screen"}</li>
+                      )}
                       <li>{item.print ? `${PRINT_LABEL[item.print.state] ?? item.print.state}${item.print.reprint ? " (reprint)" : ""}` : "Not printed"}</li>
                     </ul>
                     {/* Always mounted: the result message must survive the last action disappearing. */}

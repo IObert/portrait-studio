@@ -59,7 +59,7 @@ async function EventList() {
             <Link href={`/admin/events/${e.slug}/stats`} className={`${btn.base} ${btn.quiet} px-2.5 py-1.5`}>
               Stats
             </Link>
-            {e.state !== "draft" && (
+            {e.state !== "draft" && e.config.boothScreenEnabled && (
               <Link href={`/booth/${e.slug}`} target="_blank" className={`${btn.base} ${btn.quiet} px-2.5 py-1.5`}>
                 Booth screen
               </Link>

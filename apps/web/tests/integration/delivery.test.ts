@@ -193,6 +193,29 @@ describe("delivery (SPEC §6.1)", () => {
     expect(off.sent[1]!.body).toContain("(YES / NO)");
   });
 
+  it("without a booth screen: Print / No thanks, no show-it button, and nothing to ask when no prints are left (D-55)", async () => {
+    const on = await setup({ cfg: { boothScreenEnabled: false, printingEnabled: true, maxPrintsPerPerson: 2 } });
+    await deliver(on.deps, on.event, on.job, on.address);
+    expect(on.sent[1]!.contentSid).toBeDefined(); // a two-button quick reply
+    expect((await on.session()).pendingSlideshow).toMatchObject({ print: true, screen: false });
+
+    const sms = await setup({ cfg: { boothScreenEnabled: false, printingEnabled: true, maxPrintsPerPerson: 2 }, to: "+447700900456" });
+    await deliver(sms.deps, sms.event, sms.job, sms.address);
+    expect(sms.sent[1]!.body).toBe(`${catalogs.en.delivery.printQuestionNoScreen({ printsLeft: 2 })} ${catalogs.en.delivery.printSmsHintNoScreen}`);
+    expect(sms.sent[1]!.body).not.toMatch(/screen/i);
+
+    const group = await setup({ cfg: { boothScreenEnabled: false, printingEnabled: true }, to: "+447700900456" });
+    await deliver(group.deps, group.event, { ...group.job, subjects: 3 }, group.address);
+    expect(group.sent[1]!.body).toContain("everyone in the photo agrees");
+
+    for (const cfg of [{ boothScreenEnabled: false }, { boothScreenEnabled: false, printingEnabled: true, maxPrintsPerPerson: 2 }]) {
+      const none = await setup({ cfg, to: "+447700900456", session: cfg.printingEnabled ? { counters: { delivered: 1, printed: 1, printsReserved: 1, inFlight: 1 } } : undefined });
+      await deliver(none.deps, none.event, none.job, none.address);
+      expect(none.sent).toHaveLength(1); // the portrait only
+      expect((await none.session()).pendingSlideshow).toBeNull();
+    }
+  });
+
   it("asks group photos for everyone's agreement (SPEC §5.8)", async () => {
     const w = await setup({ to: "+447700900456" });
     await deliver(w.deps, w.event, { ...w.job, subjects: 3 }, w.address);

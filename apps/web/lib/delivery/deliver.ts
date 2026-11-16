@@ -86,6 +86,7 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
   // 4. Session: quota (not for admin approvals) and the in-flight slot. Nothing is
   // printed here: the attendee chooses which portraits to print (D-24).
   const group = (job.subjects ?? 1) > 1;
+  const screen = event.config.boothScreenEnabled;
   let left = 0;
   await sessions.update(job.address, (s) => {
     if (!s) return SKIP;
@@ -97,7 +98,9 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
     left = printsLeft(event, counters);
     const delivered = [...s.delivered.filter((id) => id !== job.jobId), job.jobId].slice(-10);
     // A portrait of an "ALL" batch comes without the question (D-49); it can still be printed with PRINT.
-    return { ...s, counters, delivered, ...(job.batch ? {} : { pendingSlideshow: { jobId: job.jobId, group, print: left > 0, askedAt: now.toISOString() } }) };
+    // Without a big screen and without prints there is nothing to ask (D-55).
+    const asked = !job.batch && (screen || left > 0);
+    return { ...s, counters, delivered, ...(asked ? { pendingSlideshow: { jobId: job.jobId, group, print: left > 0, screen, askedAt: now.toISOString() } } : {}) };
   });
 
   // 5. Stats (SPEC §10.5): only for a portrait that was sent.
@@ -111,13 +114,29 @@ export async function deliver(deps: DeliveryDeps, event: PortraitEvent, job: Job
 
   // 6. One question, inside the window only (SPEC §5.8, §5.11, D-24): print and
   // show, show only, or neither. Without prints left it is the slideshow question.
-  if (result === "sent" && !job.batch) await deps.messenger.send(address, followUp(c, job.jobId, group, left), ctx);
+  const question = followUp(c, job.jobId, group, left, screen);
+  if (result === "sent" && !job.batch && question) await deps.messenger.send(address, question, ctx);
   deps.log.info({ event: "delivered", slug: event.slug, jobId: job.jobId, channel: address.channel, result, printOffered: left > 0, approved: !!opts.approvedByAdmin }, "portrait delivered");
   return result;
 }
 
-function followUp(c: Catalog, jobId: string, group: boolean, printsLeft: number): OutboundMessage {
+/** The question after a delivery. Null when there is nothing to ask: no big screen and no prints left (D-55). */
+function followUp(c: Catalog, jobId: string, group: boolean, printsLeft: number, screen: boolean): OutboundMessage | null {
   const d = c.delivery;
+  if (!screen) {
+    if (printsLeft <= 0) return null;
+    const body = group ? d.printQuestionNoScreenGroup({ printsLeft }) : d.printQuestionNoScreen({ printsLeft });
+    return {
+      kind: "buttons",
+      body,
+      // "Print only": the answer never adds the portrait to a screen, even if the setting is switched on later.
+      buttons: [
+        { id: ACTION_SLIDESHOW.printOnly(jobId), title: d.printOnly },
+        { id: ACTION_SLIDESHOW.no(jobId), title: d.noThanks },
+      ],
+      smsBody: `${body} ${d.printSmsHintNoScreen}`,
+    };
+  }
   if (printsLeft > 0) {
     const body = group ? d.printQuestionGroup({ printsLeft }) : d.printQuestion({ printsLeft });
     return {

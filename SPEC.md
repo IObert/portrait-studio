@@ -232,6 +232,7 @@ Sessions, jobs, print items and slideshow entries expire after 7 days, like the 
 | `printerToken` | `<event id>.XXXX-XXXX-XXXX-XXXX`, generated and rotated in the admin UI. Kept visible there, with the server URL and the full agent command, so it can be typed on the printer laptop (D-33). |
 | `promo` | `{enabled, text}`. Only possible when printing is on (§5.9). |
 | `shareText` | The suggested caption on the share page. `{event}` becomes the event name (D-34). |
+| `boothScreenEnabled` | On by default. Off for an event without a big screen (D-55): no show-it question or buttons, no booth screen, no CTA text |
 | `ctaText` | Headline and steps for the booth screen |
 
 In the admin form, an option that depends on a switched-off setting is ignored when saving (for example the promo when printing is off).
@@ -373,6 +374,7 @@ In every case that is not a delivery the person can send another photo straight 
 Nothing is printed or shown automatically. After each delivery, inside the 24h window, one question is sent.
 - **Printing on and prints left:** three buttons, **Print + big screen**, **Big screen only**, **No thanks**. Printing a portrait also puts it on the big screen (the booth screen).
 - **Printing off, or no prints left:** the plain "Can we show your portrait on the big screen? Yes / No".
+- **Event without a booth screen (D-55):** printing on and prints left: **Print** and **No thanks** (group photos: everyone in the photo should agree). Otherwise no question. Nothing is ever added to a screen.
 - **Group photos (2–6 people):** the localized text adds that everyone in the photo should agree.
 - **Only a yes** adds the image to `ev_<slug>_slideshow`. "No" or no answer means it is not shown or printed.
 - **Old buttons keep working**, so an earlier portrait can still be printed later. The buttons carry the job id. A later **No thanks** (or "No") takes the portrait off the big screen again (D-48), and a later **Print** or **Show** adds it.

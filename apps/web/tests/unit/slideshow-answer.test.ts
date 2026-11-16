@@ -6,7 +6,7 @@ import { readSlideshowAnswer } from "@/lib/delivery/slideshow";
 
 const c = catalogs.en;
 const NOW = new Date("2026-10-20T12:00:00Z");
-const withQuestion = (askedAt?: string) => ({ ...newSession("en", NOW), pendingSlideshow: { jobId: "job_00000001", group: false, print: false, ...(askedAt ? { askedAt } : {}) } });
+const withQuestion = (askedAt?: string) => ({ ...newSession("en", NOW), pendingSlideshow: { jobId: "job_00000001", group: false, print: false, screen: true, ...(askedAt ? { askedAt } : {}) } });
 const say = (askedAt: string | undefined, text: string) => readSlideshowAnswer(withQuestion(askedAt), c, { channel: "sms", text });
 
 describe("SMS keyword answers to the slideshow question", () => {
@@ -26,6 +26,13 @@ describe("SMS keyword answers to the slideshow question", () => {
     const stored = SessionSchema.parse(withQuestion());
     expect(stored.pendingSlideshow).toMatchObject({ jobId: "job_00000001" });
     expect(readSlideshowAnswer(stored, c, { channel: "sms", text: "yes" })).toBeNull();
+  });
+
+  it("without a big screen, PRINT only prints and YES answers nothing", () => {
+    const s = { ...withQuestion("2026-10-20T11:55:00Z"), pendingSlideshow: { jobId: "job_00000001", group: false, print: true, screen: false, askedAt: "2026-10-20T11:55:00Z" } };
+    expect(readSlideshowAnswer(s, c, { channel: "sms", text: "PRINT" })).toEqual({ jobId: "job_00000001", answer: "printonly" });
+    expect(readSlideshowAnswer(s, c, { channel: "sms", text: "yes" })).toBeNull();
+    expect(readSlideshowAnswer(s, c, { channel: "sms", text: "no" })).toEqual({ jobId: "job_00000001", answer: "no" });
   });
 
   it("buttons work however old the question is", () => {

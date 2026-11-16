@@ -719,3 +719,13 @@ second copy:
   session). `SKIP` is now `Symbol.for("portrait-studio.sync.skip")`.
 - **Not done:** actions on In progress jobs (retry, cancel), a link from a stuck print to a restart hint on the Printing tab beyond the text, and a badge on the Review header for pending prints (the header still shows flagged only).
 
+
+### D-55 Events without a booth screen: `boothScreenEnabled` (user decision)
+Some events have no big screen. A per-event setting, **Booth screen**, on by default (events saved before it existed keep their screen).
+- **Off, the question after a delivery:** printing on and prints left: **Print** and **No thanks** (new template; the group text still asks that everyone in the photo agrees). Printing off, or no prints left: nothing is asked.
+  The Print button carries the "print only" payload, so it can never put a portrait on a screen, even if the setting is switched on later. On SMS, `PRINT` prints and `YES` answers nothing.
+- **Old buttons** from before the switch (**Big screen only**, **Print + big screen**) are still honored for the print: a yes says there is no big screen, and a print only prints.
+- **Booth page and token:** `/booth/<slug>` says the booth screen is turned off, the token route answers 404, and no booth document is written (the slideshow map is still created, so hide, remove and data deletion keep working).
+- **Admin:** the "Open booth screen" links, the CTA headline and steps, the "Shown on the booth screen" stat and the hide / show buttons (except hiding something already on the screen) are not shown.
+- **QR code:** the QR code was only on the booth screen, so the event page now has an SVG and a PNG download (`/admin/events/<slug>/qr`), for a sign or a slide.
+- Slideshow items already on the screen when it is switched off are left alone; nothing new is added.

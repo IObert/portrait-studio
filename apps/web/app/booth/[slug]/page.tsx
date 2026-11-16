@@ -8,11 +8,22 @@ import { BoothScreen } from "./booth-screen";
 
 export const metadata = { title: "Booth", robots: { index: false, follow: false } };
 
+/** The event runs without a big screen (D-55): say so, rather than an empty or 404 page. */
+function ScreenOff({ name }: { name: string }) {
+  return (
+    <main className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-ink px-8 text-center text-white">
+      <h1 className="text-2xl font-semibold">The booth screen is turned off</h1>
+      <p className="max-w-md text-white/70">{name} runs without a big screen. It can be turned on in the event settings.</p>
+    </main>
+  );
+}
+
 async function Booth({ params }: { params: Promise<{ slug: string }> }) {
   const slug = SlugSchema.safeParse((await params).slug);
   if (!slug.success) notFound();
   const event = await (await getEventRepo()).get(slug.data);
   // Drafts are not shown (SPEC §4.1).
+  if (event && event.state !== "draft" && !event.config.boothScreenEnabled) return <ScreenOff name={event.config.name} />;
   const doc = event ? await boothDoc(event) : null;
   if (!doc) notFound();
   // First paint from the server; the Sync SDK keeps it live after that (D-17).

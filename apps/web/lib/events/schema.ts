@@ -79,6 +79,12 @@ export const EventConfigInputSchema = z
     laKings: z.boolean().default(false),
     leadCollection: z.boolean(),
     /**
+     * Whether the event has a big screen (D-55). Off: no slideshow question, no "show it" buttons,
+     * no booth-screen links in the admin, and /booth/<slug> says the screen is turned off.
+     * Events saved before it existed have a booth screen.
+     */
+    boothScreenEnabled: z.boolean().default(true),
+    /**
      * Verification email extras (D-20), only used with lead collection on:
      * a promo code shown in the email, and whether to show the Verify code snippet
      * (on by default; ignored while lead collection is off).
@@ -174,6 +180,7 @@ export function defaultConfig(name: string, qrSender: string): EventConfigInput 
     frame: "none",
     laKings: false,
     leadCollection: true,
+    boothScreenEnabled: true,
     emailPromoCode: "",
     emailShowSnippet: true,
     maxImagesPerPerson: 10,

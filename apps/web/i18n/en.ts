@@ -100,6 +100,13 @@ export const en = {
     printQuestion: ({ printsLeft }) => `Want it printed? ${printsLeft === Infinity ? "" : `You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left. `}Printed portraits are also shown on the big screen.`,
     printQuestionGroup: ({ printsLeft }) =>
       `Want it printed? ${printsLeft === Infinity ? "" : `You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left. `}Printed portraits are also shown on the big screen, so please only choose that if everyone in the photo agrees.`,
+    printQuestionNoScreen: ({ printsLeft }) => `Want it printed? ${printsLeft === Infinity ? "" : `You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left.`}`.trim(),
+    printQuestionNoScreenGroup: ({ printsLeft }) =>
+      `Want it printed? ${printsLeft === Infinity ? "" : `You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left. `}Please only choose print if everyone in the photo agrees.`,
+    printOnly: "Print",
+    printSmsHintNoScreen: "Reply PRINT to print it, or NO.",
+    printThanksNo: "No problem!",
+    noBigScreen: "There's no big screen at this event, so nothing was shown.",
     printAndSlideshow: "Print + big screen",
     slideshowOnly: "Big screen only",
     noThanks: "No thanks",

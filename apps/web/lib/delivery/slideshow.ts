@@ -37,7 +37,10 @@ export function readSlideshowAnswer(session: Session, c: Catalog, input: { chann
   // A bare "ok" must answer a recent question, not one ignored long ago.
   const askedAt = session.pendingSlideshow.askedAt ? Date.parse(session.pendingSlideshow.askedAt) : 0;
   if (Date.now() - askedAt > SLIDESHOW_ANSWER_WINDOW_MS) return null;
-  if (session.pendingSlideshow.print && matchesKeyword(input.text, c.delivery.printKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "print" };
+  const pending = session.pendingSlideshow;
+  // A question asked without a big screen (D-55): PRINT only prints, and YES answers nothing.
+  if (pending.print && matchesKeyword(input.text, c.delivery.printKeywords)) return { jobId: pending.jobId, answer: pending.screen ? "print" : "printonly" };
+  if (!pending.screen && matchesKeyword(input.text, c.delivery.yesKeywords)) return null;
   if (matchesKeyword(input.text, c.delivery.yesKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "yes" };
   if (matchesKeyword(input.text, c.delivery.noKeywords)) return { jobId: session.pendingSlideshow.jobId, answer: "no" };
   return null;

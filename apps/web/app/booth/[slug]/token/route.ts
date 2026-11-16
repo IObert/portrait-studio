@@ -17,6 +17,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/booth/[slug]/token"
   if (!slug.success) return new Response("Not found", { status: 404 });
   const event = await (await getEventRepo()).get(slug.data);
   if (!event || event.state === "draft") return new Response("Not found", { status: 404 });
+  if (!event.config.boothScreenEnabled) return new Response("The booth screen is turned off for this event", { status: 404 });
   // e2e mode has no Twilio Sync to push from: the screen stays on its server render.
   if (process.env.PORTRAIT_E2E_FAKE_SYNC === "1") return new Response("Live updates unavailable in test mode", { status: 503 });
   const { sync } = getServices();
