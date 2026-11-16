@@ -755,6 +755,17 @@ Some events have no big screen. A per-event setting, **Booth screen**, on by def
     inside the picture. In the one that stayed cropped (a selfie whose original already cuts the man's face and the dog at the edges) the new review criterion fails it, so it goes to the admin's Flagged list.
   - **Moderation:** the lounger photo (it shows a nude classical statue in the garden) is refused by the image model's input moderation in pop-art on both 2.5 and 2.6, with or without the animal text, and passes in
     cartoon. So the refusals are about that photo, not about pets, and the event's one delivery of it was luck. Prompts cannot fix it; the attendee gets the moderation message.
-  - **Not checked:** the Kings backgrounds with pets, every style on every photo, and the rate of any of this (7 generations, one sample each).
-- **Not done:** a cap on the number of animals; a composition rule that moves the subjects inside the picture when the original already cuts them at the edge (the man with the dog is still cut); the Kings backgrounds with pets.
+  - **Second round (2026-11-16), after the first findings:**
+    - **Framing:** the man-with-dog selfie is cropped because the *original* is: his face is cut at the right edge. A framing rule in the Animals line ("pull the framing back and complete the missing part",
+      overriding "fill the frame") fixed it in cartoon, and in anime once the anime style text itself got "never let the edge of the picture cut a head or face off" (the anime style says "fill the frame",
+      which had won). Both sit inside the picture now (a sliver of ear and jaw still touches the edge in anime).
+    - **Review criterion softened:** the dog's *body* running past the edge, as in any close portrait, no longer fails; its head and face must be in view. The first wording would have sent normal pet close-ups to
+      the admin's Flagged list.
+    - **Cartoon on a pet alone** looked like a studio photograph; the Animals line now says to draw animals in the same art style, "not as a photograph of an animal", and a dog and a cat came out properly Pixar.
+    - **Moderation, open (parked):** with the Kings arena and pop-art, a photo of only a pet is refused by the image model for some photos (a cat and one dog refused, two other dogs fine; the same photos pass
+      in other styles and on other backgrounds). Removing any one of three phrases made a refusing prompt pass (the "hand, or human figure" wording, the pop-art "flatten skin and hair" sentence, or the Warhol
+      names), so the prompt is at the edge of the safety check, not tripping on one phrase. "hand, or human figure" was dropped as harmless. Not the jersey photos (sending only the arena reference did not help).
+      Together with the lounger photo (nude statue) above, moderation refusals are parked by the user; `GenerationRefused` already gives the attendee the moderation message.
+  - **Not checked:** every style on every photo, and the rate of any of this (a dozen generations, one sample each).
+- **Not done:** a cap on the number of animals; the moderation refusals above (parked); a framing check for photos without animals.
 

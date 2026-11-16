@@ -13,7 +13,7 @@ export interface Scene {
 /** `pet` is the vision model's list of the animals, e.g. "1 dog" or "2 dogs, 1 cat" (D-56), so it is written as a list and never as "a ${pet}". */
 export function sceneLine({ subjects: n, pet }: Scene): string {
   if (n === 0 && pet)
-    return `This photo has no people, only these animals: ${pet}. The animals are the subjects of the portrait. The output must contain exactly those animals and no people at all — do not add, invent, or hallucinate any person, hand, or human figure.`;
+    return `This photo has no people, only these animals: ${pet}. The animals are the subjects of the portrait. The output must contain exactly those animals and no people at all — do not add, invent, or hallucinate any person.`;
   if (n > 1 && pet)
     return `This photo has exactly ${n} HUMAN subjects and these animals: ${pet}. Include ALL of them positioned as shown. The output must contain exactly ${n} people and exactly those animals — no more, no fewer. The animals are animals, NOT people: do not turn any of them into a human.${MULTI_IDENTITY}`;
   if (n > 1)
@@ -39,5 +39,5 @@ export function finalReminder({ subjects: n, pet }: Scene): string {
  */
 export function animalLine({ pet }: Scene): string | null {
   if (!pet) return null;
-  return `Animals: Every animal in the photo (${pet}) is a main subject of the portrait, as important as the people, whatever the background instruction says: never part of the background, never removed, never cut out. Keep each one clearly recognizable: the same kind of animal, with its own fur or coat color, markings, ear shape, eye color, and any collar or harness. Keep every animal inside the picture with its head and body not cut off by an edge, even if that means showing more than the chest-up framing used for people; no head or face may be cut off by an edge.`;
+  return `Animals: Every animal in the photo (${pet}) is a main subject of the portrait, as important as the people, whatever the background instruction says: never part of the background, never removed, never cut out. Keep each one clearly recognizable: the same kind of animal, with its own fur or coat color, markings, ear shape, eye color, and any collar or harness. Keep every animal inside the picture with its head and body not cut off by an edge, even if that means showing more than the chest-up framing used for people; no head or face may be cut off by an edge. Draw each animal in the same art style as the rest of the picture, as stylized as a person would be and not as a photograph of an animal. Framing rule, which overrides any instruction to fill the frame: if the original photo cuts a head or face off at its edge, pull the framing back and complete the missing part, so that every head (people and animals) is fully inside the picture with a little space around it.`;
 }

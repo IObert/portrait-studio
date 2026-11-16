@@ -50,7 +50,8 @@ describe("review prompt (PROMPTS.md §B1)", () => {
     expect(p).toContain("1. Subject likeness");
     expect(p).toContain("5. Anatomical quality");
     expect(p).toContain("6. Animals"); // D-56: a missing or cut-out pet is caught
-    expect(p).toContain("FAIL if an animal was removed, cut out or left as part of the background");
+    expect(p).toContain("FAIL if an animal was removed, cut out or left as part of the background, had its head or face cut off");
+    expect(p).toContain("its body may run past the edge"); // a close portrait of a lying dog is not a failure
     expect(p).not.toContain("Branding & logos");
     expect(p).toContain("---\nGEN PROMPT\n---");
     expect(p).toContain("When in doubt, PASS.");
