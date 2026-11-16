@@ -36,7 +36,7 @@ export async function EventHeader({ event }: { event: PortraitEvent }) {
         </div>
         <StateControls slug={event.slug} state={event.state} />
       </div>
-      <EventTabs slug={event.slug} flagged={flagged} boothOpen={event.state !== "draft"} />
+      <EventTabs slug={event.slug} flagged={flagged} boothOpen={event.state !== "draft" && event.config.boothScreenEnabled} />
     </div>
   );
 }

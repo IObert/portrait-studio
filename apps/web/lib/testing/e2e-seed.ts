@@ -15,6 +15,7 @@ export async function seedE2e(): Promise<void> {
   if (process.env.PORTRAIT_E2E_FAKE_SYNC !== "1") return;
   await seedShare();
   await seedPrintShare();
+  await seedPending();
   await seedBooth();
 }
 
@@ -73,6 +74,50 @@ async function seedShare(): Promise<void> {
 
 /** Share page with printing on: the owner has one print left (D-26). */
 export const E2E_PRINT_SHARE_ID = "e2ePrintShareFixture000001";
+/**
+ * An event with work that is not done, for the Review tabs "Printing" and "In progress" (D-54): a print that has been
+ * queued for hours while the agent is online and ready, a failed print, and jobs in every unfinished state.
+ */
+async function seedPending(): Promise<void> {
+  const { sync, blob } = getServices();
+  const events = await getEventRepo();
+  const slug = "e2e-pending";
+  if (await events.get(slug)) return;
+  await events.create(slug, { ...defaultConfig("E2E Pending Work", "+13203780782"), printingEnabled: true });
+  await events.setState(slug, "live");
+  const ev = eventObjects(slug);
+  for (const m of [ev.jobs, ev.print, ev.sessions]) await sync.ensureMap(m); // as every real event has
+  const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+  const jpeg = await sharp({ create: { width: 1200, height: 1800, channels: 3, background: "#7c3aed" } }).jpeg().toBuffer();
+  const job = (id: string, state: string, over: Record<string, unknown> = {}) =>
+    JobSchema.parse({
+      jobId: id, address: "whatsapp:+10000000002", channel: "whatsapp", style: "anime", background: "gradient", subjects: 2,
+      selfieBlob: `events/${slug}/selfies/${id}.jpg`, shareId: `${id}_share`.padEnd(24, "x"), state, timestamps: { [state]: ago(10) }, ...over,
+    });
+  // Delivered portraits with a print that is waiting (3 hours) and one that failed.
+  // Three delivered portraits, told apart by style: one with a print waiting, one with a failed print that is on the booth screen, one never printed.
+  for (const [id, style] of [["pend_print_wait", "anime"], ["pend_print_fail", "pop-art"], ["pend_never_printed", "sketch"]] as const) {
+    const deliveryJpeg = `events/${slug}/generated/${id}.jpg`;
+    await blob.put(deliveryJpeg, jpeg, "image/jpeg");
+    await sync.map(ev.jobs, JobSchema).put(id, job(id, "delivered", { style, outputBlobs: { printPng: `events/${slug}/generated/${id}.print.png`, deliveryJpeg } }));
+  }
+  await sync.ensureMap(ev.slideshow);
+  await sync.raw.createItem(ev.slideshow, "pend_print_fail", { blobPath: `events/${slug}/generated/pend_print_fail.jpg`, addedAt: new Date().toISOString() });
+  const printItem = (id: string, state: string, over: Record<string, unknown> = {}) => ({
+    jobId: id, blobPath: `events/${slug}/generated/${id}.print.png`, url: "https://example.test/m/x", who: "whatsapp:+10…02", state, attempts: 0, leaseUntil: null, error: null, reprint: false, timestamps: { queued: ago(180) }, ...over,
+  });
+  await sync.raw.createItem(ev.print, "pend_print_wait", printItem("pend_print_wait", "queued"));
+  await sync.raw.createItem(ev.print, "pend_print_fail", printItem("pend_print_fail", "failed", { attempts: 3, error: "Printer cancelled the job", timestamps: { queued: ago(120), failed: ago(110) }, settledAt: ago(100) }));
+  await sync.raw.createItem(ev.print, "pend_print_done", printItem("pend_print_done", "printed", { timestamps: { queued: ago(200), printed: ago(199) }, settledAt: ago(198) })); // not pending: must not be listed
+  // An agent that is online with a ready printer, so the waiting print is "not picked up".
+  await sync.raw.putDocument(ev.printer, { agentVersion: "0.1.0", mode: "cups", queue: "DNP_DS620", status: "idle", detail: "", heartbeatAt: new Date(Date.now() + 365 * 24 * 3600_000).toISOString() });
+  // Jobs that are not done.
+  await sync.map(ev.jobs, JobSchema).put("pend_job_screen", job("pend_job_screen", "screening", { subjects: null, style: null, background: null, timestamps: { screening: ago(12) } }));
+  await sync.map(ev.jobs, JobSchema).put("pend_job_choice", job("pend_job_choice", "awaiting_choice", { style: null, background: null, timestamps: { awaiting_choice: ago(40) } }));
+  await sync.map(ev.jobs, JobSchema).put("pend_job_gen", job("pend_job_gen", "processing", { timestamps: { processing: ago(30) }, attempts: 1 }));
+  await sync.map(ev.jobs, JobSchema).put("pend_job_fail", job("pend_job_fail", "failed", { error: "image model refused the request", attempts: 3, timestamps: { failed: ago(20) } }));
+}
+
 async function seedPrintShare(): Promise<void> {
   const { sync, blob } = getServices();
   const events = await getEventRepo();

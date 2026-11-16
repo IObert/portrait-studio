@@ -330,7 +330,7 @@ async function decide(
     if (answer) {
       return {
         session: session.pendingSlideshow?.jobId === answer.jobId ? { ...session, pendingSlideshow: null } : session,
-        messages: answer.answer === "print" || answer.answer === "printonly" ? [] : [{ kind: "text", body: answer.answer === "yes" ? c.delivery.slideshowThanksYes : c.delivery.slideshowThanksNo }],
+        messages: answer.answer === "print" || answer.answer === "printonly" ? [] : [{ kind: "text", body: slideshowReply(event.config.boothScreenEnabled, answer.answer, c) }],
         effects: [{ type: "slideshow", jobId: answer.jobId, answer: answer.answer }],
       };
     }
@@ -591,6 +591,9 @@ async function runEffect(
       await deps.blob.delete(effect.blobPath);
       return;
     case "slideshow": {
+      // Without a big screen (D-55) nothing is ever added to it: an old "show it" button does nothing, and a print is only a print.
+      const screen = ctx.event.config.boothScreenEnabled;
+      if (!screen && effect.answer === "yes") return;
       // "No", or no answer: never shown (SPEC §5.8). A "No" after an earlier "Yes" takes it off the screen again (D-48).
       if (effect.answer === "no") {
         await removeFromSlideshow(deps, ctx, effect.jobId);
@@ -606,7 +609,7 @@ async function runEffect(
         deps.log.info({ event: "print_requested", slug: ctx.event.slug, jobId: effect.jobId, result: r.status, ...(r.status === "queued" ? { printerReady: r.printerReady } : {}) }, "print requested");
       }
       // Print only (the print menu) leaves the screen choice as it was.
-      if (effect.answer !== "printonly") await addToSlideshow(deps, ctx, effect.jobId);
+      if (effect.answer !== "printonly" && screen) await addToSlideshow(deps, ctx, effect.jobId);
       return printReply;
     }
     case "print-menu":
@@ -675,6 +678,13 @@ async function printMenu(deps: Deps, ctx: { event: PortraitEvent; key: string; s
   return { kind: "list", body, button: d.printMenuButton, items, smsBody };
 }
 
+/** The thank-you for a yes / no to the screen question; without a big screen (D-55) a yes says there is none. */
+function slideshowReply(screen: boolean, answer: "yes" | "no", c: Catalog): string {
+  const d = c.delivery;
+  if (answer === "no") return screen ? d.slideshowThanksNo : d.printThanksNo;
+  return screen ? d.slideshowThanksYes : d.noBigScreen;
+}
+
 /** Takes the attendee's own portrait off the booth screen, if it is on it (D-48). */
 async function removeFromSlideshow(deps: Deps, ctx: { event: PortraitEvent; key: string }, jobId: string) {
   const { sync } = deps;
@@ -694,6 +704,7 @@ async function addToSlideshow(deps: Deps, ctx: { event: PortraitEvent; key: stri
   // Only the attendee's own delivered job can be added.
   const job = await sync.map(ev.jobs, JobSchema).get(jobId);
   if (!job || job.address !== ctx.key || job.state !== "delivered" || !job.outputBlobs) return;
+  if (job.hiddenFromScreen) return; // an admin took it off the screen: the attendee's buttons cannot put it back (D-54)
   await sync.ensureMap(ev.slideshow);
   // The signed link travels with the item, so the booth gets a ready URL in the push (D-17).
   const url = deps.slideUrl(job.outputBlobs.deliveryJpeg);

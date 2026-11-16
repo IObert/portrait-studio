@@ -94,7 +94,7 @@ async function Stats({ params }: { params: Promise<{ slug: string }> }) {
             <Row label="Rejected" value={n("rejected")} />
             <Row label="Failed" value={n("failed")} />
             <Row label="Average selfie to delivery" value={avg} />
-            <Row label="Shown on the booth screen" value={n("slideshowYes")} />
+            {event.config.boothScreenEnabled && <Row label="Shown on the booth screen" value={n("slideshowYes")} />}
           </Card>
           <Card title="How people opted in">
             {event.config.leadCollection && <Row label="With verified email" value={n("leadsVerifiedEmail")} />}

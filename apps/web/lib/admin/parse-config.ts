@@ -28,6 +28,7 @@ export function parseConfig(form: FormData): EventConfigInput {
     frame: z.enum(FRAME_IDS).parse(form.get("frame")),
     laKings,
     leadCollection,
+    boothScreenEnabled: bool("boothScreenEnabled"),
     emailPromoCode: leadCollection ? String(form.get("emailPromoCode") ?? "").trim() : "",
     emailShowSnippet: leadCollection && bool("emailShowSnippet"),
     maxImagesPerPerson: num("maxImagesPerPerson"),

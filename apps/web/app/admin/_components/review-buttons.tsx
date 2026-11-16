@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { reviewAction, type ReviewState } from "@/lib/admin/review-actions";
 import { btn } from "./ui";
 
-type Action = "approve" | "discard" | "remove" | "print_remove" | "reprint";
+type Action = "approve" | "discard" | "remove" | "print_remove" | "reprint" | "slideshow_hide" | "slideshow_show";
 
 const STYLE: Record<Action, string> = {
   approve: "bg-go text-white hover:bg-[#0b6a40]",
@@ -12,6 +12,8 @@ const STYLE: Record<Action, string> = {
   remove: `${btn.quiet} text-danger hover:text-danger`,
   print_remove: btn.secondary,
   reprint: btn.secondary,
+  slideshow_hide: btn.secondary,
+  slideshow_show: btn.secondary,
 };
 
 /** Buttons for one review card. */

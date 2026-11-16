@@ -702,3 +702,87 @@ second copy:
 - **To get the stuck prints out:** build the agent (`pnpm --filter @portrait-studio/print-agent build`), copy `apps/print-agent/dist/agent.mjs` to the printing computer and restart it. Nothing in the queue needs touching.
 - **Not done:** the server side is unaffected (it uses its own listing). Settled items could be removed sooner than 7 days; D-25 keeps them to avoid a second copy.
 
+### D-54 Review shows what is not done: Printing and In progress tabs, Print/Reprint, hide from the booth screen (user decision)
+*2026-11-10. Two prints sat in the queue at LeadDev Berlin without anyone seeing them (D-53), and the Delivered tab always said "Reprint", even for a portrait never printed.*
+- **Two tabs, not one list.** A print item and a portrait job are different things with different states and actions, so **Printing** (the print queue) and **In progress** (the pipeline) are separate tabs next to
+  Flagged and Delivered. Tab numbers come from `reviewCounts` (job and print states only, no image links).
+- **Printing** (`listPrinting`): prints that are queued, picked up, printing or failed, oldest first, with the wait and the agent's state. `printWaitHint` (`lib/review/pending.ts`) names why a queued print waits,
+  and after 2 minutes with an online agent and a ready printer says nothing picked it up: the case of D-53, now visible.
+- **In progress** (`listInProgress`): screening, waiting for the attendee's choice, queued, generating, failed; the longest-waiting first. Slow after 5 min (checking, queued) or 10 min (generating); failed always.
+  Rejected jobs are left out (superseded photos and screening rejections would bury the stuck ones). Read-only for now.
+- **Print / Reprint:** the Delivered button says **Print** when no print exists and **Reprint** after one did, and is not shown while a print is queued or at the printer (it would only say "already pending").
+- **Hide from booth screen** (user decision): deletes the slideshow item and sets `Job.hiddenFromScreen`, so the attendee's "Big screen only" / "Print + big screen" buttons (which can be pressed any time, D-48) do not
+  put it back. **Show on booth screen again** clears the flag and re-adds it (no signed link stored; the booth signs on read). It is not **Remove** (D-16): share link, files and print stay. The slideshow-consent count
+  (`slideshowYes`) is not changed by it.
+- **A bug found on the way:** `SKIP` (the "leave unchanged" value of `update`) was a plain `Symbol`, and Next.js bundles `lib/sync/store.ts` separately for server actions and for pages, so an action's `SKIP` was not
+  the store's `SKIP`: the store tried to save it and failed with "Invalid data". Any admin action whose update meant "no change" showed "Something went wrong" (found when removing a queued print for an address with no
+  session). `SKIP` is now `Symbol.for("portrait-studio.sync.skip")`.
+- **Not done:** actions on In progress jobs (retry, cancel), a link from a stuck print to a restart hint on the Printing tab beyond the text, and a badge on the Review header for pending prints (the header still shows flagged only).
+
+
+### D-55 Events without a booth screen: `boothScreenEnabled` (user decision)
+Some events have no big screen. A per-event setting, **Booth screen**, on by default (events saved before it existed keep their screen).
+- **Off, the question after a delivery:** printing on and prints left: **Print** and **No thanks** (new template; the group text still asks that everyone in the photo agrees). Printing off, or no prints left: nothing is asked.
+  The Print button carries the "print only" payload, so it can never put a portrait on a screen, even if the setting is switched on later. On SMS, `PRINT` prints and `YES` answers nothing.
+- **Old buttons** from before the switch (**Big screen only**, **Print + big screen**) are still honored for the print: a yes says there is no big screen, and a print only prints.
+- **Booth page and token:** `/booth/<slug>` says the booth screen is turned off, the token route answers 404, and no booth document is written (the slideshow map is still created, so hide, remove and data deletion keep working).
+- **Admin:** the "Open booth screen" links, the CTA headline and steps, the "Shown on the booth screen" stat and the hide / show buttons (except hiding something already on the screen) are not shown.
+- **QR code:** the QR code was only on the booth screen, so the event page now has an SVG and a PNG download (`/admin/events/<slug>/qr`), for a sign or a slide.
+- Slideshow items already on the screen when it is switched off are left alone; nothing new is added.
+
+### D-56 Pets: a photo of a pet alone is accepted, and animals are subjects of the portrait (found at LeadDev Berlin)
+*2026-11-16. Attendees' pet-only photos were refused, and in photos with a person the animal was sometimes cut out, treated as background or cropped.*
+- **Why a pet-only photo was refused:** two checks asked for a person. The face check ("a person's face") answered NO for a dog, and the scene analysis listed a pet only "if the pet belongs to the
+  subject(s)", so a photo with no person gave 0 subjects (`rejected`, `no_face`, and the message asked for a selfie). Nothing in the generation prompts could have handled it either.
+- **Why animals were lost or cropped (from reading the prompts; three real outputs agree):** the pet appeared only in the scene line and the final reminder. "Render only the subject as a cut-out" (uploaded
+  background) and "Recreate the background environment" (original background) left an animal outside "the subject"; "chest up" framing crops a pet in a lap or on the floor; the preserve line lists only
+  human features; and the scene analysis returned one animal type, so two pets became "a dogs" and "no more, no fewer" allowed one. The AI review had no check for animals and passes when in doubt.
+- **Seen in the three examples from the event** (generated images; the originals could not be read, see below): a watercolor of a couple with two dogs kept both dogs; a pop-art portrait of a woman with a dog
+  cut the dog off at the right and bottom edge; an anime portrait of a man with a dog had the man's face cut in half by the right edge and the dog cut by the bottom edge. The cropping is the same family of problem.
+- **Changes:**
+  - **Screening:** the face check accepts a person's or a pet's face; the scene analysis counts people (may be 0) and lists every real animal with a count ("2 dogs, 1 cat"), wherever it is in the frame. A photo
+    passes with a person or with an animal; neither is `no_face`. Animals do not count toward `MAX_SUBJECTS` (D-52). `Job.pet` may be 80 characters (was 30).
+  - **Prompts:** the scene line names the animals as a list and, for a photo with no person, says there are no people and not to invent one; a new **Animals line** (`animalLine`, PROMPTS.md §E3b) makes every
+    animal a main subject whatever the background says, keeps its coat, markings, ears and collar, and keeps it (and every face) inside the picture; the final reminder says the same. The Kings jersey is not put
+    on anyone for a pet-only photo.
+  - **Review:** a new criterion fails a portrait in which an animal was removed, cut out, left as background, cropped away, turned into a person or merged.
+  - **Message:** `noFace` now asks for a face, "yours, or your pet's".
+- **Checked on real photos (2026-11-16).** The originals came from the production storage account (kept only on this machine in the git-ignored `.local/pet-eval/`, never in the repo).
+  - **At the event, 5 of the 7 "no face" rejections were pet-only photos** (a dog on a field, a cat, two dogs; the cat was sent twice). The other two were correct: two children seen from behind and a face hidden by a cap.
+  - **Screening with the new prompts, 9 photos:** all four pet-only photos are accepted (`Subjects: 0`, "1 dog" / "1 cat"); the three examples are counted right, including "2 dogs" for the lounger photo (the old
+    answer was "dogs", and the second dog was dropped); the two photos without a visible face are still rejected.
+  - **Generation, 7 photos:** a dog alone, a cat and a dog on a field are drawn complete with their markings; a dog as a transparent cut-out stays in; two couples/people with two dogs keep both dogs, framed fully
+    inside the picture. In the one that stayed cropped (a selfie whose original already cuts the man's face and the dog at the edges) the new review criterion fails it, so it goes to the admin's Flagged list.
+  - **Moderation:** the lounger photo (it shows a nude classical statue in the garden) was refused by the image model in pop-art on both 2.5 and 2.6, with or without the animal text, and passed in cartoon.
+    I first took the statue to be the cause; it was not. See D-57.
+  - **Second round (2026-11-16), after the first findings:**
+    - **Framing:** the man-with-dog selfie is cropped because the *original* is: his face is cut at the right edge. A framing rule in the Animals line ("pull the framing back and complete the missing part",
+      overriding "fill the frame") fixed it in cartoon, and in anime once the anime style text itself got "never let the edge of the picture cut a head or face off" (the anime style says "fill the frame",
+      which had won). Both sit inside the picture now (a sliver of ear and jaw still touches the edge in anime).
+    - **Review criterion softened:** the dog's *body* running past the edge, as in any close portrait, no longer fails; its head and face must be in view. The first wording would have sent normal pet close-ups to
+      the admin's Flagged list.
+    - **Cartoon on a pet alone** looked like a studio photograph; the Animals line now says to draw animals in the same art style, "not as a photograph of an animal", and a dog and a cat came out properly Pixar.
+    - **Moderation (solved in D-57, see below; this is how it looked at first):** with the Kings arena and pop-art, a photo of only a pet is refused by the image model for some photos (a cat and one dog refused, two other dogs fine; the same photos pass
+      in other styles and on other backgrounds). Removing any one of three phrases made a refusing prompt pass (the "hand, or human figure" wording, the pop-art "flatten skin and hair" sentence, or the Warhol
+      names), so the prompt is at the edge of the safety check, not tripping on one phrase. "hand, or human figure" was dropped as harmless. Not the jersey photos (sending only the arena reference did not help).
+      Together with the lounger photo (nude statue) above, this was parked, and then traced to one name in the prompt: D-57.
+  - **Not checked:** every style on every photo, and the rate of any of this (a dozen generations, one sample each).
+- **Not done:** a cap on the number of animals; the moderation refusals above (parked); a framing check for photos without animals.
+
+### D-57 The pop-art prompt no longer names artists: "Roy Lichtenstein" made the image model refuse photos (found with the woman-and-two-dogs photo)
+*2026-11-16. A harmless photo (a woman and two dogs on a garden lounger) was refused by the image model in pop-art and passed in cartoon, on 2.5 and 2.6.*
+- **What the refusal says:** `moderation_blocked`, `moderation_stage: input`, `categories: ["other"]`. Nothing more. OpenAI's own moderation endpoint (the one used for screening) flags none of the photo or its parts
+  (all category scores about 0), so the refusal comes from the image model's separate filter.
+- **Not the cause:** the nude statue in the garden (hiding only the statue still refused), the lounger, the shoes, the towel, the dogs, the Kings jersey photos, the animal text, the Top margin line, the
+  preserve paragraph, the "flatten skin and hair" and "hair and eyes keep their color family" sentences. Hiding the statue, cactus and amphora together made it pass in only 1 of 2 tries.
+- **The cause:** the style name **"Roy Lichtenstein"** in the first line of the pop-art style ("in the style of Andy Warhol and Roy Lichtenstein"). Same photo, same prompt otherwise, six tries each: both names
+  0/6 passed; only Lichtenstein 0/6; only Warhol 6/6; no names 6/6. The same on the Kings arena with a cat and a dog (both names 0/4, only Warhol 4/4, no names 4/4). It is not every photo (two other dog photos passed with
+  both names): the name adds enough risk to tip borderline photos over the filter's threshold, and which photos those are cannot be seen. Why this name and not Warhol's I can only guess (a rule against imitating a named
+  artist, perhaps the estate's copyright); the filter does not say.
+- **Fix:** the pop-art style no longer names artists ("a bold, classic pop art portrait"). The Style paragraph already describes the look (bold black outlines, flat vibrant colors, Ben-Day dots or halftone,
+  screen print or comic-book panel), and real photos in pop-art look the same without the names: halftone dots, thick outlines, flat colors. The woman-and-two-dogs photo and the dog on the field generate now, with
+  both dogs in the picture.
+- **Lesson:** do not name artists, studios or brands in prompts for no reason. Other styles name none (cartoon names Pixar and Disney Animation Studios and has passed every test so far; watch it).
+- **Checked:** 6 tries per variant on one photo, 4 per variant on two more, and two full-quality generations. **Not checked:** how often the old prompt was refused in production (1 of 184 jobs at LeadDev Berlin was
+  `generation_refused`, with a different, older prompt and model), and the other styles over many photos.
+

@@ -32,7 +32,11 @@ describe("LA Kings prompt (D-36)", () => {
     const group = buildPrompt("anime", "crypto-arena", { subjects: 3, pet: null }, undefined, LA_KINGS);
     expect(group).toContain("Clothing: There are 3 people — dress EVERY person in the outfit/gear from the brand reference photos.");
     expect(group).toContain("Preserve accurately for every subject: skin tone");
-    expect(buildPrompt("sketch", "ice-rink", { subjects: 1, pet: "dog" }, undefined, LA_KINGS)).toContain("Include the dog naturally in the image.");
+    expect(buildPrompt("sketch", "ice-rink", { subjects: 1, pet: "1 dog" }, undefined, LA_KINGS)).toContain("Include the animals (1 dog) naturally in the image.");
+    // A photo of a pet alone: nobody to put in the jersey, and the pet is not dressed.
+    const petOnly = buildPrompt("sketch", "ice-rink", { subjects: 0, pet: "1 dog" }, undefined, LA_KINGS);
+    expect(petOnly).toContain("Clothing: There is no person in this photo. Do not add anyone to wear the outfit/gear, and do not dress the animals.");
+    expect(petOnly).not.toContain("Dress the subject");
   });
 
   it("a non-Kings background still works with the jersey", () => {

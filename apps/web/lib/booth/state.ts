@@ -45,7 +45,7 @@ export function qrTarget(event: PortraitEvent): string {
 }
 
 export async function boothDoc(event: PortraitEvent): Promise<BoothDoc | null> {
-  if (event.state === "draft") return null;
+  if (event.state === "draft" || !event.config.boothScreenEnabled) return null;
   const c = catalogs[event.config.language];
   return {
     state: event.state,
@@ -62,16 +62,17 @@ export async function boothDoc(event: PortraitEvent): Promise<BoothDoc | null> {
 /**
  * Writes the booth document and makes sure the slideshow map exists, so a
  * read-only booth token can open both (`open_existing`). Call after every
- * change to the event. A draft event has no booth document.
+ * change to the event. A draft event, or one with the booth screen turned off (D-55), has no booth document.
  */
 export async function publishBooth(sync: SyncStore, event: PortraitEvent): Promise<void> {
   const ev = eventObjects(event.slug);
+  // The slideshow map always exists: hiding, removing and data deletion touch it even without a booth screen.
+  await sync.ensureMap(ev.slideshow);
   const doc = await boothDoc(event);
   if (!doc) {
     await sync.deleteDocument(ev.booth);
     return;
   }
-  await sync.ensureMap(ev.slideshow);
   await sync.document(ev.booth, BoothDocSchema).put(doc);
 }
 

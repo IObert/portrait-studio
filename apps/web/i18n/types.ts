@@ -119,6 +119,16 @@ export interface Catalog {
     /** Combined print + slideshow question, when the person still has prints (D-24). */
     printQuestion: (p: { printsLeft: number }) => string;
     printQuestionGroup: (p: { printsLeft: number }) => string;
+    /** The same question for an event without a big screen (D-55): print or no thanks. */
+    printQuestionNoScreen: (p: { printsLeft: number }) => string;
+    printQuestionNoScreenGroup: (p: { printsLeft: number }) => string;
+    /** Button title for printing without the big screen. */
+    printOnly: string;
+    printSmsHintNoScreen: string;
+    /** "No thanks" to the print question when there is no big screen. */
+    printThanksNo: string;
+    /** An old "show it on the big screen" button, tapped at an event that has none. */
+    noBigScreen: string;
     /** Button titles: at most 20 characters (WhatsApp quick replies). */
     printAndSlideshow: string;
     slideshowOnly: string;

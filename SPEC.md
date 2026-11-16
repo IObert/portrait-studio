@@ -232,6 +232,7 @@ Sessions, jobs, print items and slideshow entries expire after 7 days, like the 
 | `printerToken` | `<event id>.XXXX-XXXX-XXXX-XXXX`, generated and rotated in the admin UI. Kept visible there, with the server URL and the full agent command, so it can be typed on the printer laptop (D-33). |
 | `promo` | `{enabled, text}`. Only possible when printing is on (§5.9). |
 | `shareText` | The suggested caption on the share page. `{event}` becomes the event name (D-34). |
+| `boothScreenEnabled` | On by default. Off for an event without a big screen (D-55): no show-it question or buttons, no booth screen, no CTA text |
 | `ctaText` | Headline and steps for the booth screen |
 
 In the admin form, an option that depends on a switched-off setting is ignored when saving (for example the promo when printing is off).
@@ -356,7 +357,7 @@ In the admin form, an option that depends on a switched-off setting is ignored w
 |---|---|
 | Delivered | See §6 |
 | Moderation flagged | Localized "can't use this photo" message, plus an invitation to send another. Does not count toward quota. |
-| No face, or more than 6 people | Localized message ("we need a clear selfie" / "up to 6 people"), plus an invitation to resend. Sent right after the photo, before any menu (§5.5). |
+| No face (a person's or a pet's), or more than 6 people | Localized message ("we need a clear photo with a face: yours, or your pet's" / "up to 6 people"), plus an invitation to resend. Sent right after the photo, before any menu (§5.5). |
 | AI review flagged | Localized "that one didn't turn out great — please send another selfie". The job goes to the admin review list (§10.3). Does not count toward quota. |
 | Technical failure after retries | Localized apology plus an invitation to try again |
 
@@ -373,6 +374,7 @@ In every case that is not a delivery the person can send another photo straight 
 Nothing is printed or shown automatically. After each delivery, inside the 24h window, one question is sent.
 - **Printing on and prints left:** three buttons, **Print + big screen**, **Big screen only**, **No thanks**. Printing a portrait also puts it on the big screen (the booth screen).
 - **Printing off, or no prints left:** the plain "Can we show your portrait on the big screen? Yes / No".
+- **Event without a booth screen (D-55):** printing on and prints left: **Print** and **No thanks** (group photos: everyone in the photo should agree). Otherwise no question. Nothing is ever added to a screen.
 - **Group photos (2–6 people):** the localized text adds that everyone in the photo should agree.
 - **Only a yes** adds the image to `ev_<slug>_slideshow`. "No" or no answer means it is not shown or printed.
 - **Old buttons keep working**, so an earlier portrait can still be printed later. The buttons carry the job id. A later **No thanks** (or "No") takes the portrait off the big screen again (D-48), and a later **Print** or **Show** adds it.
@@ -536,9 +538,9 @@ A job with a single style and background goes from `screening` straight to `queu
 2. **Moderation:** `omni-moderation-latest`. If the image is flagged, the job ends as `rejected` (moderation). If the call errors, retry; after the retries are used up, the job `failed` (fail closed).
 3. **Face detection and scene analysis**, run in parallel on the vision model, with the prompts from PROMPTS.md §A1 and §A2. Steps 2–3 run in `screening`, before any menu (§5.5).
    - If the scene analysis can't be parsed, retry, then fail. Never default to "1 subject".
-   - 0 faces → `rejected` (no face).
-   - More than 4 subjects → `rejected` (too many people).
-   - 1–6 subjects (`MAX_SUBJECTS` in `lib/pipeline/run.ts`, D-52) → the scene (`subjects`, `pet`) is stored and the menus open.
+   - No face, or neither a person nor an animal in the photo → `rejected` (no face). A face is a person's or a pet's (D-56): a photo of only a pet is accepted.
+   - More than 6 people → `rejected` (too many people). Animals do not count toward the limit.
+   - 1–6 people, or none with an animal (`MAX_SUBJECTS` in `lib/pipeline/run.ts`, D-52) → the scene is stored (`subjects` = people, `pet` = the animals as text such as "2 dogs, 1 cat") and the menus open.
 4. **Build the prompt** (§9.3), once the person has chosen.
 5. **Generate:** `images.edit` with:
    - model `OPENAI_IMAGE_MODEL` (D-01, D-51)
@@ -614,7 +616,10 @@ A job with a single style and background goes from `screening` straight to `queu
 - **Delivered tab:**
   - **Remove** (with a confirmation) is a full takedown (D-16): the portrait leaves the booth screen at once, a print that has not started is cancelled (one already printing cannot be recalled, and the admin is told), the selfie and both output files are deleted immediately, and the share link shows "removed by the event organizer". If a file could not be deleted, Remove can be run again.
   - **Remove from the print queue**, if the job is not printed yet.
-  - **Reprint.** It does not count toward the person's print quota and sends no promo.
+  - **Print / Reprint.** The button says **Print** for a portrait that was never printed and **Reprint** once a print exists; it is not offered while a print is queued or at the printer. It does not count toward the person's print quota and sends no promo.
+  - **Hide from booth screen** (D-54), for a portrait that is on the screen. It only takes it off the screen: the share link, the files and the print stay, and an attendee's old "show it" button cannot put it back (`hiddenFromScreen` on the job). **Show on booth screen again** undoes it. It is not **Remove**, which is final.
+- **Printing tab** (D-54): prints that have not come out (queued, picked up, printing, failed), the oldest first, with how long each has waited and the print agent's state. A queued print that waits is explained: no agent, agent offline, printer off, paused, out of paper or in error, or (after 2 minutes) "the agent is online and the printer is ready, but nothing picked this up. Restart the print agent". Buttons: **Remove from print queue**, and **Reprint** for a failed one.
+- **In progress tab** (D-54): portraits that are not done: being checked, waiting for the attendee's choice, queued, generating, or failed; the longest-waiting first. One that has been checked or queued for 5 minutes, or generating for 10, is marked as slow; a failed one always is. Rejected portraits are not listed. Read-only.
 - Each action is logged without personal data. The log does not carry the admin's name.
 
 ### 10.4 Booth screen `/booth/[slug]`

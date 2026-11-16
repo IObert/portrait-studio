@@ -160,6 +160,38 @@ export async function reprint(deps: { sync: SyncStore; log: AuditLog; mediaUrl: 
   audit(deps.log, "reprint", event.slug, jobId);
 }
 
+/**
+ * Takes a delivered portrait off the booth screen without removing it (D-54): the share link, the files and any print
+ * stay. Unlike `removePortrait` this is not final, and the portrait is marked so an attendee's old "show it" button
+ * cannot put it back. The slideshow-consent count is not changed: it counts answers, not what is on the screen.
+ */
+export async function hideFromSlideshow(deps: { sync: SyncStore; log: AuditLog }, event: PortraitEvent, jobId: string) {
+  const ev = eventObjects(event.slug);
+  let ok = false;
+  await deps.sync.map(ev.jobs, JobSchema).update(jobId, (cur) => {
+    ok = cur?.state === "delivered";
+    return ok ? { ...cur!, hiddenFromScreen: true } : SKIP;
+  });
+  if (!ok) throw new ReviewError("Only delivered portraits can be hidden from the booth screen");
+  // The flag first: even if the delete fails, nothing can add it again.
+  await deps.sync.map(ev.slideshow, SlideshowItemSchema).delete(jobId);
+  audit(deps.log, "slideshow_hide", event.slug, jobId);
+}
+
+/** Undoes `hideFromSlideshow`: puts the portrait back on the booth screen. Without a signed link: the booth signs on read. */
+export async function showOnSlideshow(deps: { sync: SyncStore; log: AuditLog }, event: PortraitEvent, jobId: string, now = new Date()) {
+  const ev = eventObjects(event.slug);
+  let blobPath: string | null = null;
+  await deps.sync.map(ev.jobs, JobSchema).update(jobId, (cur) => {
+    blobPath = cur?.state === "delivered" ? (cur.outputBlobs?.deliveryJpeg ?? null) : null;
+    return blobPath ? { ...cur!, hiddenFromScreen: false } : SKIP;
+  });
+  if (!blobPath) throw new ReviewError("Only delivered portraits can be shown on the booth screen");
+  await deps.sync.ensureMap(ev.slideshow);
+  await deps.sync.map(ev.slideshow, SlideshowItemSchema, { ttlSeconds: 7 * 24 * 60 * 60 }).create(jobId, { blobPath, addedAt: now.toISOString() });
+  audit(deps.log, "slideshow_show", event.slug, jobId);
+}
+
 /** Whether deleting this print item must give its quota reservation back: a queued print, or a failed one the server has not settled (settling releases it). */
 function holdsReservation(item: { state: string; reprint?: boolean; settledAt?: string }): boolean {
   return !item.reprint && (item.state === "queued" || (item.state === "failed" && !item.settledAt));

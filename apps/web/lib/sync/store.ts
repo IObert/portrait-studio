@@ -41,8 +41,12 @@ export class InvalidSyncData extends Error {
   }
 }
 
-/** Returning SKIP from an update function leaves the item unchanged. */
-export const SKIP = Symbol("skip");
+/**
+ * Returning SKIP from an update function leaves the item unchanged. A registered symbol (`Symbol.for`), not a plain
+ * one: Next.js can bundle this module more than once (server actions and pages get their own copies), and two copies
+ * of a plain symbol are different values, so an action's SKIP was taken for data and failed validation (D-54).
+ */
+export const SKIP: unique symbol = Symbol.for("portrait-studio.sync.skip");
 export type Updater<T> = (current: T | null) => T | typeof SKIP | Promise<T | typeof SKIP>;
 
 /**

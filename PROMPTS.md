@@ -17,8 +17,9 @@ Source: `lib/settings.js:236`, setting `promptFaceDetection`.
 - Model: vision-light, called with `detail: low`.
 - The reply is expected to be YES or NO.
 
+Changed in D-56 (the original asked for "a person's face", so a photo of a pet alone was refused):
 ```
-Does this image clearly show a person's face? A face must be visible -- photos of only hands, feet, backs, or other body parts without a face do NOT count. Reply with only YES or NO.
+Does this image clearly show a face: of a person, or of a pet or other real animal that is a main subject of the photo? A face must be visible -- photos of only hands, feet, backs, or other body parts without a face do NOT count. Reply with only YES or NO.
 ```
 
 ### A2. Scene analysis
@@ -26,11 +27,13 @@ Source: `lib/settings.js:237`, setting `promptSceneAnalysis`.
 - The reply is parsed with regexes.
 - If the reply cannot be parsed, the code falls back to `{subjects:1, pets:"none", positions:"centered"}`.
 
+Changed in D-56. The pet line used to be `Pets: [none OR animal type, only if the pet belongs to the subject(s)]`: that dropped a pet standing beside the person and named one animal type, so two pets became one. `Subjects` is now people only and may be 0. The animals come back as text ("1 dog", "2 dogs, 1 cat") that goes into the prompt as it is; "none", "no pets" and the like mean no animals.
 ```
 Analyze this photo. Count ONLY the main subject(s) who are clearly posing or the focus of the photo. IGNORE background bystanders, passersby, people partially visible at frame edges, people on screens/posters, or anyone who is not a primary subject. Reply in EXACTLY this format:
-Subjects: [number of PRIMARY subjects only]
-Pets: [none OR animal type, only if the pet belongs to the subject(s)]
+Subjects: [number of PRIMARY PEOPLE only; 0 if the photo has no person]
+Pets: [none OR every real pet or animal in the photo as "<count> <kind>", separated by commas, for example "1 dog" or "2 dogs, 1 cat"]
 Positions: [centered, left-right pair, or group]
+For Pets, list every real animal that is with the people or is the focus of the photo, wherever it is in the frame (in someone's arms, on a lap, on the floor, at the edge). Do NOT list toys, statues, drawings, animals on screens, posters or clothing, or wild animals far in the background.
 ```
 
 ### A3. Reference analysis
@@ -69,6 +72,7 @@ Each review criterion is included only when its check is turned on. The included
 4. `Branding & logos — images 3+ are brand reference images. Clothing, logos, and text on clothing in the portrait should match those references (not the original selfie's clothing).` (included only when brand references are present)
 5. `Key accessories — glasses and distinctive facial hair from the original should be preserved (not removed entirely). Style changes, color shifts, and artistic reinterpretation of accessories are perfectly fine. Only fail if signature accessories like glasses were completely removed.`
 6. `Anatomical quality — no SEVERE anomalies like extra limbs, merged faces, or badly distorted facial features. Minor hand/finger imperfections, slightly awkward object interactions, and small proportional oddities are acceptable — only fail if the anatomy is clearly broken and distracting at a glance.`
+7. `Animals — if the original photo shows a pet or other animal with the subject(s), or as the subject, every one of them must appear in the portrait as the same kind of animal, with similar coloring and markings, with its head and face fully in the picture (its body may run past the edge of the picture, as in any close portrait). FAIL if an animal was removed, cut out or left as part of the background, had its head or face cut off by the edge of the picture, was turned into a person, or was merged with a person or another animal. If the original shows no animal, this criterion does not apply.` (added in D-56)
 
 `${promptContext}` is filled in only when the generation prompt is known:
 ```
@@ -184,7 +188,7 @@ Paragraphs:
 - brandCore: `Pop art style with halftone dots and high contrast.`
 
 Paragraphs:
-1. `Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.`
+1. `Transform this photo into a bold, classic pop art portrait. Do not add anyone not in the original photo.` (D-57: the original said "in the style of Andy Warhol and Roy Lichtenstein"; the name Roy Lichtenstein made the image model refuse some photos. The look is described in the Style paragraph below.)
 2. {preserve}
 3. `Style: Bold black outlines, flat vibrant colors with high saturation, and Ben-Day dots or halftone patterns for shading. Use a limited but striking color palette with strong contrast. The overall look should feel like a hand-pulled screen print or comic-book panel.`
 4. `Lighting: Flat, graphic lighting with strong shadows rendered as solid color blocks.`
@@ -206,7 +210,7 @@ Paragraphs:
 - brandCore: `Anime style with large expressive eyes and clean line art.`
 
 Paragraphs:
-1. `Create a josei, moe anime style image of the primary subject(s) in the photo. Don't add any person who is not a primary subject in the original photo. Fill the frame with the people and don't leave lots of blank space at the bottom or sides, but always keep the top 10% of the image free as described in the top margin instruction below, even if that means the people sit slightly lower. Preserve objects that the primary subjects are wearing, holding, or interacting with in the original photo, for example a chair they are sitting on, unless the branding instructions below explicitly replace them. Follow the selected background instructions below, preserving the original environment when requested or using the selected replacement background. Do not add other foreground objects unless explicitly requested by the branding instructions. Include all primary subjects specified by the scene count below, but exclude background bystanders, passersby, people partially visible at frame edges, and people on screens or posters.`
+1. `Create a josei, moe anime style image of the primary subject(s) in the photo. Don't add any person who is not a primary subject in the original photo. Fill the frame with the people and don't leave lots of blank space at the bottom or sides, but always keep the top 10% of the image free as described in the top margin instruction below, even if that means the people sit slightly lower. Never let the edge of the picture cut a head or face off: leave a little space around every head, even if the original photo is cropped there. Preserve objects that the primary subjects are wearing, holding, or interacting with in the original photo, for example a chair they are sitting on, unless the branding instructions below explicitly replace them. Follow the selected background instructions below, preserving the original environment when requested or using the selected replacement background. Do not add other foreground objects unless explicitly requested by the branding instructions. Include all primary subjects specified by the scene count below, but exclude background bystanders, passersby, people partially visible at frame edges, and people on screens or posters.`
 2. {preserve}
 3. `Style: Clean anime illustration with bold outlines, smooth cel-shaded coloring, and large expressive eyes. Use vibrant colors with clean flat shading and subtle highlights. The style should resemble a high-quality modern anime or manga illustration.`
 4. `Lighting: Bright, clean anime-style lighting with defined shadows and crisp highlights.`
@@ -281,14 +285,23 @@ Source: `lib/pipeline.js:303-312`. The same code is duplicated in `lib/experimen
  Each person has DISTINCT facial features, hair, and build — do NOT merge, swap, or blend their features. Each person must remain visually distinct from the others and recognizable as themselves.
 ```
 
-- More than 1 person, with a pet:
-  `This photo has exactly ${n} HUMAN subjects and a ${pet}. Include ALL of them positioned as shown. The output must contain exactly ${n} people and the ${pet} — no more, no fewer.` + multiIdentityLine
+`${pet}` is the animals text from §A2 ("1 dog", "2 dogs, 1 cat"), written as a list (D-56): it used to be "a ${pet}", which read "a dogs".
+- No people, only animals (D-56):
+  `This photo has no people, only these animals: ${pet}. The animals are the subjects of the portrait. The output must contain exactly those animals and no people at all — do not add, invent, or hallucinate any person.` (the words "hand, or human figure" were dropped: with the Kings background and pop-art, the image model refused the request until they were removed)
+- More than 1 person, with animals:
+  `This photo has exactly ${n} HUMAN subjects and these animals: ${pet}. Include ALL of them positioned as shown. The output must contain exactly ${n} people and exactly those animals — no more, no fewer. The animals are animals, NOT people: do not turn any of them into a human.` + multiIdentityLine
 - More than 1 person, no pet:
   `This photo has exactly ${n} HUMAN subjects. Include ALL of them positioned as shown. The output must contain exactly ${n} people — no more, no fewer.` + multiIdentityLine
-- 1 person, with a pet:
-  `This photo has exactly 1 person and a ${pet}. The ${pet} is an animal, NOT a person — do not turn the ${pet} into a human. The output must contain exactly 1 person and the ${pet} — no other people.`
+- 1 person, with animals:
+  `This photo has exactly 1 person and these animals: ${pet}. The animals are animals, NOT people — do not turn any of them into a human. The output must contain exactly 1 person and exactly those animals — no other people.`
 - 1 person, no pet:
   `This photo has exactly 1 person. The output must contain exactly 1 human figure — do not add, invent, or hallucinate any additional people. Anything else in the photo (objects, posters, screens, reflections) is NOT a person.`
+
+### E3b. Animals line (D-56)
+Added right after the scene line, only when the photo has animals. The style, background and composition lines are written about people, so without it an animal is cut out ("render only the subject"), redrawn as scenery ("recreate the background"), cropped (chest-up framing) or drawn without its own coloring.
+```
+Animals: Every animal in the photo (${pet}) is a main subject of the portrait, as important as the people, whatever the background instruction says: never part of the background, never removed, never cut out. Keep each one clearly recognizable: the same kind of animal, with its own fur or coat color, markings, ear shape, eye color, and any collar or harness. Keep every animal inside the picture with its head and body not cut off by an edge, even if that means showing more than the chest-up framing used for people; no head or face may be cut off by an edge. Draw each animal in the same art style as the rest of the picture, as stylized as a person would be and not as a photograph of an animal. Framing rule, which overrides any instruction to fill the frame: if the original photo cuts a head or face off at its edge, pull the framing back and complete the missing part, so that every head (people and animals) is fully inside the picture with a little space around it.
+```
 
 ### E4. Brand block
 
@@ -315,8 +328,9 @@ This is followed by `preserveBrand`.
 - This is followed by the same preserve lines.
 
 **`petNote`:**
-- More than 1 person: ` Include the ${pet} naturally without branded clothing.`
-- 1 person: ` Include the ${pet} naturally in the image.`
+- More than 1 person: ` Include the animals (${pet}) naturally without branded clothing.`
+- 1 person: ` Include the animals (${pet}) naturally in the image.`
+- No people (D-56): the clothing line is `Clothing: There is no person in this photo. Do not add anyone to wear the outfit/gear, and do not dress the animals.` + petNote, and the outfit sentence and the wardrobe text are left out.
 
 **With brand references (with or without analysis)**, these are appended next:
 1. `promptBrandInstruction`
@@ -382,8 +396,9 @@ FINAL STYLE LOCK: Render the entire output in this exact art style: ${styleLock}
 ### E11. Final reminder
 Added only when there is no reviewer feedback.
 - 1 person: `\n\nFINAL REMINDER: Exactly 1 human in the output. No other people. Anything else visible (objects, posters, screens, reflections, background figures) must NOT become a person.`
-- 1 person with a pet: `\n\nFINAL REMINDER: Exactly 1 human and 1 ${pet} in the output. The ${pet} is an animal — do NOT turn it into a person. No other people.`
-- More than 1 person: `\n\nFINAL REMINDER: Exactly ${n} humans in the output — no more, no fewer.`
+- 1 person with animals: `\n\nFINAL REMINDER: Exactly 1 human and these animals in the output: ${pet}. The animals stay animals, fully in the picture — do NOT turn any of them into a person, and do not drop any of them. No other people.`
+- More than 1 person: `\n\nFINAL REMINDER: Exactly ${n} humans in the output — no more, no fewer.` + (with animals) ` The animals (${pet}) stay animals, fully in the picture: do NOT turn any of them into a person, and do not drop any of them.`
+- No people, only animals (D-56): `\n\nFINAL REMINDER: Only these animals in the output: ${pet}. No people at all. Every animal stays a whole animal, fully in the picture.`
 
 ### E12. Landscape output
 Source: `lib/pipeline.js:479`.

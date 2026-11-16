@@ -68,6 +68,12 @@ describe("SyncStore conditional update", () => {
     await expect(map.update("k", () => ({ n: 1 }))).rejects.toBeInstanceOf(ConflictRetriesExhausted);
   });
 
+  it("SKIP is a registered symbol, so a second copy of this module in the bundle still gets the same value (D-54)", () => {
+    // Next.js bundles lib code separately for server actions and pages. With a plain Symbol("skip") an admin action that
+    // returned "no change" had its SKIP stored as data, and the action failed with "Invalid data" / "Something went wrong".
+    expect(SKIP).toBe(Symbol.for("portrait-studio.sync.skip"));
+  });
+
   it("SKIP leaves the item unchanged and writes nothing", async () => {
     const { fake, map } = await setup();
     await map.put("k", { n: 5 });

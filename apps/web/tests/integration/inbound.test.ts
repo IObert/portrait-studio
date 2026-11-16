@@ -372,6 +372,26 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     expect((await w.fake.getItem(ev.slideshow, "job_slide_01"))!.data).toMatchObject({ blobPath: "events/ev/generated/job_slide_01.jpg" });
   });
 
+  it("without a booth screen, old show-it buttons add nothing and a print stays off the screen (D-55)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false, boothScreenEnabled: false, printingEnabled: true, maxPrintsPerPerson: 3 });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    for (const id of ["job_noscr_01", "job_noscr_02"]) {
+      const job = JobSchema.parse({
+        jobId: id, address: "whatsapp:+447700900123", channel: "whatsapp", style: "anime", background: "gradient", selfieBlob: "s",
+        outputBlobs: { printPng: `events/ev/generated/${id}.print.png`, deliveryJpeg: `events/ev/generated/${id}.jpg` }, shareId: id.padEnd(24, "Q"), state: "delivered", timestamps: {},
+      });
+      await w.fake.createItem(ev.jobs, id, job);
+    }
+    expect(await w.say(WA, "", { selection: "ps:slide:yes:job_noscr_01" })).toEqual([catalogs.en.delivery.noBigScreen]);
+    expect(await w.fake.getItem(ev.slideshow, "job_noscr_01").catch(() => null)).toBeNull();
+    // An old "Print + big screen" button prints, and still does not show it.
+    expect(await w.say(WA, "", { selection: "ps:slide:print:job_noscr_01" })).toEqual([catalogs.en.delivery.printQueuedPrinterOffline({ printsLeft: 2 })]);
+    expect(await w.fake.getItem(ev.slideshow, "job_noscr_01").catch(() => null)).toBeNull();
+    expect(await w.say(WA, "", { selection: "ps:slide:no:job_noscr_02" })).toEqual([catalogs.en.delivery.printThanksNo]);
+  });
+
   it("changing the answer: No after Yes takes the portrait off the big screen again (D-48)", async () => {
     await liveEvent(w, "ev", { leadCollection: false });
     await w.say(WA, "#ev");
@@ -393,6 +413,20 @@ describe("inbound webhook handler (integration, mocked Twilio + Sync)", () => {
     await w.fake.createItem(ev.slideshow, "job_other_02", { blobPath: "x", addedAt: new Date().toISOString() });
     await w.say(WA, "", { selection: "ps:slide:no:job_other_02" });
     expect(await w.fake.getItem(ev.slideshow, "job_other_02")).not.toBeNull();
+  });
+
+  it("a portrait an admin hid from the booth screen is not put back by the attendee's old button (D-54)", async () => {
+    await liveEvent(w, "ev", { leadCollection: false });
+    await w.say(WA, "#ev");
+    await w.say(WA, "", { selection: ACTION.agree });
+    const ev = eventObjects("ev");
+    const job = { ...deliveredJob("job_hidden_01"), hiddenFromScreen: true };
+    await w.fake.createItem(ev.jobs, job.jobId, job);
+    await w.say(WA, "", { selection: "ps:slide:yes:job_hidden_01" });
+    expect(await w.fake.getItem(ev.slideshow, "job_hidden_01").catch(() => null)).toBeNull();
+    // Hiding is only about the screen: printing the same portrait still works.
+    expect((await w.say(WA, "", { selection: "ps:slide:print:job_hidden_01" }))[0]).toBeDefined();
+    expect(await w.fake.getItem(ev.slideshow, "job_hidden_01").catch(() => null)).toBeNull();
   });
 
   it("restyle: an old style or background list starts a new portrait from the same photo (D-48)", async () => {

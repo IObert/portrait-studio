@@ -244,6 +244,7 @@ describe("screening before the menus (D-18)", () => {
     ["moderation", { flagged: true }, catalogs.en.job.moderationRejected],
     ["no face", { face: "NO" }, catalogs.en.job.noFace],
     ["0 subjects", { scene: "Subjects: 0\nPets: none\nPositions: centered" }, catalogs.en.job.noFace],
+    ["a pet but no face", { face: "NO", scene: "Subjects: 0\nPets: 1 dog\nPositions: centered" }, catalogs.en.job.noFace], // the dog's back, say
     [`${MAX_SUBJECTS + 1} people`, { scene: `Subjects: ${MAX_SUBJECTS + 1}\nPets: none\nPositions: group` }, catalogs.en.job.tooManyPeople({ max: MAX_SUBJECTS })],
   ])("%s → rejected right after the photo, before any menu", async (_n, o, message) => {
     const ai = fakeOpenAI(o);
@@ -254,6 +255,24 @@ describe("screening before the menus (D-18)", () => {
     expect(sent).toEqual([message]); // the rejection only; no style menu
     expect(ai.calls.edit).toBe(0);
     expect(await inFlight(fake)).toBe(0);
+  });
+
+  it("a photo of a pet alone passes screening: no person is needed (D-56)", async () => {
+    const ai = fakeOpenAI({ scene: "Subjects: 0\nPets: 1 dog\nPositions: centered" });
+    const { fake, deps, sent } = await setup(ai);
+    await screening(fake);
+    await workOnce(deps);
+    expect(await getJob(fake)).toMatchObject({ state: "awaiting_choice", subjects: 0, pet: "1 dog" });
+    expect(sent).toHaveLength(1); // the style menu, not a rejection
+    expect(await inFlight(fake)).toBe(1); // the slot of this photo is kept
+  });
+
+  it("two kinds of animals with a person are kept as one list for the prompt (D-56)", async () => {
+    const ai = fakeOpenAI({ scene: "Subjects: 1\nPets: 2 dogs, 1 cat\nPositions: group" });
+    const { fake, deps } = await setup(ai);
+    await screening(fake);
+    await workOnce(deps);
+    expect(await getJob(fake)).toMatchObject({ state: "awaiting_choice", subjects: 1, pet: "2 dogs, 1 cat" });
   });
 
   it("passes: stores the scene, opens the style menu, does not generate yet", async () => {

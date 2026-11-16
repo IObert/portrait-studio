@@ -79,7 +79,7 @@ export const en = {
   job: {
     started: "Got it! Your portrait is being created. It'll be ready in about a minute.",
     moderationRejected: "Sorry, we can't use this photo. Please send a different selfie.",
-    noFace: "We need a clear selfie with your face visible. Please send another one!",
+    noFace: "We need a clear photo with a face in it: yours, or your pet's. Please send another one!",
     tooManyPeople: ({ max }) => `We can fit up to ${max} people in a portrait. Please send a photo with ${max} people or fewer.`,
     reviewFlagged: "That one didn't turn out great. Please send another selfie and we'll try again!",
     failed: "Sorry, something went wrong while creating your portrait. Please send your selfie again.",
@@ -100,6 +100,13 @@ export const en = {
     printQuestion: ({ printsLeft }) => `Want it printed? ${printsLeft === Infinity ? "" : `You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left. `}Printed portraits are also shown on the big screen.`,
     printQuestionGroup: ({ printsLeft }) =>
       `Want it printed? ${printsLeft === Infinity ? "" : `You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left. `}Printed portraits are also shown on the big screen, so please only choose that if everyone in the photo agrees.`,
+    printQuestionNoScreen: ({ printsLeft }) => `Want it printed? ${printsLeft === Infinity ? "" : `You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left.`}`.trim(),
+    printQuestionNoScreenGroup: ({ printsLeft }) =>
+      `Want it printed? ${printsLeft === Infinity ? "" : `You have ${printsLeft} ${printsLeft === 1 ? "print" : "prints"} left. `}Please only choose print if everyone in the photo agrees.`,
+    printOnly: "Print",
+    printSmsHintNoScreen: "Reply PRINT to print it, or NO.",
+    printThanksNo: "No problem!",
+    noBigScreen: "There's no big screen at this event, so nothing was shown.",
     printAndSlideshow: "Print + big screen",
     slideshowOnly: "Big screen only",
     noThanks: "No thanks",

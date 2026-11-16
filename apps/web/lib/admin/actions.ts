@@ -84,6 +84,7 @@ function echo(form: FormData): ActionState["values"] {
       frame: pick(str("frame"), FRAME_IDS, "none"),
       laKings: bool("laKings"),
       leadCollection: bool("leadCollection"),
+      boothScreenEnabled: bool("boothScreenEnabled"),
       emailPromoCode: str("emailPromoCode"),
       emailShowSnippet: bool("emailShowSnippet"),
       maxImagesPerPerson: num("maxImagesPerPerson"),

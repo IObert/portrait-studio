@@ -78,7 +78,7 @@ export const pt_BR = {
   job: {
     started: "Recebido! Seu retrato está sendo criado. Fica pronto em cerca de um minuto.",
     moderationRejected: "Desculpe, não podemos usar esta foto. Envie outra selfie.",
-    noFace: "Precisamos de uma selfie com o seu rosto bem visível. Envie outra!",
+    noFace: "Precisamos de uma foto com um rosto bem visível: o seu ou o do seu pet. Envie outra!",
     tooManyPeople: ({ max }) => `Cabem até ${max} pessoas em um retrato. Envie uma foto com no máximo ${max} pessoas.`,
     reviewFlagged: "Essa não ficou tão boa. Envie outra selfie que tentamos de novo!",
     failed: "Desculpe, algo deu errado ao criar seu retrato. Envie sua selfie de novo.",
@@ -99,6 +99,13 @@ export const pt_BR = {
     printQuestion: ({ printsLeft }) => `Quer imprimir? ${printsLeft === Infinity ? "" : `Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}. `}Retratos impressos também aparecem no telão.`,
     printQuestionGroup: ({ printsLeft }) =>
       `Quer imprimir? ${printsLeft === Infinity ? "" : `Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}. `}Retratos impressos também aparecem no telão, então só escolha isso se todos na foto concordarem.`,
+    printQuestionNoScreen: ({ printsLeft }) => `Quer imprimir? ${printsLeft === Infinity ? "" : `Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}.`}`.trim(),
+    printQuestionNoScreenGroup: ({ printsLeft }) =>
+      `Quer imprimir? ${printsLeft === Infinity ? "" : `Você ainda tem ${printsLeft} ${printsLeft === 1 ? "impressão" : "impressões"}. `}Só escolha imprimir se todos na foto concordarem.`,
+    printOnly: "Imprimir",
+    printSmsHintNoScreen: "Responda IMPRIMIR para imprimir, ou NAO.",
+    printThanksNo: "Tudo bem!",
+    noBigScreen: "Este evento não tem telão, então nada foi exibido.",
     printAndSlideshow: "Imprimir + telão",
     slideshowOnly: "Só no telão",
     noThanks: "Não, obrigado",

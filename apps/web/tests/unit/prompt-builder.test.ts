@@ -32,9 +32,43 @@ describe("prompt builder (SPEC §9.3)", () => {
     expect(group).toContain("exactly 3 HUMAN subjects");
     expect(group).toContain("FINAL REMINDER: Exactly 3 humans");
     expect(group).toContain("DISTINCT facial features");
-    const pet = buildPrompt("sketch", "solid-white", { subjects: 1, pet: "dog" });
-    expect(pet).toContain("1 person and a dog");
-    expect(pet).toContain("Exactly 1 human and 1 dog");
+    const pet = buildPrompt("sketch", "solid-white", { subjects: 1, pet: "1 dog" });
+    expect(pet).toContain("exactly 1 person and these animals: 1 dog");
+    expect(pet).toContain("Exactly 1 human and these animals in the output: 1 dog");
+  });
+
+  describe("animals (D-56)", () => {
+    const two = { subjects: 2, pet: "2 dogs, 1 cat" };
+    it("names every animal as a list, never as 'a <pet>' (the vision model returns '2 dogs', not 'dog')", () => {
+      const p = buildPrompt("watercolor", "original", two);
+      expect(p).toContain("exactly 2 HUMAN subjects and these animals: 2 dogs, 1 cat");
+      expect(p).toContain("The animals (2 dogs, 1 cat) stay animals");
+      expect(p).not.toMatch(/\ba 2 dogs\b|\ba dogs\b/);
+    });
+    it("makes the animals subjects whatever the background says: kept, not cut out, not scenery, not cropped", () => {
+      for (const bg of ["uploaded", "original", "gradient"] as const) {
+        const p = buildPrompt("pop-art", bg, two);
+        expect(p, bg).toContain("Animals: Every animal in the photo (2 dogs, 1 cat) is a main subject of the portrait");
+        expect(p, bg).toContain("never part of the background, never removed, never cut out");
+        expect(p, bg).toContain("not cut off by an edge");
+        expect(p, bg).toContain("not as a photograph of an animal"); // a pet alone came out as a studio photo in cartoon
+        expect(p, bg).toContain("pull the framing back and complete the missing part"); // the original may already cut a head at its edge
+        // The line comes with the scene, before the background instruction it overrides.
+        expect(p.indexOf("Animals:"), bg).toBeLessThan(p.indexOf("Background:"));
+      }
+    });
+    it("a photo of animals only has no person in the prompt, and says not to invent one", () => {
+      const p = buildPrompt("cartoon", "uploaded", { subjects: 0, pet: "1 dog" });
+      expect(p).toContain("This photo has no people, only these animals: 1 dog");
+      expect(p).toContain("do not add, invent, or hallucinate any person.");
+      expect(p).toContain("FINAL REMINDER: Only these animals in the output: 1 dog. No people at all.");
+      expect(p).not.toContain("Exactly 1 human");
+    });
+    it("adds nothing when there is no animal", () => {
+      const p = buildPrompt("cartoon", "original", { subjects: 1, pet: null });
+      expect(p).not.toContain("Animals:");
+      expect(p).not.toContain("animals");
+    });
   });
 
   it("uses the exact-mode transparent background for the uploaded background", () => {
