@@ -21,7 +21,8 @@ const PARAGRAPHS: Record<StyleId, readonly string[]> = {
     `${COMPOSITION} Give them a warm, friendly expression.`,
   ],
   "pop-art": [
-    "Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.",
+    // No artist names here (D-57): "Roy Lichtenstein" got the image model to refuse requests on some photos; the look is described below.
+    "Transform this photo into a bold, classic pop art portrait. Do not add anyone not in the original photo.",
     PRESERVE,
     "Style: Bold black outlines, flat vibrant colors with high saturation, and Ben-Day dots or halftone patterns for shading. Use a limited but striking color palette with strong contrast. Apply the bold colors to the background, clothing, shadows and highlights, and flatten skin and hair into graphic shapes. Hair and eyes keep their own color family (dark stays dark, light stays light), never swapped for blond, blue or another hue. The overall look should feel like a hand-pulled screen print or comic-book panel.",
     "Lighting: Flat, graphic lighting with strong shadows rendered as solid color blocks.",

@@ -188,7 +188,7 @@ Paragraphs:
 - brandCore: `Pop art style with halftone dots and high contrast.`
 
 Paragraphs:
-1. `Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.`
+1. `Transform this photo into a bold, classic pop art portrait. Do not add anyone not in the original photo.` (D-57: the original said "in the style of Andy Warhol and Roy Lichtenstein"; the name Roy Lichtenstein made the image model refuse some photos. The look is described in the Style paragraph below.)
 2. {preserve}
 3. `Style: Bold black outlines, flat vibrant colors with high saturation, and Ben-Day dots or halftone patterns for shading. Use a limited but striking color palette with strong contrast. The overall look should feel like a hand-pulled screen print or comic-book panel.`
 4. `Lighting: Flat, graphic lighting with strong shadows rendered as solid color blocks.`

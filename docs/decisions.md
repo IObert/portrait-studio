@@ -753,8 +753,8 @@ Some events have no big screen. A per-event setting, **Booth screen**, on by def
     answer was "dogs", and the second dog was dropped); the two photos without a visible face are still rejected.
   - **Generation, 7 photos:** a dog alone, a cat and a dog on a field are drawn complete with their markings; a dog as a transparent cut-out stays in; two couples/people with two dogs keep both dogs, framed fully
     inside the picture. In the one that stayed cropped (a selfie whose original already cuts the man's face and the dog at the edges) the new review criterion fails it, so it goes to the admin's Flagged list.
-  - **Moderation:** the lounger photo (it shows a nude classical statue in the garden) is refused by the image model's input moderation in pop-art on both 2.5 and 2.6, with or without the animal text, and passes in
-    cartoon. So the refusals are about that photo, not about pets, and the event's one delivery of it was luck. Prompts cannot fix it; the attendee gets the moderation message.
+  - **Moderation:** the lounger photo (it shows a nude classical statue in the garden) was refused by the image model in pop-art on both 2.5 and 2.6, with or without the animal text, and passed in cartoon.
+    I first took the statue to be the cause; it was not. See D-57.
   - **Second round (2026-11-16), after the first findings:**
     - **Framing:** the man-with-dog selfie is cropped because the *original* is: his face is cut at the right edge. A framing rule in the Animals line ("pull the framing back and complete the missing part",
       overriding "fill the frame") fixed it in cartoon, and in anime once the anime style text itself got "never let the edge of the picture cut a head or face off" (the anime style says "fill the frame",
@@ -762,10 +762,27 @@ Some events have no big screen. A per-event setting, **Booth screen**, on by def
     - **Review criterion softened:** the dog's *body* running past the edge, as in any close portrait, no longer fails; its head and face must be in view. The first wording would have sent normal pet close-ups to
       the admin's Flagged list.
     - **Cartoon on a pet alone** looked like a studio photograph; the Animals line now says to draw animals in the same art style, "not as a photograph of an animal", and a dog and a cat came out properly Pixar.
-    - **Moderation, open (parked):** with the Kings arena and pop-art, a photo of only a pet is refused by the image model for some photos (a cat and one dog refused, two other dogs fine; the same photos pass
+    - **Moderation (solved in D-57, see below; this is how it looked at first):** with the Kings arena and pop-art, a photo of only a pet is refused by the image model for some photos (a cat and one dog refused, two other dogs fine; the same photos pass
       in other styles and on other backgrounds). Removing any one of three phrases made a refusing prompt pass (the "hand, or human figure" wording, the pop-art "flatten skin and hair" sentence, or the Warhol
       names), so the prompt is at the edge of the safety check, not tripping on one phrase. "hand, or human figure" was dropped as harmless. Not the jersey photos (sending only the arena reference did not help).
-      Together with the lounger photo (nude statue) above, moderation refusals are parked by the user; `GenerationRefused` already gives the attendee the moderation message.
+      Together with the lounger photo (nude statue) above, this was parked, and then traced to one name in the prompt: D-57.
   - **Not checked:** every style on every photo, and the rate of any of this (a dozen generations, one sample each).
 - **Not done:** a cap on the number of animals; the moderation refusals above (parked); a framing check for photos without animals.
+
+### D-57 The pop-art prompt no longer names artists: "Roy Lichtenstein" made the image model refuse photos (found with the woman-and-two-dogs photo)
+*2026-11-16. A harmless photo (a woman and two dogs on a garden lounger) was refused by the image model in pop-art and passed in cartoon, on 2.5 and 2.6.*
+- **What the refusal says:** `moderation_blocked`, `moderation_stage: input`, `categories: ["other"]`. Nothing more. OpenAI's own moderation endpoint (the one used for screening) flags none of the photo or its parts
+  (all category scores about 0), so the refusal comes from the image model's separate filter.
+- **Not the cause:** the nude statue in the garden (hiding only the statue still refused), the lounger, the shoes, the towel, the dogs, the Kings jersey photos, the animal text, the Top margin line, the
+  preserve paragraph, the "flatten skin and hair" and "hair and eyes keep their color family" sentences. Hiding the statue, cactus and amphora together made it pass in only 1 of 2 tries.
+- **The cause:** the style name **"Roy Lichtenstein"** in the first line of the pop-art style ("in the style of Andy Warhol and Roy Lichtenstein"). Same photo, same prompt otherwise, six tries each: both names
+  0/6 passed; only Lichtenstein 0/6; only Warhol 6/6; no names 6/6. The same on the Kings arena with a cat and a dog (both names 0/4, only Warhol 4/4, no names 4/4). It is not every photo (two other dog photos passed with
+  both names): the name adds enough risk to tip borderline photos over the filter's threshold, and which photos those are cannot be seen. Why this name and not Warhol's I can only guess (a rule against imitating a named
+  artist, perhaps the estate's copyright); the filter does not say.
+- **Fix:** the pop-art style no longer names artists ("a bold, classic pop art portrait"). The Style paragraph already describes the look (bold black outlines, flat vibrant colors, Ben-Day dots or halftone,
+  screen print or comic-book panel), and real photos in pop-art look the same without the names: halftone dots, thick outlines, flat colors. The woman-and-two-dogs photo and the dog on the field generate now, with
+  both dogs in the picture.
+- **Lesson:** do not name artists, studios or brands in prompts for no reason. Other styles name none (cartoon names Pixar and Disney Animation Studios and has passed every test so far; watch it).
+- **Checked:** 6 tries per variant on one photo, 4 per variant on two more, and two full-quality generations. **Not checked:** how often the old prompt was refused in production (1 of 184 jobs at LeadDev Berlin was
+  `generation_refused`, with a different, older prompt and model), and the other styles over many photos.
 

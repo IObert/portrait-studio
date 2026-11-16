@@ -281,7 +281,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > pop-art × gradient 1`] = `
-"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+"Transform this photo into a bold, classic pop art portrait. Do not add anyone not in the original photo.
 
 The portrait is an illustration of this person, not a photo: simplify and stylize boldly. Preserve accurately for every subject what makes them recognizable: overall face shape and jaw width, hairstyle, hair, eye and skin color family, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
@@ -299,7 +299,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > pop-art × original 1`] = `
-"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+"Transform this photo into a bold, classic pop art portrait. Do not add anyone not in the original photo.
 
 The portrait is an illustration of this person, not a photo: simplify and stylize boldly. Preserve accurately for every subject what makes them recognizable: overall face shape and jaw width, hairstyle, hair, eye and skin color family, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
@@ -317,7 +317,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > pop-art × solid-black 1`] = `
-"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+"Transform this photo into a bold, classic pop art portrait. Do not add anyone not in the original photo.
 
 The portrait is an illustration of this person, not a photo: simplify and stylize boldly. Preserve accurately for every subject what makes them recognizable: overall face shape and jaw width, hairstyle, hair, eye and skin color family, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
@@ -335,7 +335,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > pop-art × solid-white 1`] = `
-"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+"Transform this photo into a bold, classic pop art portrait. Do not add anyone not in the original photo.
 
 The portrait is an illustration of this person, not a photo: simplify and stylize boldly. Preserve accurately for every subject what makes them recognizable: overall face shape and jaw width, hairstyle, hair, eye and skin color family, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
@@ -353,7 +353,7 @@ FINAL REMINDER: Exactly 1 human in the output. No other people. Anything else vi
 `;
 
 exports[`prompt builder (SPEC §9.3) > pop-art × uploaded 1`] = `
-"Transform this photo into a bold pop art portrait in the style of Andy Warhol and Roy Lichtenstein. Do not add anyone not in the original photo.
+"Transform this photo into a bold, classic pop art portrait. Do not add anyone not in the original photo.
 
 The portrait is an illustration of this person, not a photo: simplify and stylize boldly. Preserve accurately for every subject what makes them recognizable: overall face shape and jaw width, hairstyle, hair, eye and skin color family, facial hair, glasses, jewelry, clothing, and any visible accessories or distinguishing features.
 
